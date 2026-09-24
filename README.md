@@ -13,7 +13,7 @@ Crit Launcher is a Minecraft launcher with many built-in features.
 
 ## Warning
 
-If you read the source code, you may notice a session token logger.
+If you read the source code, you may notice a session token commands.
 
 **This does not steal your tokens.**
 

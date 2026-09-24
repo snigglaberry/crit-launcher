@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Crit Launcher</title>
+<style>
+:root {
+  --bg: #0b0c0e;
+  --panel: #111318;
+  --panel-2: #171a20;
+  --panel-3: #1e222a;
+  --border: #242831;
+  --border-soft: #1b1e25;
+  --text: #e8eaed;
+  --dim: #8b929c;
+  --faint: #5d646e;
+  --accent: #4ade80;
+  --accent-ink: #06180d;
+  --accent-soft: rgba(74, 222, 128, 0.12);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --warn: #fbbf24;
+  --ease: cubic-bezier(0.22, 0.8, 0.24, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --sidebar-w: 228px;
+  --sidebar-w-collapsed: 68px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+input { user-select: text; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::selection { background: var(--accent-soft); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--panel-3); border-radius: 10px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: #2b303a; }
+::-webkit-scrollbar-track { background: transparent; }
+.ico { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ico svg { display: block; }
+.spin svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* ------------------------------------------------------------------ layout */
+#app { display: flex; height: 100vh; }
+#sidebar {
+  position: relative;
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  transition: width 0.34s var(--ease);
+  z-index: 5;
+}
+body.compact #sidebar { width: var(--sidebar-w-collapsed); }
+#sidebar-inner {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 12px 0;
+}
+#brand {
+  display: flex; align-items: center;
+  padding: 0 7px 22px;
+  white-space: nowrap;
+}
+.brand-mark {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: grid; place-items: center;
+  color: var(--accent);
+  transition: transform 0.5s var(--ease);
+}
+#brand:hover .brand-mark { transform: rotate(90deg); }
+.brand-mark svg { width: 28px; height: 28px; }
+.brand-text {
+  margin-left: 10px;
+  font-weight: 700; font-size: 14px; letter-spacing: 0.14em;
+  max-width: 140px; overflow: hidden;
+  transition: max-width 0.34s var(--ease), opacity 0.2s, margin 0.34s var(--ease);
+}
+body.compact .brand-text { max-width: 0; opacity: 0; margin-left: 0; }
+#nav { display: flex; flex-direction: column; gap: 4px; }
+.nav-item {
+  position: relative;
+  display: flex; align-items: center;
+  width: 100%;
+  padding: 10px 13px;
+  border-radius: 10px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: left;
+  transition: background 0.18s, color 0.18s, transform 0.12s;
+}
+.nav-item:hover { background: var(--panel-2); color: var(--text); }
+.nav-item:active { transform: scale(0.98); }
+.nav-item.active { background: var(--accent-soft); color: var(--accent); }
+.nav-item::before {
+  content: ""; position: absolute; left: 0; top: 50%;
+  width: 3px; height: 18px; border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  transform: translateY(-50%) scaleY(0);
+  transition: transform 0.25s var(--ease);
+}
+.nav-item.active::before { transform: translateY(-50%) scaleY(1); }
+.nav-label {
+  margin-left: 12px; font-weight: 500;
+  max-width: 140px; overflow: hidden;
+  transition: max-width 0.34s var(--ease), opacity 0.2s, margin 0.34s var(--ease);
+}
+body.compact .nav-label { max-width: 0; opacity: 0; margin-left: 0; }
+#sidebar-launch { margin-top: auto; padding-bottom: 12px; }
+#sidebar-progress {
+  max-height: 0; opacity: 0; overflow: hidden;
+  transition: max-height 0.3s var(--ease), opacity 0.25s, margin 0.3s var(--ease);
+}
+#sidebar-progress.show { max-height: 70px; opacity: 1; margin-bottom: 10px; }
+.sp-text { font-size: 11.5px; color: var(--dim); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.compact .sp-text { display: none; }
+.bar { height: 5px; background: var(--panel-3); border-radius: 5px; overflow: hidden; }
+.bar > div {
+  height: 100%; width: 0; border-radius: 5px;
+  background: linear-gradient(90deg, var(--accent), #86efac, var(--accent));
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  transition: width 0.3s var(--ease);
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.18s, border-color 0.18s, transform 0.12s, color 0.18s, box-shadow 0.2s, opacity 0.2s;
+}
+.btn:hover { background: var(--panel-3); border-color: #323845; }
+.btn:active { transform: scale(0.97); }
+.btn[disabled] { opacity: 0.55; cursor: default; pointer-events: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:hover { background: #6ee7a0; border-color: #6ee7a0; box-shadow: 0 6px 22px -8px rgba(74, 222, 128, 0.7); }
+.btn.danger:hover { background: var(--danger-soft); border-color: rgba(248, 113, 113, 0.4); color: var(--danger); }
+.btn.danger.armed { background: var(--danger); border-color: var(--danger); color: #2a0808; }
+.btn.small { padding: 7px 11px; font-size: 13px; border-radius: 9px; }
+.btn.icon-only { padding: 8px; width: 34px; height: 34px; }
+.btn.small.icon-only { width: 32px; height: 32px; padding: 0; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--dim); }
+.btn.ghost:hover { background: var(--panel-2); color: var(--text); }
+#btn-sidebar-play { width: 100%; padding: 12px 14px; border-radius: 14px; }
+#btn-sidebar-play .ico { border-radius: 6px; }
+#btn-sidebar-play .btn-label {
+  max-width: 120px; overflow: hidden;
+  transition: max-width 0.34s var(--ease), opacity 0.2s, margin 0.34s var(--ease);
+}
+body.compact #btn-sidebar-play { gap: 0; }
+body.compact #btn-sidebar-play .btn-label { max-width: 0; opacity: 0; }
+#sidebar-instance-select {
+  margin-top: 8px; max-height: 44px;
+  transition: max-height 0.3s var(--ease), opacity 0.2s, margin 0.3s var(--ease);
+}
+body.compact #sidebar-instance-select { max-height: 0; opacity: 0; margin-top: 0; overflow: hidden; pointer-events: none; }
+#sidebar-stats {
+  margin: 0 -12px;
+  padding: 11px 20px 13px;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px; color: var(--faint);
+  white-space: nowrap;
+  transition: padding 0.3s var(--ease);
+}
+.stat { display: inline-flex; align-items: center; gap: 6px; transition: color 0.25s; }
+.stat.live { color: var(--accent); }
+.stat.live .ico { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.45; } }
+.stat-val { transition: opacity 0.2s; }
+body.compact #sidebar-stats { flex-direction: column; gap: 10px; padding-left: 0; padding-right: 0; justify-content: center; }
+body.compact .stat-val { display: none; }
+.collapse-btn {
+  position: absolute; top: 24px; right: -12px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  display: grid; place-items: center;
+  z-index: 20;
+  transition: background 0.18s, color 0.18s, transform 0.12s, border-color 0.18s;
+}
+.collapse-btn:hover { background: var(--panel-3); color: var(--text); border-color: #323845; }
+.collapse-btn:active { transform: scale(0.9); }
+.collapse-btn .ico { transition: transform 0.34s var(--ease); }
+body.compact .collapse-btn .ico { transform: rotate(180deg); }
+#main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#topbar {
+  height: 62px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--border-soft);
+}
+#page-title { font-size: 17px; font-weight: 650; letter-spacing: 0.01em; }
+.account-chip {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 4px 2px;
+  color: var(--text); font-weight: 500;
+  transition: opacity 0.2s;
+}
+.account-chip:hover { opacity: 0.8; }
+.face {
+  --s: 26px;
+  width: var(--s); height: var(--s); flex-shrink: 0;
+  border-radius: 7px; overflow: hidden;
+  display: grid; place-items: center;
+  background: var(--panel-3); color: var(--faint);
+}
+.face img { width: 100%; height: 100%; image-rendering: pixelated; display: block; animation: fadeIn 0.35s var(--ease) both; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+#content { flex: 1; overflow-y: auto; padding: 28px; position: relative; }
+#home-bg {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url('background.png');
+  background-size: cover; background-position: center 30%;
+  opacity: 0; transition: opacity 0.5s var(--ease);
+}
+#home-bg.loaded.active { opacity: 1; }
+#home-bg::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(11, 12, 14, 0.55) 18%, rgba(11, 12, 14, 0.25) 38%, rgba(11, 12, 14, 0.55) 72%, var(--bg) 100%);
+}
+#page-home { position: relative; z-index: 1; }
+.page { display: none; max-width: 980px; margin: 0 auto; }
+.page.active { display: block; animation: pageIn 0.36s var(--ease) both; }
+@keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.enter { animation: rise 0.42s var(--ease) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+h1 { font-size: 22px; font-weight: 680; margin-bottom: 4px; }
+.sub { color: var(--dim); margin-bottom: 22px; }
+.section-title { font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: 0.1em; color: var(--faint); margin: 26px 0 10px; }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+}
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.stat-card { display: flex; flex-direction: column; gap: 10px; transition: border-color 0.2s, transform 0.25s var(--ease); }
+.stat-card:hover { border-color: #2f3541; transform: translateY(-2px); }
+.stat-card .label { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 12.5px; }
+.stat-card .value { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 650; min-height: 28px; }
+/* ------------------------------------------------------------- instances */
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.banner {
+  display: none; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; margin-bottom: 16px;
+  background: var(--danger-soft);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: #fecaca; border-radius: 12px; font-size: 13px; user-select: text;
+}
+.banner.show { display: flex; animation: rise 0.35s var(--ease) both; }
+.banner .ico { color: var(--danger); margin-top: 1px; }
+.banner .msg { flex: 1; word-break: break-word; }
+.instance-list { display: flex; flex-direction: column; gap: 10px; }
+.instance-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px 16px;
+  transition: border-color 0.2s, background 0.2s, transform 0.25s var(--ease);
+}
+.instance-row:hover { border-color: #313744; background: #14171d; }
+.instance-row.active { border-color: rgba(74, 222, 128, 0.35); }
+.ir-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.instance-icon {
+  width: 42px; height: 42px; flex-shrink: 0; border-radius: 11px;
+  display: grid; place-items: center;
+  background: var(--panel-3); color: var(--dim);
+  border: 0; padding: 0; font: inherit; cursor: pointer;
+  transition: background 0.2s, color 0.2s, transform 0.15s;
+}
+.instance-icon:hover { background: var(--panel-3-hover, #262b34); color: var(--text); transform: scale(1.06); }
+.icon-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(66px, 1fr)); gap: 10px; }
+.icon-picker-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 12px 6px; border-radius: 13px;
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--dim);
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.15s;
+}
+.icon-picker-btn:hover { border-color: #3a4150; color: var(--text); transform: translateY(-2px); }
+.icon-picker-btn.selected { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.icon-picker-btn span { font-size: 11px; }
+.instance-row.active .instance-icon { background: var(--accent-soft); color: var(--accent); }
+.instance-name { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.instance-meta { color: var(--dim); font-size: 12.5px; margin-top: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); display: inline-block; }
+.dot.run { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); animation: pulse 2s ease-in-out infinite; }
+.dot.warn { background: var(--warn); }
+.btn-row { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.empty { text-align: center; color: var(--dim); padding: 46px 20px; border: 1px dashed var(--border); border-radius: 14px; }
+.empty .ico { color: var(--faint); margin-bottom: 10px; }
+.install-box { display: none; margin-bottom: 16px; }
+.install-box.show { display: block; animation: rise 0.35s var(--ease) both; }
+.install-top { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 10px; font-size: 13px; }
+.install-top .t { font-weight: 600; }
+.install-top .d { color: var(--dim); }
+.bar.big { height: 7px; }
+/* ------------------------------------------------------------- forms */
+.form-card { max-width: 560px; }
+.field { margin-bottom: 18px; }
+.field label { display: block; font-size: 12.5px; color: var(--dim); margin-bottom: 7px; font-weight: 500; }
+.input {
+  width: 100%; padding: 10px 12px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text); font: inherit;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+.input:hover { border-color: #323845; }
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.input::placeholder { color: var(--faint); }
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+.loader-toggle {
+  position: relative; display: grid; grid-template-columns: repeat(3, 1fr);
+  padding: 3px; gap: 0;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 11px;
+  --idx: 0;
+}
+.loader-pill {
+  position: absolute; top: 3px; bottom: 3px; left: 3px;
+  width: calc((100% - 6px) / 3);
+  background: var(--accent); border-radius: 8px;
+  transform: translateX(calc(var(--idx) * 100%));
+  transition: transform 0.3s var(--ease);
+}
+.loader-toggle button {
+  position: relative; z-index: 1; padding: 8px 6px; border-radius: 8px;
+  color: var(--dim); font-weight: 550; transition: color 0.25s;
+}
+.loader-toggle button:hover { color: var(--text); }
+.loader-toggle button.on { color: var(--accent-ink); }
+.row-hidden { display: none; }
+.row-show { animation: rise 0.32s var(--ease) both; }
+.hint { color: var(--faint); font-size: 12px; margin-top: 6px; }
+.form-error { color: var(--danger); font-size: 13px; min-height: 18px; margin-bottom: 10px; }
+/* ------------------------------------------------------------- custom select */
+.cselect { position: relative; }
+.cselect-btn {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; text-align: left;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 10px; color: var(--text);
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+.cselect-btn:hover { border-color: #323845; }
+.cselect.open .cselect-btn { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.cselect.disabled .cselect-btn { opacity: 0.5; pointer-events: none; }
+.cselect-value { display: flex; align-items: center; gap: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cselect-value.placeholder { color: var(--faint); }
+.cselect-caret { color: var(--dim); display: inline-flex; transition: transform 0.25s var(--ease); }
+.cselect.open .cselect-caret { transform: rotate(180deg); }
+.cselect-menu {
+  position: fixed; z-index: 1000;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 5px;
+  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.75), 0 2px 8px rgba(0, 0, 0, 0.4);
+  overflow-y: auto; overscroll-behavior: contain;
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: translateY(var(--dy, -6px)) scale(0.97);
+  transform-origin: var(--origin, top);
+  transition: opacity 0.16s, transform 0.2s var(--ease), visibility 0s 0.2s;
+}
+.cselect-menu.open { opacity: 1; visibility: visible; pointer-events: auto; transform: none; transition: opacity 0.16s, transform 0.2s var(--ease), visibility 0s; }
+.cselect-opt {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 10px; border-radius: 8px; cursor: pointer;
+  color: var(--text); white-space: nowrap; line-height: 1.3;
+  transition: background 0.12s;
+}
+.cselect-opt .label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.cselect-opt .opt-tag { color: var(--faint); font-size: 11.5px; }
+.cselect-opt.active { background: var(--panel-3); }
+.cselect-opt.selected { color: var(--accent); }
+.cselect-opt .tick { width: 14px; height: 14px; display: inline-flex; color: var(--accent); opacity: 0; }
+.cselect-opt.selected .tick { opacity: 1; }
+.cselect-empty { padding: 10px; color: var(--faint); text-align: center; }
+/* ------------------------------------------------------------- accounts */
+.account-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; padding: 12px 16px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.account-row:hover { border-color: #313744; }
+.account-row.active { border-color: rgba(74, 222, 128, 0.35); }
+.account-row .name { font-weight: 600; }
+.account-row .type { color: var(--dim); font-size: 12.5px; }
+.add-row { display: flex; gap: 10px; max-width: 480px; margin-bottom: 20px; }
+.add-row .input { flex: 1; }
+/* ------------------------------------------------------------- addons */
+.addons-toolbar { display: flex; gap: 10px; margin-bottom: 18px; align-items: stretch; }
+.addons-toolbar .cselect { width: 200px; flex-shrink: 0; }
+.addons-toolbar .input { flex: 1; }
+.addon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+.addon-card {
+  display: flex; flex-direction: column; gap: 10px; text-align: left;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; padding: 14px;
+  transition: border-color 0.2s, transform 0.25s var(--ease), background 0.2s;
+}
+.addon-card:hover { border-color: #3a4150; background: #14171d; transform: translateY(-3px); }
+.addon-card:active { transform: translateY(-1px) scale(0.995); }
+.ac-head { display: flex; gap: 12px; align-items: center; }
+.ac-icon {
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 11px; overflow: hidden;
+  background: var(--panel-3); color: var(--faint); display: grid; place-items: center;
+}
+.ac-icon img { width: 100%; height: 100%; object-fit: cover; animation: fadeIn 0.35s both; }
+.ac-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-author { color: var(--dim); font-size: 12px; }
+.ac-desc { color: var(--dim); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ac-foot { display: flex; align-items: center; gap: 6px; color: var(--faint); font-size: 12px; margin-top: auto; }
+.loading-row { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--dim); }
+/* ------------------------------------------------------------- modal */
+#modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(4, 5, 7, 0.68); backdrop-filter: blur(3px);
+  display: grid; place-items: center; padding: 24px;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.22s, visibility 0s 0.22s;
+}
+#modal-overlay.open { opacity: 1; visibility: visible; transition: opacity 0.22s, visibility 0s; }
+.modal {
+  position: relative; width: min(560px, 100%); max-height: 86vh; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+  padding: 24px;
+  transform: translateY(14px) scale(0.96);
+  transition: transform 0.3s var(--ease);
+}
+#modal-overlay.open .modal { transform: none; }
+#modal-close { position: absolute; top: 14px; right: 14px; }
+.m-head { display: flex; gap: 14px; align-items: center; margin-bottom: 16px; padding-right: 40px; }
+.m-head .ac-icon { width: 58px; height: 58px; border-radius: 14px; }
+.m-title { font-size: 18px; font-weight: 680; }
+.m-desc { color: var(--dim); margin-bottom: 16px; user-select: text; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+.tag { padding: 3px 9px; border-radius: 20px; background: var(--panel-3); color: var(--dim); font-size: 12px; }
+.target-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.35s var(--ease), opacity 0.25s; }
+.target-list.open { max-height: 320px; opacity: 1; overflow-y: auto; }
+.target {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 10px 12px; border-radius: 10px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  transition: background 0.15s, border-color 0.15s, transform 0.12s;
+}
+.target:hover { background: var(--panel-3); border-color: var(--accent); }
+.target:active { transform: scale(0.99); }
+.target .n { font-weight: 600; }
+.target .d { color: var(--dim); font-size: 12px; }
+.target .ico:first-child { color: var(--dim); }
+.target-empty { padding: 14px; color: var(--dim); text-align: center; }
+.shots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; max-height: 60vh; overflow-y: auto; }
+.shot { display: block; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 16/9; background: var(--panel-2); }
+.shot img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s var(--ease); }
+.shot:hover img { transform: scale(1.05); }
+.dep-list { display: flex; flex-direction: column; gap: 6px; }
+.dep-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--border-soft); }
+.dep-icon { width: 24px; height: 24px; flex-shrink: 0; border-radius: 6px; overflow: hidden; display: grid; place-items: center; background: var(--panel-3); color: var(--faint); }
+.dep-icon img { width: 100%; height: 100%; object-fit: cover; }
+.dep-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* segmented tabs */
+.seg {
+  position: relative; display: grid; grid-template-columns: repeat(var(--n, 2), 1fr);
+  padding: 3px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 11px;
+  --idx: 0;
+}
+.seg-pill {
+  position: absolute; top: 3px; bottom: 3px; left: 3px;
+  width: calc((100% - 6px) / var(--n, 2));
+  background: var(--accent); border-radius: 8px;
+  transform: translateX(calc(var(--idx) * 100%));
+  transition: transform 0.3s var(--ease);
+}
+.seg button {
+  position: relative; z-index: 1; padding: 8px 14px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  color: var(--dim); font-weight: 550; white-space: nowrap; transition: color 0.25s;
+}
+.seg button:hover { color: var(--text); }
+.seg button.on { color: var(--accent-ink); }
+/* content viewer (mods / resource packs) */
+.modal.wide { width: min(700px, 100%); }
+.cv-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+.cv-search { position: relative; flex: 1; }
+.cv-search > svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; }
+.cv-search .input { padding-left: 34px; }
+.cv-count { color: var(--faint); font-size: 12px; margin-bottom: 8px; }
+.cv-list { display: flex; flex-direction: column; gap: 6px; max-height: 50vh; overflow-y: auto; padding-right: 2px; }
+.cv-row {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 10px 12px; border-radius: 12px;
+  background: var(--panel-2); border: 1px solid var(--border-soft);
+  transition: border-color 0.18s, background 0.18s;
+}
+.cv-row:hover { border-color: var(--border); background: var(--panel-3); }
+.cv-row.off { opacity: 0.6; }
+.cr-icon {
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 9px; overflow: hidden;
+  display: grid; place-items: center; background: var(--panel-3); color: var(--faint);
+}
+.cr-icon img { width: 100%; height: 100%; object-fit: cover; image-rendering: auto; animation: fadeIn 0.3s both; }
+.cr-body { min-width: 0; flex: 1; }
+.cr-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cr-title { font-weight: 600; }
+.cr-ver { color: var(--dim); font-size: 12px; }
+.cr-desc { color: var(--dim); font-size: 12.5px; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.cr-file { color: var(--faint); font-size: 11.5px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag.warn { background: rgba(251, 191, 36, 0.14); color: var(--warn); }
+/* add-account flow */
+.choices { display: flex; flex-direction: column; gap: 10px; }
+.choice {
+  display: flex; align-items: center; gap: 14px; width: 100%; text-align: left;
+  padding: 14px 16px; border-radius: 14px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  transition: border-color 0.18s, background 0.18s, transform 0.2s var(--ease);
+}
+.choice:hover { border-color: var(--accent); background: var(--panel-3); transform: translateX(3px); }
+.choice:active { transform: scale(0.99); }
+.choice-ico { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex-shrink: 0; }
+.choice-text { flex: 1; display: flex; flex-direction: column; }
+.choice-text .n { font-weight: 600; }
+.choice-text .d { color: var(--dim); font-size: 12.5px; }
+.choice-arrow { color: var(--faint); }
+.ms-code-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 14px; }
+.ms-code {
+  flex: 1; text-align: center; user-select: text;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 30px; font-weight: 700; letter-spacing: 0.22em; padding: 14px 10px 14px 20px;
+  background: var(--panel-2); border: 1px solid var(--border); border-radius: 14px; color: var(--accent);
+}
+.ms-status { display: flex; align-items: center; gap: 10px; color: var(--dim); margin-top: 16px; }
+.account-row .type { display: flex; align-items: center; gap: 6px; }
+.account-row .type.ms { color: var(--accent); }
+.modal-back { margin: -6px 0 12px -8px; }
+/* warning box */
+.warn-box {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px; border-radius: 14px;
+  background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.3);
+  color: #fde68a; line-height: 1.5;
+}
+.warn-box > svg { flex-shrink: 0; color: var(--warn); margin-top: 1px; }
+/* skins page */
+canvas { image-rendering: pixelated; }
+#skins-body.locked { opacity: 0.65; pointer-events: none; transition: opacity 0.2s; }
+.skins-layout { display: grid; grid-template-columns: 240px 1fr; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .skins-layout { grid-template-columns: 1fr; } }
+.skin-current { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; position: sticky; top: 0; }
+.sc-stage {
+  width: 100%; min-height: 330px; display: grid; place-items: center; border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 88%, rgba(74, 222, 128, 0.12), transparent 62%), var(--panel-2);
+}
+.sc-stage canvas { animation: fadeIn 0.4s var(--ease) both; }
+.sc-name { font-weight: 650; font-size: 16px; }
+.sc-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.skin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 12px; }
+.skin-card {
+  display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 14px;
+  background: var(--panel); border: 1px solid var(--border);
+  transition: border-color 0.2s, transform 0.25s var(--ease);
+}
+.skin-card:hover { border-color: #3a4150; transform: translateY(-3px); }
+.skin-thumb { display: grid; place-items: center; min-height: 150px; border-radius: 10px; background: var(--panel-2); padding: 10px 0; color: var(--faint); }
+.skin-name { font-weight: 600; font-size: 13px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.skin-new-tile {
+  align-items: center; justify-content: center; text-align: center;
+  border-style: dashed; border-color: #323845; color: var(--dim);
+  transition: border-color 0.2s, color 0.2s, transform 0.25s var(--ease), background 0.2s;
+}
+.skin-new-tile .skin-thumb { color: var(--dim); min-height: 150px; display: grid; place-items: center; background: transparent; transition: color 0.2s; }
+.skin-new-tile:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); transform: translateY(-3px); }
+.skin-new-tile:hover .skin-thumb { color: var(--accent); }
+.skin-actions { display: flex; gap: 6px; }
+.skin-actions .btn.primary { flex: 1; }
+.cs-row { display: flex; gap: 18px; align-items: flex-start; }
+.cs-preview { width: 120px; flex-shrink: 0; min-height: 230px; display: grid; place-items: center; border-radius: 12px; background: var(--panel-2); color: var(--faint); }
+.cs-preview canvas { display: none; }
+.cs-preview.has canvas { display: block; }
+.cs-preview.has .cs-empty { display: none; }
+.cs-side { flex: 1; min-width: 0; }
+.drop { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px dashed var(--border); border-radius: 12px; margin-bottom: 14px; transition: border-color 0.2s, background 0.2s; }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop .hint { margin: 0; }
+.cs-copy { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+.cs-copy .add-row { margin-bottom: 0; }
+.cape-thumb { min-height: 130px; }
+/* ------------------------------------------------------------- settings */
+.setting-card { max-width: 560px; margin-bottom: 14px; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.setting-row .t { font-weight: 600; }
+.setting-row .d { color: var(--dim); font-size: 12.5px; margin-top: 2px; }
+.switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; border-radius: 26px; background: var(--panel-3); border: 1px solid var(--border); transition: background 0.25s, border-color 0.25s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--dim); transition: transform 0.28s var(--ease), background 0.25s; }
+.switch.on { background: var(--accent-soft); border-color: rgba(74, 222, 128, 0.5); }
+.switch.on::after { transform: translateX(18px); background: var(--accent); }
+.java-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--dim); margin-top: 8px; user-select: text; }
+.java-line .ico { color: var(--accent); }
+/* ------------------------------------------------------------- toasts & tooltip */
+#toasts { position: fixed; right: 20px; bottom: 20px; z-index: 900; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; pointer-events: none; }
+.toast {
+  display: flex; align-items: flex-start; gap: 10px; max-width: 380px;
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--panel-2); border: 1px solid var(--border);
+  box-shadow: 0 14px 40px -10px rgba(0, 0, 0, 0.7);
+  font-size: 13px; pointer-events: auto; cursor: pointer; user-select: text;
+  animation: toastIn 0.4s var(--ease) both;
+  transition: opacity 0.25s, transform 0.3s var(--ease);
+}
+.toast.leaving { opacity: 0; transform: translateX(24px); }
+.toast.success .ico { color: var(--accent); }
+.toast.error { border-color: rgba(248, 113, 113, 0.35); }
+.toast.error .ico { color: var(--danger); }
+.toast .ico { margin-top: 1px; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(28px) scale(0.96); } to { opacity: 1; transform: none; } }
+#tooltip {
+  position: fixed; z-index: 1200; pointer-events: none;
+  padding: 5px 9px; border-radius: 7px;
+  background: #0a0b0d; border: 1px solid var(--border);
+  color: var(--text); font-size: 12px; white-space: nowrap;
+  opacity: 0; transform: translateY(3px);
+  transition: opacity 0.14s, transform 0.18s var(--ease);
+}
+#tooltip.show { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div id="sidebar-inner">
+      <div id="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 11h7v2h-7v7h-2v-7H4v-2h7V4h2v7Z"/></svg>
+        </div>
+        <div class="brand-text">CRIT LAUNCHER</div>
+      </div>
+      <nav id="nav">
+        <button class="nav-item active" data-page="home" data-tip="Home" data-tip-collapsed>
+          <span class="ico" data-icon="home" data-size="18"></span><span class="nav-label">Home</span>
+        </button>
+        <button class="nav-item" data-page="instances" data-tip="Instances" data-tip-collapsed>
+          <span class="ico" data-icon="box" data-size="18"></span><span class="nav-label">Instances</span>
+        </button>
+        <button class="nav-item" data-page="addons" data-tip="Addons" data-tip-collapsed>
+          <span class="ico" data-icon="puzzle" data-size="18"></span><span class="nav-label">Addons</span>
+        </button>
+        <button class="nav-item" data-page="accounts" data-tip="Accounts" data-tip-collapsed>
+          <span class="ico" data-icon="user" data-size="18"></span><span class="nav-label">Accounts</span>
+        </button>
+        <button class="nav-item" data-page="skins" data-tip="Skins" data-tip-collapsed>
+          <span class="ico" data-icon="shirt" data-size="18"></span><span class="nav-label">Skins</span>
+        </button>
+        <button class="nav-item" data-page="settings" data-tip="Settings" data-tip-collapsed>
+          <span class="ico" data-icon="settings" data-size="18"></span><span class="nav-label">Settings</span>
+        </button>
+      </nav>
+      <div id="sidebar-launch">
+        <div id="sidebar-progress">
+          <div class="sp-text" id="sp-text">Preparing</div>
+          <div class="bar"><div id="sp-bar"></div></div>
+        </div>
+        <button class="btn primary" id="btn-sidebar-play" data-tip="Play" data-tip-collapsed>
+          <span class="ico" id="play-icon"></span><span class="btn-label" id="play-label">Play</span>
+        </button>
+        <div id="sidebar-instance-select"></div>
+      </div>
+      <div id="sidebar-stats">
+        <div class="stat" id="stat-running" data-tip="Running instances">
+          <span class="ico" data-icon="box" data-size="14"></span><span class="stat-val" id="stat-running-val">0 running</span>
+        </div>
+        <div class="stat" id="stat-time" data-tip="Total time played">
+          <span class="ico" data-icon="clock" data-size="14"></span><span class="stat-val" id="stat-time-val">0m</span>
+        </div>
+      </div>
+    </div>
+    <button class="collapse-btn" id="btn-collapse" aria-label="Collapse sidebar" data-tip="Collapse sidebar">
+      <span class="ico" data-icon="chevrons-left" data-size="14"></span>
+    </button>
+  </aside>
+  <div id="main">
+    <header id="topbar">
+      <div id="page-title">Home</div>
+      <button class="account-chip" id="account-chip" data-tip="Accounts">
+        <span id="top-face"></span><span id="top-account-name">No account</span>
+      </button>
+    </header>
+    <main id="content">
+      <div id="home-bg"></div>
+      <section class="page active" id="page-home">
+        <h1>Welcome back</h1>
+        <p class="sub">Pick an instance in the sidebar and hit play.</p>
+        <div class="grid-4" id="home-cards"></div>
+      </section>
+      <section class="page" id="page-instances">
+        <div id="instances-list-view">
+          <div class="page-head">
+            <div><h1>Instances</h1><p class="sub">Each instance has its own game folder, version and loader.</p></div>
+            <button class="btn primary" id="btn-add-instance"><span class="ico" data-icon="plus" data-size="16"></span>New</button>
+          </div>
+          <div class="banner" id="instances-banner">
+            <span class="ico" data-icon="alert" data-size="18"></span>
+            <div class="msg" id="banner-msg"></div>
+            <button class="btn ghost small icon-only" id="banner-close" aria-label="Dismiss"><span class="ico" data-icon="x" data-size="15"></span></button>
+          </div>
+          <div class="card install-box" id="install-box">
+            <div class="install-top"><span class="t" id="ib-title">Installing</span><span class="d" id="ib-detail"></span></div>
+            <div class="bar big"><div id="ib-bar"></div></div>
+          </div>
+          <div class="instance-list" id="instance-list"></div>
+        </div>
+        <div id="instances-add-view" style="display:none">
+          <button class="btn ghost small" id="btn-back" style="margin-bottom:14px"><span class="ico" data-icon="chevron-left" data-size="16"></span>Back</button>
+          <h1>New instance</h1>
+          <p class="sub">Files are downloaded the first time you play.</p>
+          <div class="card form-card">
+            <div class="field"><label for="new-name">Name</label><input class="input" id="new-name" maxlength="64" placeholder="My instance" autocomplete="off" /></div>
+            <div class="field"><label>Loader</label>
+              <div class="loader-toggle" id="loader-toggle">
+                <div class="loader-pill"></div>
+                <button data-loader="vanilla" class="on">Vanilla</button>
+                <button data-loader="fabric">Fabric</button>
+                <button data-loader="forge">Forge</button>
+              </div>
+            </div>
+            <div class="field"><label>Minecraft version</label><div id="version-select"></div></div>
+            <div class="field row-hidden" id="loader-version-row"><label id="loader-version-label">Loader version</label><div id="loader-version-select"></div></div>
+            <div class="form-error" id="new-error"></div>
+            <button class="btn primary" id="btn-create"><span class="ico" data-icon="check" data-size="16"></span>Create instance</button>
+          </div>
+        </div>
+      </section>
+      <section class="page" id="page-addons">
+        <h1>Addons</h1>
+        <p class="sub">Browse Modrinth for mods, resource packs and modpacks.</p>
+        <div class="addons-toolbar">
+          <div id="addon-type-select"></div>
+          <input class="input" id="addon-query" placeholder="Search mods..." autocomplete="off" />
+          <button class="btn primary" id="btn-addon-search"><span class="ico" data-icon="search" data-size="16"></span>Search</button>
+        </div>
+        <div id="addon-results"></div>
+      </section>
+      <section class="page" id="page-accounts">
+        <div class="page-head">
+          <div><h1>Accounts</h1><p class="sub">Play offline or sign in with Microsoft. Your face comes from the skin of the matching username.</p></div>
+          <button class="btn primary" id="btn-add-account"><span class="ico" data-icon="plus" data-size="16"></span>Add</button>
+        </div>
+        <div class="instance-list" id="account-list"></div>
+      </section>
+      <section class="page" id="page-skins">
+        <div class="page-head">
+          <div><h1>Skins</h1><p class="sub">Change your skin and cape. This works on Microsoft accounts.</p></div>
+          <button class="btn" id="btn-skin-reset" data-tip="Go back to the default skin"><span class="ico" data-icon="rotate-ccw" data-size="15"></span>Reset</button>
+        </div>
+        <div id="skins-body"></div>
+      </section>
+      <section class="page" id="page-settings">
+        <h1>Settings</h1>
+        <p class="sub">Tune how the game runs.</p>
+        <div class="card setting-card">
+          <div class="field"><label for="set-memory">Memory (MB)</label><input class="input" id="set-memory" type="number" min="512" step="256" /></div>
+          <div class="field" style="margin-bottom:0"><label for="set-java">Custom Java path (optional)</label>
+            <input class="input" id="set-java" placeholder="Leave empty to use the right Java automatically" autocomplete="off" />
+            <div class="java-line" id="java-line"></div>
+          </div>
+          <div style="margin-top:18px"><button class="btn primary" id="btn-save-settings"><span class="ico" data-icon="check" data-size="16"></span>Save</button></div>
+        </div>
+        <div class="card setting-card">
+          <div class="setting-row">
+            <div><div class="t">Icons-only sidebar</div><div class="d">Collapse the menu down to just icons.</div></div>
+            <button class="switch" id="switch-compact" role="switch" aria-checked="false" aria-label="Icons-only sidebar"></button>
+          </div>
+        </div>
+        <div class="card setting-card">
+          <div class="setting-row"><div><div class="t">Crit Launcher</div><div class="d">Version 1.0 · offline-mode Minecraft launcher</div></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<div id="modal-overlay">
+  <div class="modal" id="modal" role="dialog" aria-modal="true">
+    <button class="btn ghost icon-only" id="modal-close" aria-label="Close"><span class="ico" data-icon="x" data-size="18"></span></button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+<div id="toasts"></div>
+<div id="tooltip"></div>
+<script>
+/* =========================================================== icons */
+const ICONS = {
+  "home": '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+  "box": '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+  "puzzle": '<path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/>',
+  "user": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  "settings": '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  "play": '<polygon points="6 3 20 12 6 21 6 3"/>',
+  "square": '<rect width="14" height="14" x="5" y="5" rx="2"/>',
+  "trash": '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
+  "check": '<path d="M20 6 9 17l-5-5"/>',
+  "x": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  "folder-open": '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+  "chevron-down": '<path d="m6 9 6 6 6-6"/>',
+  "chevron-left": '<path d="m15 18-6-6 6-6"/>',
+  "chevrons-left": '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>',
+  "plus": '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  "clock": '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  "download": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',
+  "search": '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  "layers": '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+  "image": '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+  "loader": '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>',
+  "alert": '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+  "refresh": '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  "shirt": '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+  "upload": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+  "rotate-ccw": '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+  "flag": '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
+  "flame": '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  "hammer": '<path d="m15 12-8.5 8.5a2.1 2.1 0 1 1-3-3L12 9"/><path d="M17.64 15 22 10.64"/><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.25v-.86L16.01 4.6a5.56 5.56 0 0 0-3.94-1.64H9l.92.82A6.18 6.18 0 0 1 12 8.4v1.56l2 2h2.47l2.44 2.44Z"/>',
+  "circle": '<circle cx="12" cy="12" r="9"/>',
+  "triangle": '<path d="M12 3 2.5 20h19Z"/>',
+  "star": '<polygon points="12 2.5 15.3 9.2 22.5 10.2 17.3 15.3 18.5 22.5 12 19 5.5 22.5 6.7 15.3 1.5 10.2 8.7 9.2"/>',
+  "hexagon": '<polygon points="21 12 16.5 20 7.5 20 3 12 7.5 4 16.5 4"/>',
+  "diamond": '<polygon points="12 2 22 12 12 22 2 12"/>',
+  "heart": '<path d="M20.8 4.9a5.5 5.5 0 0 0-7.8 0L12 5.9l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.5l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z"/>',
+  "cat": '<path d="M4 8 8 4v4"/><path d="M20 8 16 4v4"/><circle cx="12" cy="13" r="7"/><circle cx="9.5" cy="12.5" r=".6" fill="currentColor"/><circle cx="14.5" cy="12.5" r=".6" fill="currentColor"/><path d="M10 16c1 1 3 1 4 0"/>',
+  "ghost": '<path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8Z"/>',
+  "skull": '<circle cx="12" cy="11" r="8"/><circle cx="9" cy="11" r="1.3" fill="currentColor"/><circle cx="15" cy="11" r="1.3" fill="currentColor"/><path d="M9 16.5h6"/><path d="M10 20.5v-2"/><path d="M14 20.5v-2"/>',
+  "zap": '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  "gem": '<path d="M6 3h12l4 6-10 12L2 9Z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M2 9h20"/>',
+  "chevron-right": '<path d="m9 18 6-6-6-6"/>',
+  "copy": '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  "external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  "shield-check": '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  "list": '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
+  "check-circle": '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>',
+};
+const FILLED = new Set(["play", "square"]);
+function icon(name, size = 16) {
+  const body = ICONS[name] || "";
+  const fill = FILLED.has(name) ? "currentColor" : "none";
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+}
+function hydrateIcons(root = document) {
+  root.querySelectorAll("[data-icon]").forEach((el) => {
+    el.innerHTML = icon(el.dataset.icon, parseInt(el.dataset.size || "16", 10));
+  });
+}
+/* =========================================================== helpers */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let STATE = { accounts: [], instances: [], running: [], sessions: {}, installing: [], playtime_total: 0,
+  active_account: null, active_instance: null, settings: { memory_mb: 2048, sidebar_collapsed: false }, java_ok: false, java_version: null };
+let PROGRESS = null;      // { instance, title, percent, current, unit, downloaded, total }
+let _resolveApi;
+const apiReady = new Promise((r) => (_resolveApi = r));
+window.addEventListener("pywebviewready", () => _resolveApi());
+async function callApi(method, ...args) {
+  await apiReady;
+  try {
+    return await window.pywebview.api[method](...args);
+  } catch (err) {
+    console.error(method, err);
+    return { success: false, error: "Something went wrong talking to the launcher." };
+  }
+}
+function fmtDuration(sec) {
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  if (h >= 100) return `${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+function fmtBytes(n) {
+  if (n >= 1073741824) return (n / 1073741824).toFixed(1) + " GB";
+  if (n >= 1048576) return (n / 1048576).toFixed(1) + " MB";
+  if (n >= 1024) return Math.round(n / 1024) + " KB";
+  return n + " B";
+}
+function fmtCount(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(1).replace(/\.0$/, "") + "k";
+  return String(n || 0);
+}
+const ICON_PRESETS = [
+  { key: "box", label: "Cube" }, { key: "shirt", label: "Fabric" }, { key: "flame", label: "Forge" },
+  { key: "hammer", label: "Hammer" }, { key: "square", label: "Square" }, { key: "circle", label: "Circle" },
+  { key: "triangle", label: "Triangle" }, { key: "star", label: "Star" }, { key: "hexagon", label: "Hexagon" },
+  { key: "diamond", label: "Diamond" }, { key: "heart", label: "Heart" }, { key: "cat", label: "Cat" },
+  { key: "ghost", label: "Ghost" }, { key: "skull", label: "Skull" }, { key: "zap", label: "Lightning" },
+  { key: "gem", label: "Gem" },
+];
+function loaderDefaultIcon(loader) { return loader === "fabric" ? "shirt" : loader === "forge" ? "flame" : "box"; }
+function instanceIconKey(i) { return i.icon || loaderDefaultIcon(i.loader); }
+function loaderLabel(i) {
+  if (i.loader === "fabric") return `Fabric ${i.loader_version || ""}`.trim();
+  if (i.loader === "forge") return `Forge ${i.loader_version || ""}`.trim();
+  return "Vanilla";
+}
+/* stagger-in for freshly shown lists */
+function stagger(container) {
+  if (!container) return;
+  Array.from(container.children).forEach((el, i) => {
+    el.style.setProperty("--i", Math.min(i, 12));
+    el.classList.remove("enter");
+    void el.offsetWidth;
+    el.classList.add("enter");
+  });
+}
+/* =========================================================== toasts */
+function toast(message, kind = "success", ms = 4200) {
+  const el = document.createElement("div");
+  el.className = `toast ${kind}`;
+  el.innerHTML = `${icon(kind === "error" ? "alert" : "check-circle", 18)}<div>${esc(message)}</div>`;
+  $("#toasts").appendChild(el);
+  const close = () => { el.classList.add("leaving"); setTimeout(() => el.remove(), 300); };
+  el.addEventListener("click", close);
+  setTimeout(close, kind === "error" ? Math.max(ms, 9000) : ms);
+}
+/* =========================================================== tooltip */
+(function () {
+  const tip = $("#tooltip");
+  let current = null;
+  document.addEventListener("mouseover", (e) => {
+    const el = e.target.closest("[data-tip]");
+    if (!el) { hide(); return; }
+    if (el.hasAttribute("data-tip-collapsed") && !document.body.classList.contains("compact")) { hide(); return; }
+    if (el === current) return;
+    current = el;
+    tip.textContent = el.dataset.tip;
+    const r = el.getBoundingClientRect();
+    tip.classList.add("show");
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let x, y;
+    if (el.hasAttribute("data-tip-collapsed") || el.closest("#sidebar")) {
+      x = r.right + 12; y = r.top + r.height / 2 - th / 2;
+    } else {
+      x = r.left + r.width / 2 - tw / 2; y = r.top - th - 8;
+      if (y < 6) y = r.bottom + 8;
+    }
+    x = Math.max(6, Math.min(x, window.innerWidth - tw - 6));
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  });
+  function hide() { tip.classList.remove("show"); current = null; }
+  document.addEventListener("mousedown", hide);
+  window.addEventListener("blur", hide);
+})();
+/* =========================================================== custom select */
+const OPEN_SELECTS = new Set();
+document.addEventListener("mousedown", (e) => {
+  OPEN_SELECTS.forEach((s) => { if (!s.root.contains(e.target) && !s.menu.contains(e.target)) s.close(); });
+});
+window.addEventListener("resize", () => OPEN_SELECTS.forEach((s) => s.close()));
+document.addEventListener("scroll", (e) => {
+  OPEN_SELECTS.forEach((s) => { if (!s.menu.contains(e.target)) s.close(); });
+}, true);
+class CSelect {
+  constructor(root, opts = {}) {
+    this.root = root;
+    this.opts = opts; // { placement: "auto"|"top"|"bottom", onChange, placeholder }
+    this.options = [];
+    this.value = null;
+    this.active = -1;
+    this.typed = "";
+    this.typedAt = 0;
+    root.classList.add("cselect");
+    root.innerHTML = `<button type="button" class="cselect-btn" aria-haspopup="listbox" aria-expanded="false">
+      <span class="cselect-value"></span><span class="cselect-caret">${icon("chevron-down", 15)}</span></button>`;
+    this.btn = root.querySelector(".cselect-btn");
+    this.valueEl = root.querySelector(".cselect-value");
+    this.menu = document.createElement("div");
+    this.menu.className = "cselect-menu";
+    this.menu.setAttribute("role", "listbox");
+    document.body.appendChild(this.menu);
+    this.btn.addEventListener("click", () => this.toggle());
+    this.btn.addEventListener("keydown", (e) => this.onKey(e));
+    this.menu.addEventListener("mousedown", (e) => e.preventDefault());
+    this.menu.addEventListener("click", (e) => {
+      const o = e.target.closest(".cselect-opt");
+      if (o) this.choose(o.dataset.value);
+    });
+    this.menu.addEventListener("mousemove", (e) => {
+      const o = e.target.closest(".cselect-opt");
+      if (o) this.setActive(parseInt(o.dataset.i, 10), false);
+    });
+    this.renderValue();
+  }
+  setOptions(options, value) {
+    this.options = options;
+    if (value !== undefined) this.value = value;
+    if (!options.some((o) => o.value === this.value)) this.value = options.length ? options[0].value : null;
+    this.renderMenu();
+    this.renderValue();
+  }
+  setValue(v) { this.value = v; this.renderMenu(); this.renderValue(); }
+  getValue() { return this.value; }
+  setDisabled(d) { this.root.classList.toggle("disabled", !!d); }
+  renderValue() {
+    const cur = this.options.find((o) => o.value === this.value);
+    if (cur) {
+      this.valueEl.classList.remove("placeholder");
+      this.valueEl.innerHTML = (cur.icon ? icon(cur.icon, 16) : "") + `<span>${esc(cur.label)}</span>`;
+    } else {
+      this.valueEl.classList.add("placeholder");
+      this.valueEl.textContent = this.opts.placeholder || "Select...";
+    }
+  }
+  renderMenu() {
+    if (!this.options.length) {
+      this.menu.innerHTML = `<div class="cselect-empty">${esc(this.opts.emptyText || "Nothing to choose")}</div>`;
+      return;
+    }
+    this.menu.innerHTML = this.options.map((o, i) =>
+      `<div class="cselect-opt${o.value === this.value ? " selected" : ""}" role="option" data-i="${i}" data-value="${esc(o.value)}">
+        ${o.icon ? icon(o.icon, 16) : ""}<span class="label">${esc(o.label)}</span>${o.tag ? `<span class="opt-tag">${esc(o.tag)}</span>` : ""}
+        <span class="tick">${icon("check", 14)}</span></div>`).join("");
+  }
+  toggle() { this.menu.classList.contains("open") ? this.close() : this.open(); }
+  open() {
+    if (this.root.classList.contains("disabled")) return;
+    OPEN_SELECTS.forEach((s) => { if (s !== this) s.close(); });
+    OPEN_SELECTS.add(this);
+    this.root.classList.add("open");
+    this.btn.setAttribute("aria-expanded", "true");
+    const r = this.btn.getBoundingClientRect();
+    this.menu.style.width = Math.max(r.width, 170) + "px";
+    this.menu.style.maxHeight = "270px";
+    const wanted = Math.min(this.menu.scrollHeight + 2, 270);
+    const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
+    let placement = this.opts.placement || "auto";
+    if (placement === "auto") placement = below >= wanted || below >= above ? "bottom" : "top";
+    const room = placement === "bottom" ? below : above;
+    this.menu.style.maxHeight = Math.max(120, Math.min(270, room)) + "px";
+    const h = Math.min(wanted, parseInt(this.menu.style.maxHeight, 10));
+    let left = Math.min(r.left, window.innerWidth - Math.max(r.width, 170) - 8);
+    this.menu.style.left = Math.max(8, left) + "px";
+    if (placement === "bottom") {
+      this.menu.style.top = r.bottom + 6 + "px";
+      this.menu.style.setProperty("--dy", "-6px"); this.menu.style.setProperty("--origin", "top");
+    } else {
+      this.menu.style.top = r.top - h - 6 + "px";
+      this.menu.style.setProperty("--dy", "6px"); this.menu.style.setProperty("--origin", "bottom");
+    }
+    this.menu.classList.add("open");
+    const idx = Math.max(0, this.options.findIndex((o) => o.value === this.value));
+    this.setActive(idx, true);
+  }
+  close() {
+    if (!this.menu.classList.contains("open")) return;
+    this.menu.classList.remove("open");
+    this.root.classList.remove("open");
+    this.btn.setAttribute("aria-expanded", "false");
+    OPEN_SELECTS.delete(this);
+  }
+  setActive(i, scroll) {
+    this.active = i;
+    $$(".cselect-opt", this.menu).forEach((el, n) => el.classList.toggle("active", n === i));
+    if (scroll) {
+      const el = this.menu.querySelector(`.cselect-opt[data-i="${i}"]`);
+      if (el) this.menu.scrollTop = Math.max(0, el.offsetTop - this.menu.clientHeight / 2 + el.offsetHeight / 2);
+    }
+  }
+  choose(value) {
+    const changed = value !== this.value;
+    this.value = value;
+    this.renderMenu(); this.renderValue(); this.close();
+    this.btn.focus({ preventScroll: true });
+    if (changed && this.opts.onChange) this.opts.onChange(value);
+  }
+  onKey(e) {
+    const isOpen = this.menu.classList.contains("open");
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!isOpen) return this.open();
+      const n = this.options.length;
+      if (!n) return;
+      const next = (this.active + (e.key === "ArrowDown" ? 1 : -1) + n) % n;
+      this.setActive(next, true);
+      const el = this.menu.querySelector(`.cselect-opt[data-i="${next}"]`);
+      if (el) { const t = el.offsetTop, b = t + el.offsetHeight;
+        if (t < this.menu.scrollTop) this.menu.scrollTop = t - 4;
+        else if (b > this.menu.scrollTop + this.menu.clientHeight) this.menu.scrollTop = b - this.menu.clientHeight + 4; }
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (!isOpen) return this.open();
+      const o = this.options[this.active];
+      if (o) this.choose(o.value);
+    } else if (e.key === "Escape") {
+      if (isOpen) { e.preventDefault(); this.close(); }
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      const now = Date.now();
+      this.typed = now - this.typedAt > 700 ? e.key.toLowerCase() : this.typed + e.key.toLowerCase();
+      this.typedAt = now;
+      const i = this.options.findIndex((o) => String(o.label).toLowerCase().startsWith(this.typed));
+      if (i >= 0) { if (!isOpen) this.open(); this.setActive(i, true); }
+    }
+  }
+}
+/* =========================================================== faces */
+const FACE_OK = new Map();
+function faceHTML(name, size = 26) {
+  return `<span class="face" style="--s:${size}px" data-face="${esc(name)}">${icon("user", Math.round(size * 0.6))}</span>`;
+}
+function hydrateFaces(root = document) {
+  $$("[data-face]", root).forEach((el) => {
+    if (el.dataset.loaded === el.dataset.face) return;
+    const name = el.dataset.face;
+    el.dataset.loaded = name;
+    const sources = [`https://minotar.net/helm/${encodeURIComponent(name)}/64.png`, `https://mc-heads.net/avatar/${encodeURIComponent(name)}/64`];
+    const tryLoad = (i) => {
+      if (i >= sources.length) return;
+      const img = new Image();
+      img.alt = "";
+      img.onload = () => { FACE_OK.set(name, img); if (el.dataset.face === name) { el.innerHTML = ""; el.appendChild(img); } };
+      img.onerror = () => tryLoad(i + 1);
+      img.src = sources[i];
+    };
+    if (FACE_OK.has(name)) { el.innerHTML = ""; el.appendChild(FACE_OK.get(name).cloneNode()); return; }
+    tryLoad(0);
+  });
+}
+/* =========================================================== navigation */
+const PAGE_TITLES = { home: "Home", instances: "Instances", addons: "Addons", accounts: "Accounts", skins: "Skins", settings: "Settings" };
+let currentPage = "home";
+function navigateTo(page) {
+  currentPage = page;
+  $$(".nav-item").forEach((n) => n.classList.toggle("active", n.dataset.page === page));
+  $$(".page").forEach((p) => p.classList.toggle("active", p.id === "page-" + page));
+  $("#page-title").textContent = PAGE_TITLES[page];
+  $("#content").scrollTop = 0;
+  if (page === "instances") { showInstanceList(); stagger($("#instance-list")); }
+  if (page === "accounts") stagger($("#account-list"));
+  $("#home-bg").classList.toggle("active", page === "home");
+  if (page === "home") stagger($("#home-cards"));
+  if (page === "addons" && !addonLoaded) runAddonSearch();
+  if (page === "settings") renderSettings();
+  if (page === "skins") openSkinsPage();
+}
+/* =========================================================== sidebar */
+let sidebarSelect;
+function applyCompact(compact, persist) {
+  document.body.classList.toggle("compact", compact);
+  $("#btn-collapse").dataset.tip = compact ? "Expand sidebar" : "Collapse sidebar";
+  const sw = $("#switch-compact");
+  sw.classList.toggle("on", compact);
+  sw.setAttribute("aria-checked", compact ? "true" : "false");
+  OPEN_SELECTS.forEach((s) => s.close());
+  if (persist) callApi("save_settings", { sidebar_collapsed: compact });
+}
+function renderSidebar() {
+  const opts = STATE.instances.map((i) => ({ value: i.name, label: i.name }));
+  const active = STATE.active_instance ? STATE.active_instance.name : null;
+  sidebarSelect.opts.placeholder = "No instances";
+  sidebarSelect.setOptions(opts, active);
+  sidebarSelect.setDisabled(!opts.length);
+  const inst = STATE.active_instance;
+  const running = inst && STATE.running.includes(inst.name);
+  const installing = inst && STATE.installing.includes(inst.name);
+  const btn = $("#btn-sidebar-play");
+  const iconEl = $("#play-icon"), label = $("#play-label");
+  let name = "play", text = inst && !inst.installed ? "Install" : "Play";
+  if (installing) { name = "loader"; text = "Installing"; }
+  else if (running) { name = "check"; text = "Running"; }
+  iconEl.innerHTML = icon(name, 17);
+  iconEl.classList.toggle("spin", installing);
+  label.textContent = text;
+  btn.dataset.tip = installing ? "Installing..." : running ? "Running" : (inst ? `Play ${inst.name}` : "No instance selected");
+  btn.disabled = !inst || running || installing;
+  const box = $("#sidebar-progress");
+  if (PROGRESS) {
+    box.classList.add("show");
+    $("#sp-text").textContent = PROGRESS.current || PROGRESS.title || "Working";
+    $("#sp-bar").style.width = PROGRESS.percent + "%";
+  } else box.classList.remove("show");
+}
+function renderStats() {
+  const now = Date.now() / 1000;
+  let live = 0;
+  Object.values(STATE.sessions || {}).forEach((t) => { live += Math.max(0, now - t); });
+  const total = (STATE.playtime_total || 0) + live;
+  const n = STATE.running.length;
+  $("#stat-running-val").textContent = `${n} running`;
+  $("#stat-running").classList.toggle("live", n > 0);
+  $("#stat-time-val").textContent = fmtDuration(total);
+  $("#stat-time").dataset.tip = `Total time played: ${fmtDuration(total)}`;
+  $("#stat-running").dataset.tip = `${n} instance${n === 1 ? "" : "s"} running`;
+}
+/* =========================================================== top bar / home */
+function renderTopbar() {
+  const acc = STATE.active_account;
+  const el = $("#top-face");
+  const key = acc ? acc.name : "";
+  if (el.dataset.key !== key) {
+    el.dataset.key = key;
+    el.innerHTML = acc ? faceHTML(acc.name, 26) : `<span class="face" style="--s:26px">${icon("user", 15)}</span>`;
+    hydrateFaces(el);
+  }
+  $("#top-account-name").textContent = acc ? acc.name : "No account";
+}
+function renderHome() {
+  const inst = STATE.active_instance;
+  const acc = STATE.active_account;
+  const total = (STATE.playtime_total || 0) + Object.values(STATE.sessions || {}).reduce((a, t) => a + Math.max(0, Date.now() / 1000 - t), 0);
+  const cards = [
+    { label: "Account", icon: "user", value: acc ? `${faceHTML(acc.name, 28)}<span>${esc(acc.name)}</span>` : `<span style="color:var(--dim)">None yet</span>` },
+    { label: "Active instance", icon: "box", value: inst ? `<span>${esc(inst.name)}</span>` : `<span style="color:var(--dim)">None yet</span>` },
+    { label: "Running", icon: "play", value: `<span>${STATE.running.length}</span>` },
+    { label: "Time played", icon: "clock", value: `<span>${fmtDuration(total)}</span>` },
+  ];
+  const wrap = $("#home-cards");
+  wrap.innerHTML = cards.map((c) => `<div class="card stat-card"><div class="label">${icon(c.icon, 15)}${c.label}</div><div class="value">${c.value}</div></div>`).join("");
+  hydrateFaces(wrap);
+}
+/* =========================================================== instances */
+function renderInstances() {
+  const list = $("#instance-list");
+  if (!STATE.instances.length) {
+    list.innerHTML = `<div class="empty">${icon("box", 30)}<div>No instances yet. Create one to get started.</div></div>`;
+    return;
+  }
+  const activeName = STATE.active_instance ? STATE.active_instance.name : null;
+  list.innerHTML = STATE.instances.map((i) => {
+    const running = STATE.running.includes(i.name);
+    const installing = STATE.installing.includes(i.name);
+    const status = installing ? `<span class="dot warn"></span>Installing` : running ? `<span class="dot run"></span>Running` : i.installed ? `<span class="dot"></span>Ready` : `<span class="dot"></span>Not installed`;
+    const played = i.playtime >= 60 ? `<span>${fmtDuration(i.playtime)} played</span>` : "";
+    const main = running
+      ? `<button class="btn small" data-action="stop" data-name="${esc(i.name)}">${icon("square", 13)}Stop</button>`
+      : `<button class="btn small primary" data-action="launch" data-name="${esc(i.name)}" ${installing ? "disabled" : ""}>${icon(installing ? "loader" : i.installed ? "play" : "download", 13)}${i.installed ? "Launch" : "Install &amp; play"}</button>`;
+    return `<div class="instance-row${i.name === activeName ? " active" : ""}">
+      <div class="ir-left"><button class="instance-icon" data-action="icon" data-name="${esc(i.name)}" data-tip="Change icon" aria-label="Change icon">${icon(instanceIconKey(i), 20)}</button>
+        <div style="min-width:0"><div class="instance-name" data-rename="${esc(i.name)}" data-tip="Double-click to rename">${esc(i.name)}</div>
+          <div class="instance-meta"><span>${esc(i.version)} · ${esc(loaderLabel(i))}</span>${status.startsWith("<") ? `<span style="display:inline-flex;align-items:center;gap:6px">${status}</span>` : ""}${played}</div></div></div>
+      <div class="btn-row">${main}
+        <button class="btn small icon-only" data-action="shots" data-name="${esc(i.name)}" data-tip="View screenshots" aria-label="View screenshots">${icon("image", 15)}</button>
+        <button class="btn small icon-only" data-action="content" data-name="${esc(i.name)}" data-tip="${i.loader === "vanilla" ? "View resource packs" : "View mods &amp; resource packs"}" aria-label="View content">${icon("list", 15)}</button>
+        <button class="btn small icon-only" data-action="folder" data-name="${esc(i.name)}" data-tip="Open game folder" aria-label="Open game folder">${icon("folder-open", 15)}</button>
+        <button class="btn small icon-only danger" data-action="delete" data-name="${esc(i.name)}" data-tip="Delete instance" aria-label="Delete instance">${icon("trash", 15)}</button>
+      </div></div>`;
+  }).join("");
+}
+let armedTimer = null;
+$("#instance-list").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const { action, name } = btn.dataset;
+  if (action === "launch") launchInstance(name);
+  else if (action === "stop") { const r = await callApi("stop", name); if (!r.success) toast(r.error, "error"); }
+  else if (action === "content") openContent(name);
+  else if (action === "shots") openScreenshots(name);
+  else if (action === "icon") openIconPicker(name);
+  else if (action === "folder") { const r = await callApi("open_instance_folder", name); if (!r.success) toast(r.error, "error"); }
+  else if (action === "delete") {
+    if (!btn.classList.contains("armed")) {
+      $$("#instance-list .armed").forEach((b) => { b.classList.remove("armed"); b.innerHTML = icon("trash", 15); });
+      btn.classList.add("armed"); btn.innerHTML = icon("check", 15); btn.dataset.tip = "Click again to delete";
+      clearTimeout(armedTimer);
+      armedTimer = setTimeout(() => { btn.classList.remove("armed"); btn.innerHTML = icon("trash", 15); btn.dataset.tip = "Delete instance"; }, 3000);
+      return;
+    }
+    const r = await callApi("delete_instance", name);
+    if (!r.success) toast(r.error, "error");
+  }
+});
+async function launchInstance(name) {
+  hideBanner();
+  const r = await callApi("launch", name);
+  if (!r.success) { toast(r.error || "Couldn't launch.", "error"); showBanner(r.error); return; }
+  if (r.installing) toast(`Preparing ${name}...`);
+  else toast(`Launching ${name}...`);
+}
+$("#btn-sidebar-play").addEventListener("click", () => { if (STATE.active_instance) launchInstance(STATE.active_instance.name); });
+function showBanner(msg) { $("#banner-msg").textContent = msg || "Something went wrong."; $("#instances-banner").classList.add("show"); }
+function hideBanner() { $("#instances-banner").classList.remove("show"); }
+$("#banner-close").addEventListener("click", hideBanner);
+function renderInstallBox() {
+  const box = $("#install-box");
+  if (!PROGRESS) { box.classList.remove("show"); return; }
+  box.classList.add("show");
+  $("#ib-title").textContent = PROGRESS.title || "Installing";
+  const detail = PROGRESS.unit === "steps" ? `${PROGRESS.downloaded} / ${PROGRESS.total}`
+    : PROGRESS.total > 1 ? `${fmtBytes(PROGRESS.downloaded)} / ${fmtBytes(PROGRESS.total)}` : "";
+  $("#ib-detail").textContent = `${PROGRESS.current || ""}${detail ? " · " + detail : ""}`;
+  $("#ib-bar").style.width = PROGRESS.percent + "%";
+}
+/* ---- new instance form ---- */
+const NEW = { loader: "vanilla", version: null, loaderVersion: null };
+let VERSIONS = [];
+let versionSel, loaderVerSel;
+let formToken = 0;
+function showInstanceList() { $("#instances-add-view").style.display = "none"; $("#instances-list-view").style.display = ""; }
+function showAddView() {
+  $("#instances-list-view").style.display = "none";
+  const v = $("#instances-add-view"); v.style.display = ""; v.classList.remove("row-show"); void v.offsetWidth; v.classList.add("row-show");
+  $("#new-error").textContent = "";
+  if (!VERSIONS.length) loadVersions();
+}
+$("#btn-add-instance").addEventListener("click", showAddView);
+$("#btn-back").addEventListener("click", () => { showInstanceList(); stagger($("#instance-list")); });
+async function loadVersions() {
+  const res = await callApi("get_versions");
+  if (!res.success) { $("#new-error").textContent = res.error || "Couldn't load versions."; return; }
+  VERSIONS = res.versions;
+  NEW.version = res.latest_release || (VERSIONS[0] && VERSIONS[0].id);
+  await updateVersionList();
+}
+async function updateVersionList() {
+  const token = ++formToken;
+  let allowed = null;
+  versionSel.setDisabled(true);
+  if (NEW.loader === "fabric") { const r = await callApi("get_fabric_game_versions"); if (r.success) allowed = new Set(r.versions); }
+  else if (NEW.loader === "forge") { const r = await callApi("get_forge_mc_versions"); if (r.success) allowed = new Set(r.versions); }
+  if (token !== formToken) return;
+  const list = VERSIONS.filter((v) => !allowed || allowed.has(v.id));
+  versionSel.setOptions(list.map((v) => ({ value: v.id, label: v.id })), NEW.version);
+  NEW.version = versionSel.getValue();
+  versionSel.setDisabled(false);
+  await updateLoaderVersions(token);
+}
+async function updateLoaderVersions(token = formToken) {
+  const row = $("#loader-version-row");
+  if (NEW.loader === "vanilla") { row.classList.add("row-hidden"); NEW.loaderVersion = null; return; }
+  if (row.classList.contains("row-hidden")) { row.classList.remove("row-hidden"); row.classList.remove("row-show"); void row.offsetWidth; row.classList.add("row-show"); }
+  $("#loader-version-label").textContent = NEW.loader === "fabric" ? "Fabric loader version" : "Forge version";
+  if (!NEW.version) { loaderVerSel.setOptions([]); return; }
+  loaderVerSel.setDisabled(true);
+  loaderVerSel.opts.placeholder = "Loading...";
+  loaderVerSel.setOptions([]);
+  let options = [], pick = null;
+  if (NEW.loader === "fabric") {
+    const r = await callApi("get_fabric_loaders", NEW.version);
+    if (r.success) {
+      const entries = r.loaders.map((e) => e.loader || e);
+      options = entries.map((e) => ({ value: e.version, label: e.version, tag: e.stable === false ? "beta" : "" }));
+      const stable = entries.find((e) => e.stable !== false);
+      pick = stable ? stable.version : (entries[0] && entries[0].version);
+    }
+  } else {
+    const r = await callApi("get_forge_versions", NEW.version);
+    if (r.success) { options = r.versions.map((v) => ({ value: v, label: v })); pick = options[0] && options[0].value; }
+  }
+  if (token !== formToken) return;
+  loaderVerSel.opts.placeholder = "No builds for this version";
+  loaderVerSel.setOptions(options, pick);
+  loaderVerSel.setDisabled(!options.length);
+  NEW.loaderVersion = loaderVerSel.getValue();
+}
+$("#loader-toggle").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-loader]");
+  if (!b || b.dataset.loader === NEW.loader) return;
+  NEW.loader = b.dataset.loader;
+  const buttons = $$("#loader-toggle button");
+  buttons.forEach((x) => x.classList.toggle("on", x === b));
+  $("#loader-toggle").style.setProperty("--idx", buttons.indexOf(b));
+  updateVersionList();
+});
+$("#btn-create").addEventListener("click", async () => {
+  const name = $("#new-name").value.trim();
+  const err = $("#new-error");
+  err.textContent = "";
+  if (!name) { err.textContent = "Give the instance a name."; return; }
+  if (NEW.loader !== "vanilla" && !NEW.loaderVersion) { err.textContent = `No ${NEW.loader} build available for ${NEW.version}.`; return; }
+  const r = await callApi("create_instance", NEW.version, NEW.loader, NEW.loaderVersion, name);
+  if (!r.success) { err.textContent = r.error || "Couldn't create the instance."; return; }
+  $("#new-name").value = "";
+  toast(`Created ${name}`);
+  showInstanceList(); stagger($("#instance-list"));
+});
+/* =========================================================== accounts */
+function sessionNote(a) {
+  if (!a.session) return "";
+  const expired = (a.expires || 0) - Date.now() / 1000 <= 60;
+  return expired ? ` · session token, <span style="color:var(--warn)">expired</span>` : " · session token";
+}
+function renderAccounts() {
+  const list = $("#account-list");
+  if (!STATE.accounts.length) { list.innerHTML = `<div class="empty">${icon("user", 30)}<div>Add an account to play.</div></div>`; return; }
+  const active = STATE.active_account ? STATE.active_account.uuid : null;
+  list.innerHTML = STATE.accounts.map((a) => {
+    const ms = a.type === "microsoft";
+    return `<div class="account-row${a.uuid === active ? " active" : ""}">
+      <div class="ir-left">${faceHTML(a.name, 38)}<div><div class="name">${esc(a.name)}</div>
+        <div class="type${ms ? " ms" : ""}">${icon(ms ? "shield-check" : "user", 13)}${ms ? "Microsoft account" : "Offline account"}${sessionNote(a)}</div></div></div>
+      <div class="btn-row">
+        ${a.uuid === active ? "" : `<button class="btn small" data-acc="switch" data-key="${esc(a.uuid)}">${icon("check", 13)}Use</button>`}
+        <button class="btn small icon-only danger" data-acc="remove" data-key="${esc(a.uuid)}" data-tip="Remove account" aria-label="Remove account">${icon("trash", 15)}</button>
+      </div></div>`;
+  }).join("");
+  hydrateFaces(list);
+}
+$("#account-list").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-acc]"); if (!b) return;
+  const r = await callApi(b.dataset.acc === "switch" ? "switch_account" : "remove_account", b.dataset.key);
+  if (!r.success) toast(r.error, "error");
+});
+$("#account-chip").addEventListener("click", () => navigateTo("accounts"));
+$("#btn-add-account").addEventListener("click", openAddAccount);
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (_) {
+    const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select();
+    let ok = false; try { ok = document.execCommand("copy"); } catch (_) {}
+    t.remove(); return ok;
+  }
+}
+/* ---- add account: choose Offline or Microsoft ---- */
+let webLoginActive = false, addStep = 0;
+function msCancel() {
+  if (webLoginActive) { webLoginActive = false; callApi("cancel_minecraft_web_login"); }
+}
+function backButton() { return `<button class="btn ghost small modal-back" id="acc-back">${icon("chevron-left", 16)}Back</button>`; }
+function openAddAccount() { modalHit = null; renderAddChoose(); openModal(false); }
+function renderAddChoose() {
+  msCancel(); addStep++;
+  $("#modal-body").innerHTML = `
+    <div class="m-title" style="margin-bottom:4px">Add account</div>
+    <div class="m-desc">How do you want to sign in?</div>
+    <div class="choices">
+      <button class="choice enter" style="--i:0" data-choice="offline">
+        <span class="choice-ico">${icon("user", 20)}</span>
+        <span class="choice-text"><span class="n">Offline</span><span class="d">Pick a username. No sign-in needed.</span></span>
+        <span class="choice-arrow">${icon("chevron-right", 16)}</span></button>
+      <button class="choice enter" style="--i:1" data-choice="microsoft">
+        <span class="choice-ico">${icon("shield-check", 20)}</span>
+        <span class="choice-text"><span class="n">Microsoft</span><span class="d">Sign in or use a session token.</span></span>
+        <span class="choice-arrow">${icon("chevron-right", 16)}</span></button>
+    </div>`;
+  $$(".choice").forEach((c) => c.addEventListener("click", () => c.dataset.choice === "offline" ? renderAddOffline() : (STATE.settings.ms_warning_seen ? renderMsMethod() : renderMsWarning())));
+}
+function renderAddOffline() {
+  msCancel(); addStep++;
+  $("#modal-body").innerHTML = `${backButton()}
+    <div class="m-title" style="margin-bottom:4px">Offline account</div>
+    <div class="m-desc">Pick the username you want to play as.</div>
+    <div class="field"><label for="acc-name">Username</label><input class="input" id="acc-name" maxlength="16" placeholder="Username" autocomplete="off" /></div>
+    <div class="form-error" id="acc-error"></div>
+    <button class="btn primary" id="acc-add">${icon("plus", 16)}Add account</button>`;
+  $("#acc-back").addEventListener("click", renderAddChoose);
+  const input = $("#acc-name");
+  const submit = async () => {
+    const r = await callApi("add_account", input.value);
+    if (!r.success) { $("#acc-error").textContent = r.error; return; }
+    toast(`Added ${r.account.name}`); closeModal();
+  };
+  $("#acc-add").addEventListener("click", submit);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+  setTimeout(() => input.focus(), 120);
+}
+function renderMsWarning() {
+  msCancel(); addStep++;
+  $("#modal-body").innerHTML = `${backButton()}
+    <div class="m-title" style="margin-bottom:12px">Before you continue</div>
+    <div class="warn-box">${icon("alert", 20)}<div>Since Crit Launcher doesn't have Azure app approval from Mojang, it signs you in with <b>session tokens</b>. They're easy to use, but they expire after around <b>1 day</b>, so you'll need to sign in again about once a day.</div></div>
+    <button class="btn primary" id="warn-ok" style="margin-top:18px">${icon("check", 16)}I understand</button>`;
+  $("#acc-back").addEventListener("click", renderAddChoose);
+  $("#warn-ok").addEventListener("click", () => {
+    STATE.settings.ms_warning_seen = true;
+    callApi("save_settings", { ms_warning_seen: true });
+    renderMsMethod();
+  });
+}
+function renderMsMethod() {
+  msCancel(); addStep++;
+  $("#modal-body").innerHTML = `${backButton()}
+    <div class="m-title" style="margin-bottom:4px">Microsoft account</div>
+    <div class="m-desc">Pick how you want to get your Minecraft session.</div>
+    <div class="choices">
+      <button class="choice enter" style="--i:0" data-method="login">
+        <span class="choice-ico">${icon("shield-check", 20)}</span>
+        <span class="choice-text"><span class="n">Sign in with Microsoft</span><span class="d">Log in on minecraft.net in a window inside the launcher.</span></span>
+        <span class="choice-arrow">${icon("chevron-right", 16)}</span></button>
+      <button class="choice enter" style="--i:1" data-method="token">
+        <span class="choice-ico">${icon("download", 20)}</span>
+        <span class="choice-text"><span class="n">Use a session token</span><span class="d">Import from the official launcher or paste one.</span></span>
+        <span class="choice-arrow">${icon("chevron-right", 16)}</span></button>
+    </div>`;
+  $("#acc-back").addEventListener("click", renderAddChoose);
+  $$(".choice").forEach((c) => c.addEventListener("click", () => c.dataset.method === "login" ? renderWebLogin() : renderAddToken()));
+}
+function renderAddToken() {
+  msCancel(); addStep++;
+  $("#modal-body").innerHTML = `${backButton()}
+    <div class="m-title" style="margin-bottom:4px">Session token</div>
+    <div class="m-desc">Crit Launcher can't renew a session token, so you'll import or paste a new one when it expires.</div>
+    <button class="btn primary" id="tok-import" style="width:100%">${icon("download", 16)}Import from the official launcher</button>
+    <div class="hint" style="margin:8px 0 18px">Uses the account the official Minecraft launcher is signed in with on this PC.</div>
+    <div class="field"><label for="tok-input">Or paste a token</label>
+      <input class="input" id="tok-input" type="password" placeholder="Minecraft access token" autocomplete="off" spellcheck="false" />
+      <div class="hint">Never share a token with anyone. It gives full access to the account until it expires.</div></div>
+    <div class="form-error" id="tok-error" style="user-select:text"></div>
+    <button class="btn" id="tok-add">${icon("plus", 16)}Add token</button>`;
+  $("#acc-back").addEventListener("click", renderMsMethod);
+  const busy = (on) => { ["#tok-import", "#tok-add"].forEach((id) => { const el = $(id); if (el) el.disabled = on; }); };
+  $("#tok-import").addEventListener("click", async () => {
+    $("#tok-error").textContent = ""; busy(true);
+    const r = await callApi("import_official_session");
+    busy(false);
+    if (!r.success) { $("#tok-error").textContent = r.error; return; }
+    toast(`Imported ${r.imported.join(", ")}`); closeModal();
+  });
+  const add = async () => {
+    const v = $("#tok-input").value.trim();
+    if (!v) { $("#tok-error").textContent = "Paste a token first."; return; }
+    $("#tok-error").textContent = ""; busy(true);
+    const r = await callApi("add_session_token", v);
+    busy(false);
+    if (!r.success) { $("#tok-error").textContent = r.error; return; }
+    toast(`Added ${r.account.name}`); closeModal();
+  };
+  $("#tok-add").addEventListener("click", add);
+  $("#tok-input").addEventListener("keydown", (e) => { if (e.key === "Enter") add(); });
+}
+async function renderWebLogin() {
+  msCancel(); const step = ++addStep;
+  $("#modal-body").innerHTML = `${backButton()}
+    <div class="m-title" style="margin-bottom:4px">Sign in with Microsoft</div>
+    <div class="m-desc">Log in to your Microsoft account in the window that opens. It closes by itself when you're done.</div>
+    <div class="ms-status" id="wl-status"><span class="ico spin">${icon("loader", 18)}</span><span id="wl-status-text">Opening the sign-in window...</span></div>
+    <div class="form-error" id="wl-error" style="margin-top:12px;user-select:text"></div>
+    <button class="btn primary row-hidden" id="wl-again" style="margin-top:6px">${icon("refresh", 15)}Try again</button>`;
+  $("#acc-back").addEventListener("click", renderMsMethod);
+  $("#wl-again").addEventListener("click", renderWebLogin);
+  webLoginActive = true;
+  const r = await callApi("start_minecraft_web_login");
+  if (step !== addStep) { if (r.success) callApi("cancel_minecraft_web_login"); return; }
+  if (!r.success) { webLoginActive = false; showWebLoginError(r.error); return; }
+  $("#wl-status-text").textContent = "A sign-in window is open. Log in there...";
+}
+function showWebLoginError(message) {
+  const err = $("#wl-error");
+  if (!err) { toast(message || "Sign-in failed.", "error"); return; }
+  err.textContent = message || "Sign-in failed.";
+  $("#wl-status").style.display = "none";
+  const again = $("#wl-again"); again.classList.remove("row-hidden"); again.classList.add("row-show");
+}
+$("#instance-list").addEventListener("dblclick", (e) => {
+  const el = e.target.closest("[data-rename]");
+  if (!el || el.querySelector("input")) return;
+  const old = el.dataset.rename;
+  el.innerHTML = `<input class="input" id="rename-input" value="${esc(old)}" maxlength="64" style="padding:4px 8px;font:inherit;font-weight:600" />`;
+  const input = $("#rename-input", el);
+  input.focus(); input.select();
+  input.addEventListener("click", (ev) => ev.stopPropagation());
+  const commit = async () => {
+    const val = input.value.trim();
+    if (!val || val === old) { el.textContent = old; return; }
+    const r = await callApi("rename_instance", old, val);
+    if (!r.success) { toast(r.error, "error"); el.textContent = old; return; }
+    toast(`Renamed to ${val}`);
+  };
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") input.blur();
+    else if (ev.key === "Escape") { input.value = old; input.blur(); }
+  });
+  input.addEventListener("blur", commit, { once: true });
+});
+/* ---- screenshot gallery ---- */
+async function openScreenshots(name) {
+  modalHit = null; addStep++;
+  $("#modal-body").innerHTML = `
+    <div class="m-title" style="margin-bottom:14px">${esc(name)} · Screenshots</div>
+    <div id="shots-body"><div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Reading screenshots...</div></div>`;
+  openModal(true);
+  const r = await callApi("get_instance_screenshots", name);
+  const body = $("#shots-body"); if (!body) return;
+  if (!r.success) { body.innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(r.error)}</div></div>`; return; }
+  if (!r.screenshots.length) { body.innerHTML = `<div class="empty">${icon("image", 28)}<div>No screenshots yet. Press F2 in-game to take one.</div></div>`; return; }
+  body.innerHTML = `<div class="shots-grid">${r.screenshots.map((s) =>
+    `<a class="shot" href="${s.path}" target="_blank" data-tip="${esc(s.file)}"><img src="${s.path}" loading="lazy" alt="" /></a>`).join("")}</div>`;
+  stagger($(".shots-grid", body));
+}
+function openIconPicker(name) {
+  const inst = STATE.instances.find((i) => i.name === name); if (!inst) return;
+  modalHit = null; addStep++;
+  const current = instanceIconKey(inst);
+  $("#modal-body").innerHTML = `
+    <div class="m-title" style="margin-bottom:4px">${esc(name)}</div>
+    <div class="m-desc">Pick an icon for this instance.</div>
+    <div class="icon-picker-grid" id="icon-grid"></div>`;
+  const grid = $("#icon-grid");
+  grid.innerHTML = ICON_PRESETS.map((p) => `<button class="icon-picker-btn${p.key === current ? " selected" : ""}" data-key="${p.key}">
+    <span class="ico">${icon(p.key, 22)}</span><span>${esc(p.label)}</span></button>`).join("");
+  $$(".icon-picker-btn", grid).forEach((b) => b.addEventListener("click", async () => {
+    const r = await callApi("set_instance_icon", name, b.dataset.key);
+    if (!r.success) { toast(r.error, "error"); return; }
+    closeModal();
+  }));
+  openModal();
+  stagger(grid);
+}
+/* =========================================================== addons */
+const ADDON_TYPES = [
+  { value: "mod", label: "Mods", icon: "puzzle", placeholder: "Search mods...", noun: "mod" },
+  { value: "resourcepack", label: "Resource Packs", icon: "image", placeholder: "Search resource packs...", noun: "resource pack" },
+  { value: "modpack", label: "Modpacks", icon: "layers", placeholder: "Search modpacks...", noun: "modpack" },
+];
+let addonType = "mod", addonLoaded = false, addonToken = 0, addonHits = [];
+let addonTypeSel;
+async function runAddonSearch() {
+  addonLoaded = true;
+  const token = ++addonToken;
+  const out = $("#addon-results");
+  out.innerHTML = `<div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Searching Modrinth...</div>`;
+  const r = await callApi("search_addons", $("#addon-query").value.trim(), addonType);
+  if (token !== addonToken) return;
+  if (!r.success) { out.innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(r.error || "Search failed.")}</div></div>`; return; }
+  addonHits = r.hits;
+  if (!r.hits.length) { out.innerHTML = `<div class="empty">${icon("search", 28)}<div>Nothing found.</div></div>`; return; }
+  const t = ADDON_TYPES.find((x) => x.value === addonType);
+  out.innerHTML = `<div class="addon-grid">${r.hits.map((h, i) => `
+    <button class="addon-card" data-i="${i}">
+      <div class="ac-head"><div class="ac-icon">${h.icon_url ? `<img src="${esc(h.icon_url)}" alt="" loading="lazy" onerror="this.remove()">` : icon(t.icon, 20)}</div>
+        <div style="min-width:0"><div class="ac-title">${esc(h.title)}</div><div class="ac-author">by ${esc(h.author || "unknown")}</div></div></div>
+      <div class="ac-desc">${esc(h.description || "")}</div>
+      <div class="ac-foot">${icon("download", 13)}${fmtCount(h.downloads)}</div>
+    </button>`).join("")}</div>`;
+  stagger($(".addon-grid", out));
+}
+$("#btn-addon-search").addEventListener("click", runAddonSearch);
+$("#addon-query").addEventListener("keydown", (e) => { if (e.key === "Enter") runAddonSearch(); });
+$("#addon-results").addEventListener("click", (e) => {
+  const c = e.target.closest(".addon-card"); if (c) openAddon(addonHits[parseInt(c.dataset.i, 10)]);
+});
+/* ---- modal ---- */
+let modalHit = null, modalBusy = false;
+function openModal(wide = false) { $("#modal").classList.toggle("wide", wide); $("#modal-overlay").classList.add("open"); }
+function closeModal() {
+  if (modalBusy) return;
+  msCancel(); addStep++;
+  $("#modal-overlay").classList.remove("open");
+  modalHit = null; CV = null; iconQueue = [];
+  if (iconObserver) iconObserver.disconnect();
+}
+$("#modal-close").addEventListener("click", closeModal);
+$("#modal-overlay").addEventListener("mousedown", (e) => { if (e.target.id === "modal-overlay") closeModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !OPEN_SELECTS.size) closeModal(); });
+let pendingInstall = null; // {project_id, include_deps, label}
+function openAddon(hit) {
+  modalHit = hit; pendingInstall = null;
+  const t = ADDON_TYPES.find((x) => x.value === addonType);
+  const cats = (hit.display_categories || hit.categories || []).slice(0, 6);
+  const isPack = addonType === "modpack";
+  const isMod = addonType === "mod";
+  $("#modal-body").innerHTML = `
+    <div class="m-head"><div class="ac-icon">${hit.icon_url ? `<img src="${esc(hit.icon_url)}" alt="">` : icon(t.icon, 26)}</div>
+      <div><div class="m-title">${esc(hit.title)}</div><div class="ac-author">by ${esc(hit.author || "unknown")} · ${fmtCount(hit.downloads)} downloads</div></div></div>
+    <div class="m-desc">${esc(hit.description || "")}</div>
+    ${cats.length ? `<div class="tags">${cats.map((c) => `<span class="tag">${esc(c)}</span>`).join("")}</div>` : ""}
+    ${isMod ? `<div id="dep-section"></div>` : ""}
+    <div id="modal-action"></div>`;
+  const action = $("#modal-action");
+  if (isPack) {
+    action.innerHTML = `<button class="btn primary" id="btn-install-pack">${icon("download", 16)}Install as new instance</button>
+      <div class="install-box" id="pack-box" style="margin:16px 0 0"><div class="install-top"><span class="t" id="pack-title">Installing</span><span class="d" id="pack-detail"></span></div><div class="bar big"><div id="pack-bar"></div></div></div>
+      <div class="form-error" id="pack-error" style="margin-top:10px"></div>`;
+    $("#btn-install-pack").addEventListener("click", installModpack);
+  } else if (isMod) {
+    action.innerHTML = `<div class="btn-row">
+        <button class="btn primary" id="btn-pick-target" style="flex:1">${icon("download", 16)}Install</button>
+        <button class="btn" id="btn-pick-all" data-tip="Install this mod and everything it needs">${icon("layers", 15)}Download all</button>
+      </div>
+      <div class="target-list" id="target-list"></div>`;
+    $("#btn-pick-target").addEventListener("click", () => pickTargetFor(hit.project_id, false, hit.title));
+    $("#btn-pick-all").addEventListener("click", () => pickTargetFor(hit.project_id, true, hit.title));
+    loadDependencies(hit.project_id);
+  } else {
+    action.innerHTML = `<button class="btn primary" id="btn-pick-target">${icon("download", 16)}Install to instance</button>
+      <div class="target-list" id="target-list"></div>`;
+    $("#btn-pick-target").addEventListener("click", () => pickTargetFor(hit.project_id, false, hit.title));
+  }
+  openModal();
+}
+async function loadDependencies(projectId) {
+  const el = $("#dep-section"); if (!el) return;
+  el.innerHTML = `<div class="section-title" style="margin-top:14px">Dependencies</div><div class="loading-row" style="padding:14px"><span class="ico spin">${icon("loader", 15)}</span></div>`;
+  const targetName = STATE.active_instance ? STATE.active_instance.name : null;
+  const r = await callApi("get_addon_dependencies", projectId, targetName);
+  if (!el.isConnected) return;
+  if (!r.success || !r.dependencies.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="section-title" style="margin-top:14px">Dependencies</div>
+    <div class="dep-list">${r.dependencies.map((d) => `
+      <div class="dep-row" data-id="${esc(d.project_id)}" data-title="${esc(d.title)}">
+        <div class="dep-icon">${d.icon_url ? `<img src="${esc(d.icon_url)}" alt="">` : icon("puzzle", 14)}</div>
+        <span class="dep-name">${esc(d.title)}</span>
+        <button class="btn small icon-only" data-tip="Add just this one" aria-label="Add just this dependency">${icon("plus", 13)}</button>
+      </div>`).join("")}</div>`;
+  $$(".dep-row", el).forEach((row) => {
+    $("button", row).addEventListener("click", () => pickTargetFor(row.dataset.id, false, row.dataset.title));
+  });
+}
+function pickTargetFor(projectId, includeDeps, label) {
+  pendingInstall = { project_id: projectId, include_deps: includeDeps, label };
+  toggleTargets(true);
+}
+async function toggleTargets(forceOpen) {
+  const list = $("#target-list");
+  if (!forceOpen && list.classList.contains("open")) { list.classList.remove("open"); return; }
+  list.innerHTML = `<div class="target-empty"><span class="ico spin">${icon("loader", 16)}</span></div>`;
+  list.classList.add("open");
+  const r = await callApi("get_addon_targets", addonType);
+  if (!r.success) { list.innerHTML = `<div class="target-empty">${esc(r.error)}</div>`; return; }
+  if (!r.instances.length) {
+    list.innerHTML = `<div class="target-empty">${addonType === "mod" ? "You need a Fabric or Forge instance first." : "Create an instance first."}</div>`;
+    return;
+  }
+  list.innerHTML = r.instances.map((i) => `<button class="target" data-name="${esc(i.name)}">
+    <span class="ico">${icon("box", 18)}</span><div style="flex:1;min-width:0"><div class="n">${esc(i.name)}</div><div class="d">${esc(i.version)} · ${esc(loaderLabel(i))}</div></div>
+    <span class="ico">${icon("download", 15)}</span></button>`).join("");
+  $$(".target", list).forEach((b) => b.addEventListener("click", () => installTo(b)));
+}
+async function installTo(btn) {
+  if (modalBusy || !modalHit) return;
+  const job = pendingInstall || { project_id: modalHit.project_id, include_deps: true, label: modalHit.title };
+  modalBusy = true;
+  const spot = btn.lastElementChild;
+  spot.innerHTML = icon("loader", 15); spot.classList.add("spin");
+  const r = await callApi("install_addon", job.project_id, addonType, btn.dataset.name, job.include_deps);
+  modalBusy = false;
+  spot.classList.remove("spin");
+  if (!r.success) { spot.innerHTML = icon("alert", 15); toast(r.error, "error"); return; }
+  spot.innerHTML = icon("check", 15);
+  const extra = r.files && r.files.length > 1 ? ` (+${r.files.length - 1} dependenc${r.files.length === 2 ? "y" : "ies"})` : "";
+  toast(`Installed ${job.label} to ${btn.dataset.name}${extra}`);
+  if (r.note) toast(r.note, "success", 6500);
+}
+async function installModpack() {
+  if (modalBusy) return;
+  modalBusy = true;
+  $("#btn-install-pack").disabled = true;
+  $("#pack-error").textContent = "";
+  $("#pack-box").classList.add("show");
+  $("#pack-bar").style.width = "0%";
+  const r = await callApi("install_modpack", modalHit.project_id);
+  if (!r.success) { modalBusy = false; $("#btn-install-pack").disabled = false; $("#pack-box").classList.remove("show"); $("#pack-error").textContent = r.error; }
+}
+/* =========================================================== mods / resource packs viewer */
+let CV = null, iconObserver = null, iconQueue = [], iconActive = 0;
+const ICON_CACHE = new Map();
+async function openContent(name) {
+  const inst = STATE.instances.find((i) => i.name === name);
+  if (!inst) return;
+  modalHit = null; addStep++;
+  const vanilla = inst.loader === "vanilla";
+  CV = { name, loader: inst.loader, kind: vanilla ? "resourcepacks" : "mods", items: [], visible: [], filter: "", token: 0 };
+  $("#modal-body").innerHTML = `
+    <div class="m-head"><div class="ac-icon">${icon("box", 26)}</div>
+      <div><div class="m-title">${esc(name)}</div><div class="ac-author">${esc(inst.version)} · ${esc(loaderLabel(inst))}</div></div></div>
+    <div class="cv-bar">
+      ${vanilla ? "" : `<div class="seg" id="cv-tabs" style="--n:2"><div class="seg-pill"></div>
+        <button data-kind="mods" class="on">${icon("puzzle", 15)}Mods</button>
+        <button data-kind="resourcepacks">${icon("image", 15)}Resource packs</button></div>`}
+      <div class="cv-search">${icon("search", 15)}<input class="input" id="cv-filter" placeholder="Filter..." autocomplete="off" /></div>
+    </div>
+    <div class="cv-count" id="cv-count"></div>
+    <div class="cv-list" id="cv-list"></div>`;
+  const tabs = $("#cv-tabs");
+  if (tabs) tabs.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-kind]");
+    if (!b || !CV || b.dataset.kind === CV.kind) return;
+    CV.kind = b.dataset.kind; CV.filter = ""; $("#cv-filter").value = "";
+    $$("button", tabs).forEach((x) => x.classList.toggle("on", x === b));
+    tabs.style.setProperty("--idx", $$("button", tabs).indexOf(b));
+    loadContent();
+  });
+  $("#cv-filter").addEventListener("input", (e) => { if (CV) { CV.filter = e.target.value.trim().toLowerCase(); renderContentList(false); } });
+  openModal(true);
+  loadContent();
+}
+async function loadContent() {
+  const token = ++CV.token;
+  iconQueue = [];
+  $("#cv-count").textContent = "";
+  $("#cv-list").innerHTML = `<div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Reading files...</div>`;
+  const r = await callApi("get_instance_content", CV.name, CV.kind);
+  if (!CV || token !== CV.token) return;
+  if (!r.success) { $("#cv-list").innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(r.error)}</div></div>`; return; }
+  CV.items = r.items;
+  renderContentList(true);
+}
+function loaderNice(l) { return { fabric: "Fabric", quilt: "Quilt", forge: "Forge", neoforge: "NeoForge" }[l] || "Other"; }
+function renderContentList(animate) {
+  const list = $("#cv-list"); if (!list || !CV) return;
+  const noun = CV.kind === "mods" ? "mod" : "resource pack";
+  $("#cv-count").textContent = CV.items.length ? `${CV.items.length} ${noun}${CV.items.length === 1 ? "" : "s"}` : "";
+  if (!CV.items.length) {
+    list.innerHTML = `<div class="empty">${icon(CV.kind === "mods" ? "puzzle" : "image", 30)}<div>No ${noun}s in this instance yet.<br>Find some on the Addons page.</div></div>`;
+    return;
+  }
+  const q = CV.filter;
+  CV.visible = CV.items.filter((i) => !q || i.name.toLowerCase().includes(q) || i.file.toLowerCase().includes(q));
+  if (!CV.visible.length) { list.innerHTML = `<div class="empty">${icon("search", 28)}<div>No matches.</div></div>`; return; }
+  const fallback = CV.kind === "mods" ? "puzzle" : "image";
+  list.innerHTML = CV.visible.map((i, n) => {
+    const mismatch = CV.kind === "mods" && ((CV.loader === "fabric" && ["forge", "neoforge"].includes(i.loader)) || (CV.loader === "forge" && ["fabric", "quilt"].includes(i.loader)));
+    return `<div class="cv-row${i.enabled ? "" : " off"}" data-i="${n}">
+      <div class="cr-icon">${icon(fallback, 20)}</div>
+      <div class="cr-body">
+        <div class="cr-name"><span class="cr-title">${esc(i.name)}</span>${i.version ? `<span class="cr-ver">${esc(i.version)}</span>` : ""}
+          ${!i.enabled ? `<span class="tag">Disabled</span>` : ""}${mismatch ? `<span class="tag warn">${loaderNice(i.loader)} mod</span>` : ""}</div>
+        ${i.description ? `<div class="cr-desc">${esc(i.description)}</div>` : ""}
+        <div class="cr-file">${i.authors ? `by ${esc(i.authors)} · ` : ""}${esc(i.file)}</div>
+      </div></div>`;
+  }).join("");
+  if (animate) stagger(list);
+  observeIcons(list);
+}
+function observeIcons(list) {
+  if (iconObserver) iconObserver.disconnect();
+  iconQueue = [];
+  iconObserver = new IntersectionObserver((entries) => {
+    entries.forEach((en) => {
+      if (!en.isIntersecting) return;
+      iconObserver.unobserve(en.target);
+      iconQueue.push(en.target.querySelector(".cr-icon"));
+      pumpIcons();
+    });
+  }, { root: list, rootMargin: "160px" });
+  $$(".cv-row", list).forEach((row) => { const it = CV.visible[+row.dataset.i]; if (it && it.has_icon) iconObserver.observe(row); });
+}
+function pumpIcons() {
+  while (iconActive < 3 && iconQueue.length) {
+    const el = iconQueue.shift();
+    iconActive++;
+    loadIcon(el).finally(() => { iconActive--; pumpIcons(); });
+  }
+}
+async function loadIcon(el) {
+  if (!el || !el.isConnected || !CV) return;
+  const it = CV.visible[+el.closest(".cv-row").dataset.i];
+  if (!it) return;
+  const key = `${CV.name}|${CV.kind}|${it.file}`;
+  let uri = ICON_CACHE.get(key);
+  if (uri === undefined) {
+    const r = await callApi("get_content_icon", CV.name, CV.kind, it.file);
+    uri = (r && r.icon) || null;
+    ICON_CACHE.set(key, uri);
+  }
+  if (uri && el.isConnected) el.innerHTML = `<img src="${uri}" alt="" />`;
+}
+/* =========================================================== skins & capes */
+const SK = { uuid: null, profile: null, error: null, tab: "skins", custom: null, saved: [], token: 0, busy: false };
+function loadImage(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+/* flat front view of a skin texture (works for 64x64 and legacy 64x32) */
+function drawSkinFront(canvas, src, { scale = 4, slim = false } = {}) {
+  const k = src.width / 64, S = scale, aw = slim ? 3 : 4;
+  const legacy = src.height / k === 32;
+  canvas.width = 16 * S; canvas.height = 32 * S;
+  const g = canvas.getContext("2d");
+  g.imageSmoothingEnabled = false; g.clearRect(0, 0, canvas.width, canvas.height);
+  const part = (sx, sy, sw, sh, dx, dy, flip) => {
+    g.save();
+    if (flip) { g.translate((dx + sw) * S, dy * S); g.scale(-1, 1); g.drawImage(src, sx * k, sy * k, sw * k, sh * k, 0, 0, sw * S, sh * S); }
+    else g.drawImage(src, sx * k, sy * k, sw * k, sh * k, dx * S, dy * S, sw * S, sh * S);
+    g.restore();
+  };
+  part(8, 8, 8, 8, 4, 0);
+  part(20, 20, 8, 12, 4, 8);
+  part(44, 20, aw, 12, 4 - aw, 8);
+  legacy ? part(44, 20, aw, 12, 12, 8, true) : part(36, 52, aw, 12, 12, 8);
+  part(4, 20, 4, 12, 4, 20);
+  legacy ? part(4, 20, 4, 12, 8, 20, true) : part(20, 52, 4, 12, 8, 20);
+  if (!legacy) {
+    part(20, 36, 8, 12, 4, 8); part(44, 36, aw, 12, 4 - aw, 8); part(52, 52, aw, 12, 12, 8);
+    part(4, 36, 4, 12, 4, 20); part(4, 52, 4, 12, 8, 20);
+  }
+  part(40, 8, 8, 8, 4, 0);
+}
+function drawCape(canvas, src, scale = 6) {
+  const k = src.width / 64;
+  canvas.width = 10 * scale; canvas.height = 16 * scale;
+  const g = canvas.getContext("2d"); g.imageSmoothingEnabled = false;
+  g.drawImage(src, 1 * k, 1 * k, 10 * k, 16 * k, 0, 0, canvas.width, canvas.height);
+}
+/* ---- page ---- */
+function skinAccountOk() { return !!STATE.active_account && STATE.active_account.type === "microsoft"; }
+async function openSkinsPage() {
+  const body = $("#skins-body");
+  SK.uuid = STATE.active_account ? STATE.active_account.uuid : null;
+  $("#btn-skin-reset").disabled = !skinAccountOk();
+  if (!skinAccountOk()) {
+    body.innerHTML = `<div class="empty">${icon("shirt", 30)}<div>Skins and capes need a Microsoft account.<br>Offline accounts always use the default skin.</div>
+      <button class="btn primary" id="skin-go" style="margin-top:16px">${icon("user", 15)}Go to accounts</button></div>`;
+    $("#skin-go").addEventListener("click", () => navigateTo("accounts"));
+    return;
+  }
+  SK.profile = null; SK.error = null; SK.custom = null;
+  body.innerHTML = `<div class="skins-layout">
+    <div class="card skin-current" id="skin-current"></div>
+    <div>
+      <div class="seg" id="skin-tabs" style="--n:2"><div class="seg-pill"></div>
+        <button data-tab="skins">${icon("shirt", 15)}Skins</button><button data-tab="capes">${icon("flag", 15)}Capes</button></div>
+      <div id="skin-tab-body" style="margin-top:16px"></div>
+    </div></div>`;
+  $("#skin-tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) setSkinTab(b.dataset.tab); });
+  setSkinTab(SK.tab);
+  renderCurrent();
+  loadSkinProfile();
+  loadSavedSkins();
+}
+function setSkinTab(tab) {
+  SK.tab = tab;
+  const tabs = $("#skin-tabs");
+  if (tabs) {
+    const btns = $$("button", tabs);
+    const idx = btns.findIndex((b) => b.dataset.tab === tab);
+    if (idx >= 0) { btns.forEach((b) => b.classList.toggle("on", b.dataset.tab === tab)); tabs.style.setProperty("--idx", idx); }
+  }
+  renderSkinTab();
+}
+async function loadSkinProfile() {
+  const token = ++SK.token;
+  const r = await callApi("get_skin_profile");
+  if (token !== SK.token || !$("#skin-current")) return;
+  if (r.success) { SK.profile = r; SK.error = null; } else { SK.profile = null; SK.error = r.error; }
+  renderCurrent();
+  if (SK.tab === "capes") renderSkinTab();
+}
+async function loadSavedSkins() {
+  const r = await callApi("list_saved_skins");
+  if (r.success) { SK.saved = r.skins; if (SK.tab === "skins") renderSkinTab(); }
+}
+async function renderCurrent() {
+  const el = $("#skin-current"); if (!el) return;
+  if (SK.error) {
+    el.innerHTML = `<div class="sc-stage" style="padding:16px;color:var(--dim)">${icon("alert", 26)}<div style="margin-top:8px;user-select:text">${esc(SK.error)}</div></div>
+      <button class="btn small" id="skin-retry" style="width:100%">${icon("refresh", 14)}Try again</button>`;
+    $("#skin-retry").addEventListener("click", () => { SK.error = null; renderCurrent(); loadSkinProfile(); });
+    return;
+  }
+  if (!SK.profile) { el.innerHTML = `<div class="sc-stage"><span class="ico spin">${icon("loader", 22)}</span></div>`; return; }
+  const p = SK.profile, cape = p.capes.find((c) => c.active);
+  el.innerHTML = `<div class="sc-stage">${p.skin ? `<canvas id="cur-canvas"></canvas>` : `<div style="color:var(--dim)">Default skin</div>`}</div>
+    <div class="sc-name">${esc(p.name)}</div>
+    <div class="sc-tags"><span class="tag">${p.variant === "slim" ? "Slim arms" : "Classic arms"}</span>${cape ? `<span class="tag">${esc(cape.alias)} cape</span>` : ""}</div>`;
+  if (p.skin) {
+    const img = await loadImage(p.skin).catch(() => null), cv = $("#cur-canvas");
+    if (img && cv) drawSkinFront(cv, img, { scale: 8, slim: p.variant === "slim" });
+  }
+}
+function lockSkins(on) { SK.busy = on; const b = $("#skins-body"); if (b) b.classList.toggle("locked", on); }
+async function applySkin(uri, variant, label) {
+  if (SK.busy) return;
+  lockSkins(true);
+  const r = await callApi("set_skin", uri, variant);
+  lockSkins(false);
+  if (!r.success) { toast(r.error, "error"); return; }
+  toast(`Skin changed${label ? ": " + label : ""}`);
+  loadSkinProfile();
+}
+function skinCard({ name, source, slim, onApply, onDelete }) {
+  const el = document.createElement("div");
+  el.className = "skin-card";
+  el.innerHTML = `<div class="skin-thumb"><canvas></canvas></div><div class="skin-name">${esc(name)}</div>
+    <div class="skin-actions"><button class="btn small primary" data-do="apply">${icon("check", 13)}Apply</button>
+      ${onDelete ? `<button class="btn small icon-only danger" data-do="del" data-tip="Delete" aria-label="Delete skin">${icon("trash", 14)}</button>` : ""}</div>`;
+  const cv = $("canvas", el);
+  const draw = (img) => drawSkinFront(cv, img, { scale: 4, slim });
+  typeof source === "string" ? loadImage(source).then(draw).catch(() => {}) : draw(source);
+  $('[data-do="apply"]', el).addEventListener("click", onApply);
+  if (onDelete) $('[data-do="del"]', el).addEventListener("click", onDelete);
+  return el;
+}
+function renderSkinTab() {
+  const el = $("#skin-tab-body"); if (!el) return;
+  if (SK.tab === "capes") return renderCapes(el);
+  el.innerHTML = `<div class="skin-grid" id="saved-grid"></div>`;
+  const grid = $("#saved-grid");
+  const newTile = document.createElement("button");
+  newTile.className = "skin-card skin-new-tile";
+  newTile.innerHTML = `<div class="skin-thumb">${icon("plus", 26)}</div><div class="skin-name">New skin</div>`;
+  newTile.addEventListener("click", openSkinUploadModal);
+  grid.appendChild(newTile);
+  SK.saved.forEach((s) => grid.appendChild(skinCard({
+    name: s.name, source: s.image, slim: s.variant === "slim",
+    onApply: () => applySkin(s.image, s.variant, s.name),
+    onDelete: async () => { const r = await callApi("delete_saved_skin", s.id); if (r.success) { SK.saved = r.skins; renderSkinTab(); } else toast(r.error, "error"); },
+  })));
+  stagger(grid);
+}
+function openSkinUploadModal() {
+  modalHit = null; addStep++; SK.custom = null;
+  $("#modal-body").innerHTML = `
+    <div class="m-title" style="margin-bottom:14px">New skin</div>
+    <div class="cs-row">
+      <div class="cs-preview" id="cs-preview"><canvas id="cs-canvas"></canvas><div class="cs-empty">${icon("shirt", 30)}</div></div>
+      <div class="cs-side">
+        <div class="drop" id="cs-drop"><button class="btn" id="cs-choose">${icon("upload", 15)}Choose a PNG</button><span class="hint">or drop one here. 64×64 or 64×32.</span></div>
+        <input type="file" id="cs-file" accept="image/png" hidden />
+        <div class="field"><label>Arm style</label>
+          <div class="seg" id="cs-model" style="--n:2"><div class="seg-pill"></div><button data-model="classic" class="on">Classic</button><button data-model="slim">Slim</button></div></div>
+        <div class="field"><label for="cs-name">Name</label><input class="input" id="cs-name" maxlength="32" placeholder="My skin" autocomplete="off" /></div>
+        <div class="btn-row"><button class="btn primary" id="cs-apply" disabled>${icon("check", 15)}Apply skin</button>
+          <button class="btn" id="cs-save" disabled>${icon("plus", 15)}Save to my skins</button></div>
+        <div class="form-error" id="cs-error" style="margin:10px 0 0"></div>
+        <div class="cs-copy"><label class="hint" style="display:block;margin-bottom:8px">Or copy a player's skin</label>
+          <div class="add-row"><input class="input" id="cs-player" maxlength="16" placeholder="Player name" autocomplete="off" />
+            <button class="btn" id="cs-fetch">${icon("download", 15)}Get skin</button></div></div>
+      </div></div>`;
+  wireCustomCard(); renderCustomPreview();
+  openModal(true);
+}
+async function setCustom(uri, model, name) {
+  const err = $("#cs-error"); if (err) err.textContent = "";
+  let img;
+  try { img = await loadImage(uri); } catch (_) { err.textContent = "That image couldn't be read."; return; }
+  if (img.width !== 64 || ![64, 32].includes(img.height)) { err.textContent = `Skins must be 64×64 (or 64×32). That one is ${img.width}×${img.height}.`; return; }
+  SK.custom = { uri, img, model, name: (name || "My skin").slice(0, 32) };
+  $("#cs-name").value = SK.custom.name;
+  renderCustomPreview();
+}
+function renderCustomPreview() {
+  const c = SK.custom, cv = $("#cs-canvas"); if (!cv) return;
+  $("#cs-preview").classList.toggle("has", !!c);
+  if (c) drawSkinFront(cv, c.img, { scale: 6, slim: c.model === "slim" });
+  $("#cs-apply").disabled = !c; $("#cs-save").disabled = !c;
+  const seg = $("#cs-model"), model = c ? c.model : "classic";
+  $$("button", seg).forEach((b) => b.classList.toggle("on", b.dataset.model === model));
+  seg.style.setProperty("--idx", model === "slim" ? 1 : 0);
+}
+async function handleSkinFile(f) {
+  if (!f) return;
+  if (f.type !== "image/png") { $("#cs-error").textContent = "Pick a PNG image."; return; }
+  const uri = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+  await setCustom(uri, SK.custom ? SK.custom.model : "classic", f.name.replace(/\.png$/i, ""));
+}
+function wireCustomCard() {
+  const file = $("#cs-file"), drop = $("#cs-drop");
+  $("#cs-choose").addEventListener("click", () => file.click());
+  file.addEventListener("change", () => { handleSkinFile(file.files[0]); file.value = ""; });
+  ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => handleSkinFile(e.dataTransfer.files[0]));
+  $("#cs-model").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-model]");
+    if (b && SK.custom) { SK.custom.model = b.dataset.model; renderCustomPreview(); }
+  });
+  $("#cs-apply").addEventListener("click", async () => {
+    if (!SK.custom) return;
+    await applySkin(SK.custom.uri, SK.custom.model, $("#cs-name").value.trim());
+    closeModal();
+  });
+  $("#cs-save").addEventListener("click", async () => {
+    if (!SK.custom) return;
+    const r = await callApi("save_skin", $("#cs-name").value.trim(), SK.custom.uri, SK.custom.model);
+    if (!r.success) { $("#cs-error").textContent = r.error; return; }
+    SK.saved = r.skins;
+    toast("Saved to My skins");
+    closeModal();
+    renderSkinTab();
+  });
+  const fetchSkin = async () => {
+    const name = $("#cs-player").value.trim(); if (!name) return;
+    $("#cs-error").textContent = "";
+    const btn = $("#cs-fetch"); btn.disabled = true;
+    const r = await callApi("lookup_player_skin", name);
+    btn.disabled = false;
+    if (!r.success) { $("#cs-error").textContent = r.error; return; }
+    await setCustom(r.image, r.variant, `${r.name}'s skin`);
+  };
+  $("#cs-fetch").addEventListener("click", fetchSkin);
+  $("#cs-player").addEventListener("keydown", (e) => { if (e.key === "Enter") fetchSkin(); });
+}
+function renderCapes(el) {
+  if (SK.error) { el.innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(SK.error)}</div></div>`; return; }
+  if (!SK.profile) { el.innerHTML = `<div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Loading capes...</div>`; return; }
+  const capes = SK.profile.capes;
+  if (!capes.length) { el.innerHTML = `<div class="empty">${icon("flag", 30)}<div>This account doesn't own any capes.</div></div>`; return; }
+  const anyActive = capes.some((c) => c.active);
+  el.innerHTML = `<div class="skin-grid" id="cape-grid"></div>`;
+  const grid = $("#cape-grid");
+  const none = document.createElement("div");
+  none.className = "skin-card";
+  none.innerHTML = `<div class="skin-thumb cape-thumb">${icon("x", 28)}</div><div class="skin-name">No cape</div>
+    <div class="skin-actions"><button class="btn small primary" ${anyActive ? "" : "disabled"}>${icon("check", 13)}${anyActive ? "Hide cape" : "Hidden"}</button></div>`;
+  $("button", none).addEventListener("click", () => setCape(null, "cape hidden"));
+  grid.appendChild(none);
+  capes.forEach((c) => {
+    const card = document.createElement("div");
+    card.className = "skin-card";
+    card.innerHTML = `<div class="skin-thumb cape-thumb"><canvas></canvas></div><div class="skin-name">${esc(c.alias)}</div>
+      <div class="skin-actions"><button class="btn small primary" ${c.active ? "disabled" : ""}>${icon("check", 13)}${c.active ? "Equipped" : "Equip"}</button></div>`;
+    if (c.image) loadImage(c.image).then((img) => drawCape($("canvas", card), img, 6)).catch(() => {});
+    $("button", card).addEventListener("click", () => setCape(c.id, `${c.alias} equipped`));
+    grid.appendChild(card);
+  });
+  stagger(grid);
+}
+async function setCape(id, msg) {
+  if (SK.busy) return;
+  lockSkins(true);
+  const r = await callApi("set_cape", id);
+  lockSkins(false);
+  if (!r.success) { toast(r.error, "error"); return; }
+  toast(msg.charAt(0).toUpperCase() + msg.slice(1));
+  loadSkinProfile();
+}
+$("#btn-skin-reset").addEventListener("click", async () => {
+  if (SK.busy || !skinAccountOk()) return;
+  lockSkins(true);
+  const r = await callApi("reset_skin");
+  lockSkins(false);
+  if (!r.success) { toast(r.error, "error"); return; }
+  toast("Skin reset to default"); loadSkinProfile();
+});
+/* =========================================================== settings */
+function renderSettings() {
+  const memInput = $("#set-memory"), javaInput = $("#set-java");
+  if (document.activeElement !== memInput) memInput.value = STATE.settings.memory_mb;
+  if (document.activeElement !== javaInput) javaInput.value = STATE.settings.java_path || "";
+  const line = $("#java-line");
+  line.innerHTML = STATE.java_ok
+    ? `${icon("check", 14)}<span>${esc(STATE.java_version || "Java detected")}</span>`
+    : `<span style="color:var(--dim)">No Java found on this PC. Crit Launcher will download the right one automatically.</span>`;
+}
+$("#btn-save-settings").addEventListener("click", async () => {
+  const r = await callApi("save_settings", { memory_mb: parseInt($("#set-memory").value, 10) || 2048, java_path: $("#set-java").value.trim() });
+  toast(r.success ? "Settings saved" : (r.error || "Couldn't save"), r.success ? "success" : "error");
+});
+$("#switch-compact").addEventListener("click", () => applyCompact(!document.body.classList.contains("compact"), true));
+$("#btn-collapse").addEventListener("click", () => applyCompact(!document.body.classList.contains("compact"), true));
+/* =========================================================== events from Python */
+function renderAll() {
+  renderSidebar(); renderStats(); renderTopbar(); renderHome(); renderInstances(); renderAccounts();
+  if (currentPage === "settings") renderSettings();
+  renderInstallBox();
+  if (currentPage === "skins" && (STATE.active_account ? STATE.active_account.uuid : null) !== SK.uuid) openSkinsPage();
+}
+window.__critEvent = function (name, data) {
+  data = data || {};
+  switch (name) {
+    case "stateChanged":
+      STATE = data;
+      renderAll();
+      break;
+    case "installStarted":
+      PROGRESS = { instance: data.instance, title: data.title, percent: 0, current: "Preparing", unit: "bytes", downloaded: 0, total: 1 };
+      renderSidebar(); renderInstallBox();
+      break;
+    case "installProgress":
+      if (!PROGRESS) PROGRESS = { title: "Installing" };
+      Object.assign(PROGRESS, data);
+      renderSidebar(); renderInstallBox();
+      break;
+    case "installFinished":
+      PROGRESS = null; renderSidebar(); renderInstallBox();
+      toast(`${data.instance} is ready`);
+      break;
+    case "installError":
+      PROGRESS = null; renderSidebar(); renderInstallBox();
+      toast(data.message || "Installation failed.", "error"); showBanner(data.message);
+      break;
+    case "launchError":
+      toast(data.message || "The game closed unexpectedly.", "error"); showBanner(data.message);
+      break;
+    case "mcLoginStatus":
+      if ($("#wl-status-text")) $("#wl-status-text").textContent = data.status || "Working...";
+      break;
+    case "mcLoginFinished":
+      webLoginActive = false; toast(`Signed in as ${data.name}`); closeModal();
+      break;
+    case "mcLoginError":
+      webLoginActive = false; showWebLoginError(data.message);
+      break;
+    case "addonProgress":
+      if ($("#pack-bar")) {
+        $("#pack-bar").style.width = (data.percent || 0) + "%";
+        $("#pack-title").textContent = data.current || "Installing";
+        $("#pack-detail").textContent = data.unit === "bytes" && data.total > 1 ? `${fmtBytes(data.downloaded)} / ${fmtBytes(data.total)}` : "";
+      }
+      break;
+    case "addonFinished":
+      modalBusy = false; toast(`Modpack installed as "${data.name}"`); closeModal();
+      break;
+    case "addonError":
+      modalBusy = false;
+      if ($("#pack-error")) { $("#pack-error").textContent = data.message || "Install failed."; $("#btn-install-pack").disabled = false; $("#pack-box").classList.remove("show"); }
+      toast(data.message || "Modpack install failed.", "error");
+      break;
+  }
+};
+/* =========================================================== boot */
+async function bootstrap() {
+  const res = await callApi("get_state");
+  if (res.success) { STATE = res.state; applyCompact(!!STATE.settings.sidebar_collapsed, false); }
+  renderAll();
+  stagger($("#home-cards"));
+}
+function probeHomeBg() {
+  const img = new Image();
+  img.onload = () => $("#home-bg").classList.add("loaded");
+  img.src = "background.png";
+}
+function init() {
+  hydrateIcons();
+  probeHomeBg();
+  $("#home-bg").classList.add("active");
+  $("#play-icon").innerHTML = icon("play", 17);
+  sidebarSelect = new CSelect($("#sidebar-instance-select"), { placement: "top", placeholder: "No instances",
+    onChange: (v) => callApi("set_active_instance", v) });
+  versionSel = new CSelect($("#version-select"), { placement: "auto", placeholder: "Loading versions...",
+    onChange: (v) => { NEW.version = v; updateLoaderVersions(++formToken); } });
+  loaderVerSel = new CSelect($("#loader-version-select"), { placement: "auto", placeholder: "Loading...",
+    onChange: (v) => { NEW.loaderVersion = v; } });
+  addonTypeSel = new CSelect($("#addon-type-select"), { placement: "auto",
+    onChange: (v) => { addonType = v; $("#addon-query").placeholder = ADDON_TYPES.find((t) => t.value === v).placeholder; runAddonSearch(); } });
+  addonTypeSel.setOptions(ADDON_TYPES.map((t) => ({ value: t.value, label: t.label, icon: t.icon })), "mod");
+  $$(".nav-item").forEach((n) => n.addEventListener("click", () => navigateTo(n.dataset.page)));
+  setInterval(renderStats, 15000);
+  // light poll so the running counter can never drift out of sync
+  setInterval(async () => {
+    const r = await callApi("get_runtime");
+    if (r && r.success) {
+      const changed = JSON.stringify(r.running) !== JSON.stringify(STATE.running);
+      STATE.running = r.running; STATE.sessions = r.sessions; STATE.installing = r.installing; STATE.playtime_total = r.playtime_total;
+      if (changed) renderAll(); else renderStats();
+    }
+  }, 5000);
+  if (window.pywebview && window.pywebview.api) _resolveApi();
+  bootstrap();
+}
+init();
+</script>
+</body>
+</html>

@@ -27,8 +27,11 @@ This authentication generally lasts for around one day.
 
 Crit Launcher contains no advertisements.
 
-## Logo
-
-If you can make a good logo for Crit Launcher, DM me.
-
-Payment: $0.03 USD before tax via PayPal.(0$ after tax)
+to compile 
+first install the source code and add a icon to the folder
+then run
+```
+pyinstaller --onefile --windowed --name crit --icon=icon.ico --add-data "background.png;." --add-data "index.html;." launcher.py
+```
+after that to compile use [innosetup](https://jrsoftware.org/isinfo.php)
+i wont tell you how to use inno setup cuz i dont care

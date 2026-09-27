@@ -1,3 +1,5 @@
+# crit launcher 5 billion trillion viruses free 
+# for legal reasons the top comment is a joke also you guys are stupid and would believe it
 
 import os
 import sys
@@ -22,9 +24,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
-                                                                             
-       
-                                                                             
 
 def _resource_dir() -> Path:
     if getattr(sys, "frozen", False):
@@ -71,9 +70,6 @@ def log_exception(context: str):
     logging.error("%s\n%s", context, traceback.format_exc())
 
 
-                                                                             
-           
-                                                                             
 
 VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 
@@ -89,14 +85,12 @@ JAVA_RUNTIME_INDEX_URL = ("https://launchermeta.mojang.com/v1/products/java-runt
 
 MODRINTH_API = "https://api.modrinth.com/v2"
 
-                          
 MC_PROFILE_URL = "https://api.minecraftservices.com/minecraft/profile"
 MC_SKINS_URL = "https://api.minecraftservices.com/minecraft/profile/skins"
 MC_CAPE_URL = "https://api.minecraftservices.com/minecraft/profile/capes/active"
 MOJANG_LOOKUP_URL = "https://api.mojang.com/users/profiles/minecraft/"
 SESSION_PROFILE_URL = "https://sessionserver.mojang.com/session/minecraft/profile/"
 
-                                                                                
 MC_WEB_LOGIN_URL = "https://www.minecraft.net/en-us/login"
 MC_WEB_PROFILE_URL = "https://www.minecraft.net/en-us/msaprofile"
 MC_WEB_COOKIE_JS = "`; ${document.cookie}`.split('; bearer_token=').pop().split(';').shift()"
@@ -108,8 +102,6 @@ USER_AGENT = "CritLauncher/1.0 (+https://example.invalid)"
 
 CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 
-                                                                        
-                                                                               
 INSTALL_SCHEMA = 2
 
 DEFAULT_JAVA_INFO = {"component": "jre-legacy", "majorVersion": 8}
@@ -122,9 +114,6 @@ INSTANCE_ICONS = {"box", "shirt", "flame", "hammer", "square", "circle", "triang
 _INVALID_NAME_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
-                                                                             
-               
-                                                                             
 
 def http_get_json(url: str, timeout: int = 20, retries: int = 2):
     last = None
@@ -273,9 +262,6 @@ def open_in_file_manager(path: Path):
         subprocess.Popen(["xdg-open", str(path)])
 
 
-                                                                             
-                                              
-                                                                             
 
 class JsonStore:
     def __init__(self, path: Path, default):
@@ -330,9 +316,6 @@ settings_store = JsonStore(SETTINGS_FILE, {
 })
 
 
-                                                                             
-                                                                         
-                                                                             
 
 def _arch_matches(rule_arch: str) -> bool:
     cur = current_arch()
@@ -420,9 +403,6 @@ DEFAULT_MODERN_JVM_ARGS = [
 ]
 
 
-                                                                             
-                                   
-                                                                             
 
 _JAVA_PROBE_CACHE: dict = {}
 _JAVA_PROBE_LOCK = threading.Lock()
@@ -475,7 +455,6 @@ def java_compatible(major, required: int) -> bool:
     if major is None:
         return True                             
     if required <= 8:
-                                                                       
         return major == 8
     return major >= required
 
@@ -697,9 +676,6 @@ def detect_java_for_ui():
     return value
 
 
-                                                                             
-                                                                      
-                                                                             
 
 class MetaCache:
     def __init__(self):
@@ -736,7 +712,6 @@ class MetaCache:
             self.manifest = manifest
         return manifest
 
-                                                                          
 
     def get_fabric_loaders(self, mc_version=None, force=False):
         with self._lock:
@@ -791,7 +766,6 @@ class MetaCache:
         cache_path.write_text(json.dumps(data), encoding="utf-8")
         return data
 
-                                                                          
 
     def _forge_all_versions(self, force=False):
         with self._lock:
@@ -819,7 +793,6 @@ class MetaCache:
                 out.append(mc)
         return out
 
-                                                                          
 
     def get_version_json(self, version_id: str, url: str) -> dict:
         cache_path = VERSIONS_DIR / version_id / f"{version_id}.json"
@@ -837,9 +810,6 @@ class MetaCache:
 meta_cache = MetaCache()
 
 
-                                                                             
-                           
-                                                                             
 
 _meta_lock = threading.RLock()
 
@@ -894,6 +864,7 @@ def list_instances() -> list:
                 continue
             if meta:
                 result.append(meta)
+    result.sort(key=lambda m: m["name"].lower())
     return result
 
 
@@ -903,6 +874,10 @@ def instance_game_dir(name: str) -> Path:
 
 def instance_mods_dir(name: str) -> Path:
     return instance_game_dir(name) / "mods"
+
+
+def instance_config_dir(name: str) -> Path:
+    return instance_game_dir(name) / "config"
 
 
 def ensure_game_layout(name: str, loader: str):
@@ -926,9 +901,407 @@ def unique_instance_name(base: str) -> str:
     return candidate
 
 
-                                                                             
-                                           
-                                                                             
+
+def _home_dir() -> Path:
+    return Path.home()
+
+
+def _windows_appdata() -> Path:
+    env = os.environ.get("APPDATA")
+    return Path(env) if env else _home_dir() / "AppData" / "Roaming"
+
+
+def _launcher_roots(launcher: str) -> list:
+    """Every plausible install location for a given launcher, per OS. Only
+    existing ones are used - the rest are silently skipped."""
+    system = current_os_name()
+    home = _home_dir()
+    if launcher == "prismlauncher":
+        if system == "windows":
+            return [_windows_appdata() / "PrismLauncher"]
+        if system == "osx":
+            return [home / "Library" / "Application Support" / "PrismLauncher"]
+        return [home / ".local" / "share" / "PrismLauncher",
+                home / ".var" / "app" / "org.prismlauncher.PrismLauncher" / "data" / "PrismLauncher"]
+    if launcher == "fastclient":
+        if system == "windows":
+            return [_windows_appdata() / ".fastclient"]
+        if system == "osx":
+            return [home / "Library" / "Application Support" / ".fastclient"]
+        return [home / ".fastclient"]
+    return []
+
+
+LAUNCHER_LABELS = {
+    "prismlauncher": "Prism Launcher",
+    "fastclient": "Fast Client",
+}
+
+
+def _read_json_safe(path: Path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+
+
+def _maven_version(name: str, prefix: str) -> str:
+    """'net.fabricmc:fabric-loader:0.15.7' + 'net.fabricmc:fabric-loader:' -> '0.15.7'"""
+    return name[len(prefix):] if name.startswith(prefix) else ""
+
+
+def _loader_from_version_json(vjson: dict, mc_version: str):
+    """Reads a standard Mojang-style version.json (used by the vanilla launcher
+    and, as far as can be told without official docs, Fast Client) and works out
+    whether it's a Fabric or Forge profile."""
+    for lib in vjson.get("libraries", []):
+        lname = lib.get("name", "")
+        if lname.startswith("net.fabricmc:fabric-loader:"):
+            return "fabric", _maven_version(lname, "net.fabricmc:fabric-loader:")
+        if lname.startswith("net.minecraftforge:forge:"):
+            full = _maven_version(lname, "net.minecraftforge:forge:")
+            prefix = mc_version + "-"
+            return "forge", (full[len(prefix):] if full.startswith(prefix) else full)
+    vid = vjson.get("id", "")
+    m = re.match(r"^fabric-loader-([\w.]+)-", vid)
+    if m:
+        return "fabric", m.group(1)
+    m = re.match(r"^(?:[\w.]+-)?forge-([\w.]+)$", vid)
+    if m:
+        return "forge", m.group(1)
+    return "vanilla", None
+
+
+def _loader_from_mmc_pack(components: list):
+    """PrismLauncher/MultiMC's mmc-pack.json 'components' list."""
+    mc_version = None
+    loader, loader_version = "vanilla", None
+    for c in components or []:
+        uid = c.get("uid", "")
+        ver = c.get("version") or c.get("cachedVersion")
+        if uid == "net.minecraft":
+            mc_version = ver
+        elif uid == "net.fabricmc.fabric-loader":
+            loader, loader_version = "fabric", ver
+        elif uid == "net.minecraftforge":
+            loader, loader_version = "forge", ver
+        elif uid == "org.quiltmc.quilt-loader":
+            loader, loader_version = "quilt", ver
+        elif uid == "com.neoforged":
+            loader, loader_version = "neoforge", ver
+    return mc_version, loader, loader_version
+
+
+def _count_dir(path: Path, suffix=None) -> int:
+    if not path.is_dir():
+        return 0
+    try:
+        if suffix:
+            return sum(1 for p in path.iterdir() if p.is_file() and p.suffix.lower() == suffix)
+        return sum(1 for p in path.iterdir())
+    except OSError:
+        return 0
+
+
+def _prism_game_dir(instance_dir: Path) -> Path:
+    """Prism (and MultiMC) instances keep their game data in a subfolder next to
+    mmc-pack.json - normally named 'minecraft', occasionally '.minecraft' on
+    older setups. Whichever actually exists on disk wins."""
+    plain = instance_dir / "minecraft"
+    dotted = instance_dir / ".minecraft"
+    if plain.is_dir():
+        return plain
+    if dotted.is_dir():
+        return dotted
+    return plain                                                                     
+
+
+def _scan_prismlauncher(root: Path) -> list:
+    instances_dir = root / "instances"
+    if not instances_dir.is_dir():
+        return []
+    found = []
+    for sub in sorted(instances_dir.iterdir(), key=lambda p: p.name.lower()):
+        pack = _read_json_safe(sub / "mmc-pack.json") if sub.is_dir() else None
+        if not pack:
+            continue
+        mc_version, loader, loader_version = _loader_from_mmc_pack(pack.get("components"))
+        game_dir = _prism_game_dir(sub)
+        found.append({
+            "source_id": sub.name,
+            "name": sub.name,
+            "version": mc_version,
+            "loader": loader,
+            "loader_version": loader_version,
+            "has_options": (game_dir / "options.txt").is_file(),
+            "mods_count": _count_dir(game_dir / "mods", ".jar") if loader in ("fabric", "forge") else 0,
+            "resourcepacks_count": _count_dir(game_dir / "resourcepacks"),
+            "saves_count": _count_dir(game_dir / "saves"),
+            "config_count": _count_dir(game_dir / "config") if loader in ("fabric", "forge") else 0,
+        })
+    return found
+
+
+_FASTCLIENT_FABRIC_LOG_RE = re.compile(r"Loading Minecraft (\S+) with Fabric Loader (\S+)")
+_FASTCLIENT_MODLAUNCHER_RE = re.compile(r"ModLauncher running: args \[(.*?)\]")
+_FASTCLIENT_VERSION_ARG_RE = re.compile(r"--version,\s*([^,\]]+)")
+_FASTCLIENT_TARGET_ARG_RE = re.compile(r"--launchTarget,\s*([^,\]]+)")
+_FASTCLIENT_MODDED_VERSION_RE = re.compile(r"^(.+?)-(forge|neoforge)-(.+)$")
+
+FASTCLIENT_ROOT_SOURCE_ID = "__root__"
+
+
+def _read_first_log_line(logs_dir: Path):
+    """First non-blank line of logs/latest.log, or None if it doesn't exist."""
+    log_path = logs_dir / "latest.log"
+    if not log_path.is_file():
+        return None
+    try:
+        with log_path.open("r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    return line
+    except OSError:
+        return None
+    return None
+
+
+def _parse_fastclient_log_line(line: str):
+    """Works out (loader, mc_version, loader_version) from a Fast Client
+    logs/latest.log first line. Returns None if the line doesn't match a
+    known Fabric or Forge/NeoForge pattern (including a vanilla log, which
+    has no such line at all)."""
+    if not line:
+        return None
+    m = _FASTCLIENT_FABRIC_LOG_RE.search(line)
+    if m:
+        return "fabric", m.group(1), m.group(2)
+    m = _FASTCLIENT_MODLAUNCHER_RE.search(line)
+    if m:
+        args_str = m.group(1)
+        vm = _FASTCLIENT_VERSION_ARG_RE.search(args_str)
+        version_str = vm.group(1).strip() if vm else None
+        tm = _FASTCLIENT_TARGET_ARG_RE.search(args_str)
+        target = tm.group(1).strip().lower() if tm else ""
+        if version_str:
+            vm2 = _FASTCLIENT_MODDED_VERSION_RE.match(version_str)
+            if vm2:
+                mc_version, loader, loader_version = vm2.group(1), vm2.group(2), vm2.group(3)
+                return loader, mc_version, loader_version
+            loader = "neoforge" if "neoforge" in target else "forge"
+            return loader, version_str, None
+        loader = "neoforge" if "neoforge" in target else "forge"
+        return loader, None, None
+    return None
+
+
+def _fastclient_versions(versions_dir: Path) -> dict:
+    """name -> parsed version.json for every version folder that has one
+    (either <name>.json, or - failing that - any other .json inside it)."""
+    versions = {}
+    if not versions_dir.is_dir():
+        return versions
+    for vsub in versions_dir.iterdir():
+        if not vsub.is_dir():
+            continue
+        vjson = _read_json_safe(vsub / f"{vsub.name}.json")
+        if not vjson:
+            for f in vsub.iterdir():
+                if f.suffix == ".json":
+                    vjson = _read_json_safe(f)
+                    if vjson:
+                        break
+        if vjson:
+            versions[vsub.name] = vjson
+    return versions
+
+
+def _fastclient_profile_version_id(profile_dir: Path):
+    """A profile folder's mods/options/resourcepacks are NOT necessarily named
+    after the version they were created with - so look inside the profile
+    folder itself for any json that names its version, the way the vanilla
+    launcher's launcher_profiles.json entries do."""
+    for f in profile_dir.iterdir():
+        if f.is_file() and f.suffix == ".json":
+            data = _read_json_safe(f)
+            if isinstance(data, dict):
+                vid = (data.get("lastVersionId") or data.get("versionId")
+                       or data.get("version") or data.get("mcVersion"))
+                if vid:
+                    return vid
+    return None
+
+
+def _fastclient_profile_index(root: Path):
+    """Some launchers (mirroring the vanilla launcher's launcher_profiles.json)
+    keep the profile -> version link in a single json file at the root, not
+    inside each profile folder. Returns {profile identifier: version id} built
+    from every root-level json that has that shape, keyed by every name a
+    profile might be found under (its dict key, its "name" field, and its
+    gameDir's folder name)."""
+    index = {}
+    try:
+        entries = list(root.iterdir())
+    except OSError:
+        return index
+    for f in entries:
+        if not (f.is_file() and f.suffix == ".json"):
+            continue
+        data = _read_json_safe(f)
+        profiles_obj = data.get("profiles") if isinstance(data, dict) else None
+        if not isinstance(profiles_obj, dict):
+            continue
+        for key, entry in profiles_obj.items():
+            if not isinstance(entry, dict):
+                continue
+            vid = (entry.get("lastVersionId") or entry.get("versionId")
+                   or entry.get("version") or entry.get("mcVersion"))
+            if not vid:
+                continue
+            names = {key, entry.get("name")}
+            game_dir = entry.get("gameDir")
+            if game_dir:
+                names.add(Path(game_dir).name)
+            for n in names:
+                if n:
+                    index[n] = vid
+    return index
+
+
+def _scan_fastclient(root: Path) -> list:
+    versions = _fastclient_versions(root / "versions")
+    found = []
+
+    if (root / "logs" / "latest.log").is_file():
+        mc_version = next(iter(versions)) if len(versions) == 1 else None
+        found.append({
+            "source_id": FASTCLIENT_ROOT_SOURCE_ID,
+            "name": "Vanilla",
+            "version": mc_version,
+            "loader": "vanilla",
+            "loader_version": None,
+            "has_options": (root / "options.txt").is_file(),
+            "mods_count": 0,
+            "resourcepacks_count": _count_dir(root / "resourcepacks"),
+            "saves_count": _count_dir(root / "saves"),
+            "config_count": 0,
+        })
+
+    profiles_dir = root / "profiles"
+    if not profiles_dir.is_dir():
+        return found
+    profile_index = _fastclient_profile_index(root)
+    for sub in sorted(profiles_dir.iterdir(), key=lambda p: p.name.lower()):
+        if not sub.is_dir():
+            continue
+
+        log_info = _parse_fastclient_log_line(_read_first_log_line(sub / "logs"))
+        if log_info:
+            loader, mc_version, loader_version = log_info
+        else:
+            version_id = (profile_index.get(sub.name)
+                          or _fastclient_profile_version_id(sub))
+            if not version_id and sub.name in versions:
+                version_id = sub.name                                                   
+            if not version_id and len(versions) == 1:
+                version_id = next(iter(versions))                                                   
+
+            vjson = versions.get(version_id)
+            if vjson:
+                mc_version = vjson.get("inheritsFrom") or vjson.get("id")
+                loader, loader_version = _loader_from_version_json(vjson, mc_version)
+            else:
+                mc_version, loader, loader_version = version_id, "unknown", None
+
+        found.append({
+            "source_id": sub.name,
+            "name": sub.name,
+            "version": mc_version,
+            "loader": loader,
+            "loader_version": loader_version,
+            "has_options": (sub / "options.txt").is_file(),
+            "mods_count": _count_dir(sub / "mods", ".jar"),
+            "resourcepacks_count": _count_dir(sub / "resourcepacks"),
+            "saves_count": _count_dir(sub / "saves"),
+            "config_count": _count_dir(sub / "config"),
+        })
+    return found
+
+
+_LAUNCHER_SCANNERS = {
+    "prismlauncher": _scan_prismlauncher,
+    "fastclient": _scan_fastclient,
+}
+
+
+def scan_all_launchers() -> list:
+    sources = []
+    for launcher, scanner in _LAUNCHER_SCANNERS.items():
+        for root in _launcher_roots(launcher):
+            if not root.is_dir():
+                continue
+            try:
+                instances = scanner(root)
+            except Exception:
+                log_exception(f"scanning {launcher} at {root}")
+                continue
+            if instances:
+                sources.append({
+                    "launcher": launcher, "label": LAUNCHER_LABELS[launcher],
+                    "root": str(root), "instances": instances,
+                })
+            break                                              
+    return sources
+
+
+def _find_scanned_instance(launcher: str, source_id: str):
+    for root in _launcher_roots(launcher):
+        if not root.is_dir():
+            continue
+        scanner = _LAUNCHER_SCANNERS.get(launcher)
+        if not scanner:
+            return None, None
+        for inst in scanner(root):
+            if inst["source_id"] == source_id:
+                return inst, root
+        return None, None
+    return None, None
+
+
+def _source_paths(launcher: str, source_id: str, root: Path):
+    """(options_path, mods_dir, resourcepacks_dir, saves_dir, config_dir) for a scanned instance."""
+    if launcher == "prismlauncher":
+        game_dir = _prism_game_dir(root / "instances" / source_id)
+        return (game_dir / "options.txt", game_dir / "mods",
+                game_dir / "resourcepacks", game_dir / "saves", game_dir / "config")
+    if launcher == "fastclient":
+        profile_dir = root if source_id == FASTCLIENT_ROOT_SOURCE_ID else root / "profiles" / source_id
+        return (profile_dir / "options.txt", profile_dir / "mods",
+                profile_dir / "resourcepacks", profile_dir / "saves", profile_dir / "config")
+    return None, None, None, None, None
+
+
+def _copy_tree_contents(src: Path, dst: Path):
+    """Copies every file/folder inside src into dst (merging, overwriting files
+    that already exist by that name)."""
+    if not src.is_dir():
+        return 0
+    dst.mkdir(parents=True, exist_ok=True)
+    count = 0
+    for item in src.iterdir():
+        target = dst / item.name
+        try:
+            if item.is_dir():
+                shutil.copytree(item, target, dirs_exist_ok=True)
+            else:
+                shutil.copy2(item, target)
+            count += 1
+        except OSError:
+            log_exception(f"copying {item} -> {target}")
+    return count
+
+
 
 class ProgressTracker:
     def __init__(self, emit_fn, total_estimate: int = 1):
@@ -987,9 +1360,6 @@ class ProgressTracker:
             self._emit_lock.release()
 
 
-                                                                             
-                                         
-                                                                             
 
 def maven_to_path(name: str) -> str:
     parts = name.split(":")
@@ -1190,9 +1560,6 @@ def _jar_main_class(jar_path: Path) -> str | None:
     return None
 
 
-                                                                             
-                                                              
-                                                                             
 
 class ForgeInstallContext:
     """Resolves the {TOKEN}, [maven:coord] and 'literal' syntax that Forge's
@@ -1222,7 +1589,6 @@ class ForgeInstallContext:
         if len(value) >= 2 and value.startswith("'") and value.endswith("'"):
             return value[1:-1]
         if value.startswith("/"):
-                                                                                  
             member = value.lstrip("/")
             dest = self.tmp_dir / member
             if not dest.exists():
@@ -1258,9 +1624,6 @@ class ForgeInstallContext:
         return True
 
 
-                                                                             
-                                                                             
-                                                                             
 
 class Installer:
     def __init__(self, api: "API", meta: dict):
@@ -1308,7 +1671,6 @@ class Installer:
                 asset_index_data = {"objects": {}}
             asset_objects = asset_index_data.get("objects", {})
 
-                                                         
             if self.loader == "fabric":
                 plan = self._plan_fabric(vanilla_json, tracker)
             elif self.loader == "forge":
@@ -1349,7 +1711,6 @@ class Installer:
             total += sum(int(e.get("size") or 0) for e, _ in asset_items)
             tracker.reset(total)
 
-                                
             tracker.set_task("Downloading client", force=True)
             download_all([(client_entry, VERSIONS_DIR)], tracker)
             client_path = VERSIONS_DIR / client_entry["path"]
@@ -1360,7 +1721,6 @@ class Installer:
             tracker.set_task("Downloading assets", force=True)
             download_all(asset_items, tracker, workers=16)
 
-                                                                                            
             post = plan.get("post")
             if post:
                 post(client_path, java_path, tracker)
@@ -1421,7 +1781,6 @@ class Installer:
             if forge_tmp:
                 shutil.rmtree(forge_tmp, ignore_errors=True)
 
-                                                                          
 
     def _plan_vanilla(self, vanilla_json):
         return {
@@ -1431,7 +1790,6 @@ class Installer:
             "minecraft_arguments": vanilla_json.get("minecraftArguments"),
         }
 
-                                                                            
 
     def _plan_fabric(self, vanilla_json, tracker):
         if not self.loader_version:
@@ -1450,17 +1808,11 @@ class Installer:
 
         return {
             "main_class": main_class,
-                                                                          
             "libraries": list(profile.get("libraries", [])) + list(vanilla_json.get("libraries", [])),
             "arguments": merge_arguments(vanilla_json.get("arguments"), profile.get("arguments")),
             "minecraft_arguments": profile.get("minecraftArguments") or vanilla_json.get("minecraftArguments"),
         }
 
-                                                                        
-                                                                              
-                                                                             
-                                                                            
-                                      
 
     def _plan_forge(self, vanilla_json, tracker):
         if not self.loader_version:
@@ -1496,7 +1848,6 @@ class Installer:
                 json_member = (profile.get("json") or "/version.json").lstrip("/")
                 version_json = json.loads(zf.read(json_member).decode("utf-8"))
 
-                                                                                               
             for member in zf.namelist():
                 if member.endswith("/") or not member.startswith("maven/"):
                     continue
@@ -1522,8 +1873,6 @@ class Installer:
 
         plan = {
             "main_class": version_json.get("mainClass", vanilla_json["mainClass"]),
-                                                                               
-                                            
             "libraries": list(version_json.get("libraries", [])) + list(vanilla_json.get("libraries", [])),
             "arguments": merge_arguments(vanilla_json.get("arguments"), version_json.get("arguments")),
             "minecraft_arguments": version_json.get("minecraftArguments") or vanilla_json.get("minecraftArguments"),
@@ -1587,9 +1936,6 @@ class Installer:
             tracker.add(1)
 
 
-                                                                             
-                     
-                                                                             
 
 def build_launch_command(meta: dict, account: dict, memory_mb: int, java_exe: str) -> list:
     name = meta["name"]
@@ -1629,8 +1975,6 @@ def build_launch_command(meta: dict, account: dict, memory_mb: int, java_exe: st
     else:
         jvm_args = [substitute(a, replacements) for a in DEFAULT_MODERN_JVM_ARGS]
 
-                                                                         
-                                        
     if not any(a in ("-cp", "-classpath") for a in jvm_args):
         jvm_args = ["-cp", replacements["classpath"]] + jvm_args
     if not any(a.startswith("-Djava.library.path=") for a in jvm_args):
@@ -1683,9 +2027,6 @@ def _explain_crash(tail: str) -> str:
     return lines[-1][:220] if lines else "Check launch_output.log in the instance folder."
 
 
-                                                                             
-                  
-                                                                             
 
 def pick_best_version(versions: list):
     """Modrinth returns newest first. Prefer stable releases over betas/alphas."""
@@ -1703,9 +2044,6 @@ def primary_file(version: dict):
     return next((f for f in files if f.get("primary")), files[0] if files else None)
 
 
-                                                                             
-                                     
-                                                                             
 
 class AuthError(Exception):
     pass
@@ -1729,7 +2067,6 @@ def public_account(a: dict) -> dict:
     return out
 
 
-                                                                           
 
 def jwt_expiry(token: str):
     try:
@@ -1805,7 +2142,6 @@ def save_session_account(name: str, account_uuid: str, token: str, expires) -> d
     def upsert(accounts):
         for a in accounts:
             if a.get("uuid") == account_uuid:
-                                                                                    
                 a["name"], a["mc_token"], a["mc_expires"] = name, account["mc_token"], account["mc_expires"]
                 if not a.get("refresh_token"):
                     a["session_only"] = True
@@ -1823,9 +2159,6 @@ def find_account(accounts: list, key):
             or next((a for a in accounts if a.get("name") == key), None))
 
 
-                                                                             
-                 
-                                                                             
 
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 
@@ -1955,9 +2288,6 @@ def list_saved_skins() -> list:
     return out
 
 
-                                                                             
-                                                              
-                                                                             
 
 def _zip_read(zf: zipfile.ZipFile, member: str):
     member = member.replace("\\", "/").lstrip("./").lstrip("/")
@@ -2201,9 +2531,6 @@ def read_content_icon(instance_name: str, kind: str, filename: str):
     return f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
 
 
-                                                                             
-                                                         
-                                                                             
 
 class API:
     def __init__(self):
@@ -2213,13 +2540,13 @@ class API:
         self._stopping: set = set()
         self._installing: set = set()
         self._addon_busy = False
+        self._importing: set = set()
         self._web_login = None
         self._proc_lock = threading.Lock()
 
     def set_window(self, window):
         self._window = window
 
-                                                                        
 
     def emit(self, name: str, data=None):
         if self._window is None:
@@ -2235,7 +2562,6 @@ class API:
     def push_state(self):
         self.emit("stateChanged", self._state_dict())
 
-                                                                          
 
     def _runtime_dict(self) -> dict:
         with self._proc_lock:
@@ -2312,7 +2638,6 @@ class API:
             log_exception("get_runtime")
             return {"success": False, "error": str(exc)}
 
-                                                                          
 
     def get_versions(self):
         try:
@@ -2354,7 +2679,6 @@ class API:
             log_exception("get_forge_mc_versions")
             return {"success": False, "error": str(exc) or "Forge versions could not be retrieved."}
 
-                                                                            
 
     def add_account(self, username):
         """Adds an offline account."""
@@ -2413,7 +2737,6 @@ class API:
             log_exception("switch_account")
             return {"success": False, "error": "Failed to switch account."}
 
-                                                                             
 
     def start_minecraft_web_login(self):
         """Opens minecraft.net's login page in a small window. Once you land on the
@@ -2571,7 +2894,6 @@ class API:
             log_exception("add_session_token")
             return {"success": False, "error": f"Couldn't add the token: {exc}"}
 
-                                                                          
 
     def _skin_account(self):
         accounts = accounts_store.read()
@@ -2694,7 +3016,6 @@ class API:
             log_exception("delete_saved_skin")
             return {"success": False, "error": "Couldn't delete the skin."}
 
-                                                                              
 
     def get_instance_content(self, instance_name, kind="mods"):
         try:
@@ -2717,7 +3038,6 @@ class API:
         except Exception:
             return {"success": True, "icon": None}
 
-                                                                        
 
     def _make_instance(self, name, version, loader, loader_version):
         instance_dir(name).mkdir(parents=True, exist_ok=True)
@@ -2763,6 +3083,97 @@ class API:
         except Exception as exc:
             log_exception("create_instance")
             return {"success": False, "error": f"Failed to create instance: {exc}"}
+
+
+    def scan_import_sources(self):
+        try:
+            return {"success": True, "sources": scan_all_launchers()}
+        except Exception:
+            log_exception("scan_import_sources")
+            return {"success": False, "error": "Couldn't scan for other launchers."}
+
+    def get_import_targets(self):
+        """Existing instances that could be used as a copy-into destination."""
+        try:
+            return {"success": True, "instances": [
+                {"name": i["name"], "version": i["version"], "loader": i.get("loader", "vanilla"),
+                 "loader_version": i.get("loader_version")} for i in list_instances()]}
+        except Exception:
+            log_exception("get_import_targets")
+            return {"success": False, "error": "Couldn't list instances."}
+
+    def import_launcher_instance(self, launcher, source_id, dest_name, existing, copy_options, copy_mods, copy_resourcepacks, copy_saves=False, copy_config=False):
+        """Copies options/mods/resourcepacks/saves/config from another launcher's
+        instance into a new or existing Crit Launcher instance. Never downloads the
+        version itself - the normal installer does that the next time it's played."""
+        try:
+            inst, root = _find_scanned_instance(launcher, source_id)
+            if not inst:
+                return {"success": False, "error": "That instance couldn't be found anymore. Try rescanning."}
+            if existing:
+                if not read_instance_meta(existing):
+                    return {"success": False, "error": "Destination instance not found."}
+                dest_name = existing
+            else:
+                try:
+                    dest_name = sanitize_instance_name(dest_name or inst["name"])
+                except ValueError as exc:
+                    return {"success": False, "error": str(exc)}
+                if instance_dir(dest_name).exists():
+                    return {"success": False, "error": "An instance with that name already exists."}
+                if not inst.get("version"):
+                    return {"success": False, "error": "Couldn't work out which Minecraft version this uses."}
+        except Exception:
+            log_exception("import_launcher_instance (validate)")
+            return {"success": False, "error": "Import failed."}
+
+        with self._proc_lock:
+            if dest_name in self._importing:
+                return {"success": False, "error": "Already importing into that instance."}
+            self._importing.add(dest_name)
+        threading.Thread(
+            target=self._import_worker,
+            args=(launcher, inst, root, dest_name, bool(existing),
+                  bool(copy_options), bool(copy_mods), bool(copy_resourcepacks), bool(copy_saves), bool(copy_config)),
+            daemon=True,
+        ).start()
+        return {"success": True, "instance": dest_name}
+
+    def _import_worker(self, launcher, inst, root, dest_name, into_existing,
+                       copy_options, copy_mods, copy_resourcepacks, copy_saves=False, copy_config=False):
+        try:
+            self.emit("importStarted", {"instance": dest_name})
+            if not into_existing:
+                self._make_instance(dest_name, inst["version"], inst["loader"], inst.get("loader_version"))
+
+            options_path, mods_dir, packs_dir, saves_dir, config_dir = _source_paths(launcher, inst["source_id"], root)
+            game_dir = instance_game_dir(dest_name)
+            ensure_game_layout(dest_name, inst["loader"])
+
+            copied = {"options": False, "mods": 0, "resourcepacks": 0, "saves": 0, "config": 0}
+            if copy_options and options_path and options_path.is_file():
+                try:
+                    shutil.copy2(options_path, game_dir / "options.txt")
+                    copied["options"] = True
+                except OSError:
+                    log_exception("copying options.txt")
+            if copy_mods and inst["loader"] in ("fabric", "forge") and mods_dir:
+                copied["mods"] = _copy_tree_contents(mods_dir, instance_mods_dir(dest_name))
+            if copy_resourcepacks and packs_dir:
+                copied["resourcepacks"] = _copy_tree_contents(packs_dir, game_dir / "resourcepacks")
+            if copy_saves and saves_dir:
+                copied["saves"] = _copy_tree_contents(saves_dir, game_dir / "saves")
+            if copy_config and inst["loader"] in ("fabric", "forge") and config_dir:
+                copied["config"] = _copy_tree_contents(config_dir, instance_config_dir(dest_name))
+
+            self.push_state()
+            self.emit("importFinished", {"instance": dest_name, "copied": copied})
+        except Exception as exc:
+            log_exception("_import_worker")
+            self.emit("importError", {"instance": dest_name, "message": str(exc) or "Import failed."})
+        finally:
+            with self._proc_lock:
+                self._importing.discard(dest_name)
 
     def delete_instance(self, instance_name):
         try:
@@ -2872,7 +3283,6 @@ class API:
             log_exception("open_instance_folder")
             return {"success": False, "error": "Couldn't open the folder."}
 
-                                                                            
 
     def launch(self, instance_name):
         try:
@@ -2904,7 +3314,6 @@ class API:
                 if java_path:
                     return self._do_launch(instance_name, meta, active_account, java_path)
 
-                                                                     
             with self._proc_lock:
                 self._installing.add(instance_name)
             self.push_state()
@@ -3048,7 +3457,6 @@ class API:
             log_exception("stop")
             return {"success": False, "error": "Failed to stop instance."}
 
-                                                                          
 
     def save_settings(self, patch: dict):
         try:
@@ -3073,7 +3481,6 @@ class API:
             log_exception("save_settings")
             return {"success": False, "error": "Failed to save settings."}
 
-                                                                            
 
     def search_addons(self, query="", project_type="mod"):
         try:
@@ -3338,9 +3745,6 @@ class API:
                 self._addon_busy = False
 
 
-                                                                             
-             
-                                                                             
 
 def main():
     import webview                                               

@@ -17,7 +17,12 @@
   --faint: #5d646e;
   --accent: #4ade80;
   --accent-ink: #06180d;
-  --accent-soft: rgba(74, 222, 128, 0.12);
+  --accent-soft: rgba(var(--accent-rgb), 0.12);
+  --accent-rgb: 74, 222, 128;
+  --accent-hover: #6ee7a0;
+  --accent-light: #86efac;
+  --brand: #5dbb3a;
+  --brand-light: #e8f0dc;
   --danger: #f87171;
   --danger-soft: rgba(248, 113, 113, 0.12);
   --warn: #fbbf24;
@@ -26,6 +31,11 @@
   --sidebar-w: 228px;
   --sidebar-w-collapsed: 68px;
 }
+:root[data-theme="blue"] { --accent: #60a5fa; --accent-ink: #07152b; --accent-rgb: 96, 165, 250; --accent-hover: #7fb6fb; --accent-light: #93c5fd; --brand: #4b8fe0; --brand-light: #dce8f5; }
+:root[data-theme="purple"] { --accent: #a78bfa; --accent-ink: #140b2e; --accent-rgb: 167, 139, 250; --accent-hover: #b9a2fc; --accent-light: #c4b5fd; --brand: #8b6ee0; --brand-light: #e6e0f7; }
+:root[data-theme="red"] { --accent: #f05252; --accent-ink: #2a0707; --accent-rgb: 240, 82, 82; --accent-hover: #f36b6b; --accent-light: #f8a0a0; --brand: #d64545; --brand-light: #f7e0e0; }
+:root[data-theme="orange"] { --accent: #fb923c; --accent-ink: #2a1204; --accent-rgb: 251, 146, 60; --accent-hover: #fdac6a; --accent-light: #fdba74; --brand: #e8792a; --brand-light: #f7e8d8; }
+:root[data-theme="pink"] { --accent: #f472b6; --accent-ink: #2a0a1a; --accent-rgb: 244, 114, 182; --accent-hover: #f68fc4; --accent-light: #f9a8d4; --brand: #e0559e; --brand-light: #f7dfec; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 body {
@@ -129,7 +139,7 @@ body.compact .sp-text { display: none; }
 .bar { height: 5px; background: var(--panel-3); border-radius: 5px; overflow: hidden; }
 .bar > div {
   height: 100%; width: 0; border-radius: 5px;
-  background: linear-gradient(90deg, var(--accent), #86efac, var(--accent));
+  background: linear-gradient(90deg, var(--accent), var(--accent-light), var(--accent));
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
   transition: width 0.3s var(--ease);
@@ -151,7 +161,7 @@ body.compact .sp-text { display: none; }
 .btn:active { transform: scale(0.97); }
 .btn[disabled] { opacity: 0.55; cursor: default; pointer-events: none; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.btn.primary:hover { background: #6ee7a0; border-color: #6ee7a0; box-shadow: 0 6px 22px -8px rgba(74, 222, 128, 0.7); }
+.btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); box-shadow: 0 6px 22px -8px rgba(var(--accent-rgb), 0.7); }
 .btn.danger:hover { background: var(--danger-soft); border-color: rgba(248, 113, 113, 0.4); color: var(--danger); }
 .btn.danger.armed { background: var(--danger); border-color: var(--danger); color: #2a0808; }
 .btn.small { padding: 7px 11px; font-size: 13px; border-radius: 9px; }
@@ -184,7 +194,7 @@ body.compact #btn-sidebar-play .btn-label { max-width: 0; opacity: 0; }
 .stat.live .ico { animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.45; } }
 .stat-val { transition: opacity 0.2s; }
-body.compact #sidebar-stats { flex-direction: column; gap: 10px; padding-left: 0; padding-right: 0; justify-content: center; }
+body.compact #sidebar-stats { flex-direction: row; gap: 16px; padding-left: 0; padding-right: 0; justify-content: center; }
 body.compact .stat-val { display: none; }
 .collapse-btn {
   position: absolute; top: 24px; right: -12px;
@@ -201,7 +211,14 @@ body.compact .stat-val { display: none; }
 .collapse-btn:active { transform: scale(0.9); }
 .collapse-btn .ico { transition: transform 0.34s var(--ease); }
 body.compact .collapse-btn .ico { transform: rotate(180deg); }
-#main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+#save-bar { position: absolute; left: 0; right: 0; bottom: 20px; display: flex; justify-content: center; pointer-events: none; z-index: 30;
+  opacity: 0; transform: translateY(24px); transition: opacity .25s var(--ease), transform .3s var(--ease); }
+#save-bar.show { opacity: 1; transform: none; }
+#save-bar .sb-inner { pointer-events: none; width: min(860px, calc(100% - 56px)); display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 12px 10px 18px; border-radius: 14px; background: var(--panel-3); border: 1px solid var(--border);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.7); font-weight: 500; }
+#save-bar.show .sb-inner { pointer-events: auto; }
 #topbar {
   height: 62px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: space-between;
@@ -216,6 +233,17 @@ body.compact .collapse-btn .ico { transform: rotate(180deg); }
   transition: opacity 0.2s;
 }
 .account-chip:hover { opacity: 0.8; }
+.top-right { display: flex; align-items: center; gap: 18px; }
+.socials { display: flex; align-items: center; gap: 4px; }
+.social-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 4px; background: none; border: none; border-radius: 8px;
+  color: var(--dim, #8a8f98);
+  transition: color 0.2s, transform 0.2s;
+}
+.social-btn svg { display: block; }
+.social-btn:hover { color: var(--text); }
+.social-btn:active { transform: scale(0.92); }
 .face {
   --s: 26px;
   width: var(--s); height: var(--s); flex-shrink: 0;
@@ -259,10 +287,10 @@ h1 { font-size: 22px; font-weight: 680; margin-bottom: 4px; }
   width: 25%; min-width: 220px; max-width: 340px;
   padding: 22px 20px; margin: 40px auto 0;
   border-radius: 18px; text-align: left;
-  box-shadow: 0 16px 40px -18px rgba(74, 222, 128, 0.6);
+  box-shadow: 0 16px 40px -18px rgba(var(--accent-rgb), 0.6);
   transition: transform 0.2s var(--ease), box-shadow 0.25s;
 }
-.home-launch:hover:not([disabled]) { transform: translateY(-2px); box-shadow: 0 20px 48px -16px rgba(74, 222, 128, 0.75); }
+.home-launch:hover:not([disabled]) { transform: translateY(-2px); box-shadow: 0 20px 48px -16px rgba(var(--accent-rgb), 0.75); }
 .home-launch .ico svg { width: 40px; height: 40px; }
 .home-launch-text { display: flex; flex-direction: column; line-height: 1.25; }
 .home-launch-text .main { font-size: 26px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; }
@@ -291,7 +319,7 @@ h1 { font-size: 22px; font-weight: 680; margin-bottom: 4px; }
   transition: border-color 0.2s, background 0.2s, transform 0.25s var(--ease);
 }
 .instance-row:hover { border-color: #313744; background: #14171d; }
-.instance-row.active { border-color: rgba(74, 222, 128, 0.35); }
+.instance-row.active { border-color: rgba(var(--accent-rgb), 0.35); }
 .ir-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .instance-icon {
   width: 42px; height: 42px; flex-shrink: 0; border-radius: 11px;
@@ -434,7 +462,7 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
   transition: border-color 0.2s, background 0.2s;
 }
 .account-row:hover { border-color: #313744; }
-.account-row.active { border-color: rgba(74, 222, 128, 0.35); }
+.account-row.active { border-color: rgba(var(--accent-rgb), 0.35); }
 .account-row .name { font-weight: 600; }
 .account-row .type { color: var(--dim); font-size: 12.5px; }
 .add-row { display: flex; gap: 10px; max-width: 480px; margin-bottom: 20px; }
@@ -503,7 +531,15 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .shot { display: block; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); aspect-ratio: 16/9; background: var(--panel-2); }
 .shot img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.3s var(--ease); }
 .shot:hover img { transform: scale(1.05); }
-.dep-list { display: flex; flex-direction: column; gap: 6px; }
+.shot { padding: 0; cursor: pointer; position: relative; }
+.shot-ph { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; color: var(--dim); }
+.shot-view-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.shot-view-name { color: var(--dim); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shot-view-img { max-height: 60vh; display: flex; justify-content: center; }
+.shot-view-img img { max-width: 100%; max-height: 60vh; border-radius: 10px; border: 1px solid var(--border); object-fit: contain; }
+.dep-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
+#dep-section { margin-bottom: 4px; }
+.disk-size { font-variant-numeric: tabular-nums; }
 .dep-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--border-soft); }
 .dep-icon { width: 24px; height: 24px; flex-shrink: 0; border-radius: 6px; overflow: hidden; display: grid; place-items: center; background: var(--panel-3); color: var(--faint); }
 .dep-icon img { width: 100%; height: 100%; object-fit: cover; }
@@ -593,7 +629,7 @@ canvas { image-rendering: pixelated; }
 .skin-current { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; position: sticky; top: 0; }
 .sc-stage {
   width: 100%; min-height: 330px; display: grid; place-items: center; border-radius: 12px;
-  background: radial-gradient(ellipse at 50% 88%, rgba(74, 222, 128, 0.12), transparent 62%), var(--panel-2);
+  background: radial-gradient(ellipse at 50% 88%, rgba(var(--accent-rgb), 0.12), transparent 62%), var(--panel-2);
 }
 .sc-stage canvas { animation: fadeIn 0.4s var(--ease) both; }
 .sc-name { font-weight: 650; font-size: 16px; }
@@ -629,13 +665,20 @@ canvas { image-rendering: pixelated; }
 .cs-copy { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
 .cs-copy .add-row { margin-bottom: 0; }
 .cape-thumb { min-height: 130px; }
-.setting-card { max-width: 560px; margin-bottom: 14px; }
+.setting-card { margin-bottom: 14px; }
+#page-settings { max-width: 860px; padding-bottom: 90px; }
+.settings-grid { column-width: 320px; column-gap: 14px; }
+.settings-grid .setting-card { break-inside: avoid; margin-bottom: 14px; }
 .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
 .setting-row .t { font-weight: 600; }
 .setting-row .d { color: var(--dim); font-size: 12.5px; margin-top: 2px; }
+.theme-swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+.theme-swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid transparent; box-shadow: inset 0 0 0 2px var(--panel); transition: transform .15s var(--ease), border-color .15s; }
+.theme-swatch:hover { transform: scale(1.1); }
+.theme-swatch.on { border-color: var(--text); }
 .switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; border-radius: 26px; background: var(--panel-3); border: 1px solid var(--border); transition: background 0.25s, border-color 0.25s; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--dim); transition: transform 0.28s var(--ease), background 0.25s; }
-.switch.on { background: var(--accent-soft); border-color: rgba(74, 222, 128, 0.5); }
+.switch.on { background: var(--accent-soft); border-color: rgba(var(--accent-rgb), 0.5); }
 .switch.on::after { transform: translateX(18px); background: var(--accent); }
 .java-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--dim); margin-top: 8px; user-select: text; }
 .java-line .ico { color: var(--accent); }
@@ -667,6 +710,53 @@ canvas { image-rendering: pixelated; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; align-items: start; }
+.form-grid.cols3 { grid-template-columns: repeat(3, 1fr); }
+.form-grid .check-row { padding: 7px 0; }
+.btn-row.wrap { flex-wrap: wrap; }
+.tag.ok { background: var(--accent-soft); color: var(--accent); }
+.sd-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.sd-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.sd-status { display: inline-flex; align-items: center; gap: 7px; color: var(--dim); font-size: 13px; }
+.sd-tabs { max-width: 620px; margin-bottom: 16px; }
+.iris-ask { margin-top: 10px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel-2); }
+.iris-ask .t { font-weight: 600; } .iris-ask .d { color: var(--dim); font-size: 12.5px; margin: 2px 0 12px; }
+.sd-head-row { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.sd-addr { padding: 3px 11px; border-radius: 999px; border: 1px solid var(--border-soft); background: rgba(255, 255, 255, 0.03); color: var(--dim); font-weight: 500; font-size: 12.5px; transition: background .15s, border-color .15s, color .15s; }
+.sd-addr:hover { background: var(--accent-soft); border-color: rgba(var(--accent-rgb), 0.35); color: var(--accent); }
+.sd-back { width: 42px; height: 42px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; color: var(--dim); margin-left: -8px; transition: background .15s, color .15s; }
+.sd-back:hover { background: var(--panel-2); color: var(--text); }
+.sd-back .ico svg { width: 26px; height: 26px; }
+.sd-players { display: inline-flex; align-items: center; gap: 7px; color: var(--dim); font-size: 13px; font-weight: 600; margin-left: auto; }
+.sd-stat { padding: 6px 4px; display: flex; flex-direction: column; gap: 10px; }
+.sd-set .section-title:first-child { margin-top: 0; }
+.sd-set-save { margin-top: 18px; display: flex; align-items: center; gap: 14px; }
+.sd-set-save .hint { color: var(--dim); font-size: 12.5px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.stat-card { padding: 16px 18px; }
+.sc-label { color: var(--faint); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 650; }
+.sc-val { font-size: 24px; font-weight: 680; margin: 6px 0 2px; display: flex; align-items: center; gap: 8px; }
+.sc-sub { color: var(--dim); font-size: 12.5px; }
+.spark { height: 42px; margin-top: 10px; }
+.spark svg { width: 100%; height: 100%; display: block; }
+.console { height: calc(100vh - 290px); min-height: 300px; overflow-y: auto; background: #07080a; border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; font: 12.5px/1.55 Consolas, "Cascadia Mono", "SF Mono", monospace; user-select: text; white-space: pre-wrap; word-break: break-word; }
+.console .l.warn { color: var(--warn); } .console .l.err { color: var(--danger); } .console .l.cmd { color: var(--accent); } .console .l.sys { color: var(--faint); }
+.console-input { display: flex; align-items: center; gap: 10px; margin-top: 10px; color: var(--faint); }
+.console-input .input { flex: 1; font-family: Consolas, "Cascadia Mono", monospace; }
+.pl-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.pl-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 11px; background: var(--panel); border: 1px solid var(--border); text-align: left; transition: background .15s, border-color .15s; }
+.pl-row:hover { background: var(--panel-2); } .pl-row.on { border-color: var(--accent); background: var(--accent-soft); }
+.pl-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.pd-head { display: flex; align-items: center; gap: 14px; padding-right: 40px; }
+.pl-detail .section-title { margin: 20px 0 10px; } .pl-detail .section-title:first-of-type { margin-top: 18px; }
+.input.mini { width: 78px; padding: 7px 10px; border-radius: 9px; }
+.modal.xl { width: min(1280px, 100%); height: min(90vh, 940px); max-height: 90vh; display: flex; flex-direction: column; }
+.modal.xl #modal-body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.sm-body { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+.sm-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.sm-card { cursor: default; } .sm-card:hover { transform: none; }
+@media (max-width: 900px) { .form-grid.cols3 { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
 <body>
@@ -675,7 +765,7 @@ canvas { image-rendering: pixelated; }
     <div id="sidebar-inner">
       <div id="brand">
         <div class="brand-mark">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" shape-rendering="crispEdges"><path fill="#5dbb3a" d="M4 0h1v9H4zM0 4h9v1H0zM3 3h3v3H3z"/><path fill="#e8f0dc" d="M3 3h1v1H3zM5 3h1v1H5zM3 5h1v1H3zM5 5h1v1H5zM4 4h1v1H4z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" shape-rendering="crispEdges"><path style="fill:var(--brand)" d="M4 0h1v9H4zM0 4h9v1H0zM3 3h3v3H3z"/><path style="fill:var(--brand-light)" d="M3 3h1v1H3zM5 3h1v1H5zM3 5h1v1H3zM5 5h1v1H5zM4 4h1v1H4z"/></svg>
         </div>
         <div class="brand-text">CRIT LAUNCHER</div>
       </div>
@@ -691,6 +781,9 @@ canvas { image-rendering: pixelated; }
         </button>
         <button class="nav-item" data-page="skins" data-tip="Skins" data-tip-collapsed>
           <span class="ico" data-icon="shirt" data-size="18"></span><span class="nav-label">Skins</span>
+        </button>
+        <button class="nav-item" data-page="servers" data-tip="Servers" data-tip-collapsed>
+          <span class="ico" data-icon="server" data-size="18"></span><span class="nav-label">Servers</span>
         </button>
         <button class="nav-item" data-page="import" data-tip="Import" data-tip-collapsed>
           <span class="ico" data-icon="download" data-size="18"></span><span class="nav-label">Import</span>
@@ -727,10 +820,14 @@ canvas { image-rendering: pixelated; }
   <div id="main">
     <header id="topbar">
       <div id="page-title">Home</div>
-      <button class="account-chip" id="account-chip" data-tip="Accounts">
-        <span id="top-face"></span><span id="top-account-name">No account</span>
-      </button>
+      <div class="top-right">
+        <button class="account-chip" id="account-chip" data-tip="Accounts">
+          <span id="top-face"></span><span id="top-account-name">No account</span>
+        </button>
+      </div>
     </header>
+    <div id="save-bar" aria-live="polite"><div class="sb-inner"><span>Careful, you have unsaved changes!</span>
+      <div class="btn-row"><button class="btn ghost small" id="sb-reset">Reset</button><button class="btn primary small" id="sb-save">Save changes</button></div></div></div>
     <main id="content">
       <div id="home-bg"></div>
       <section class="page active" id="page-home">
@@ -781,9 +878,20 @@ canvas { image-rendering: pixelated; }
           </div>
         </div>
       </section>
+      <section class="page" id="page-servers">
+        <div id="srv-list-view">
+          <div class="page-head">
+            <div><h1>Servers</h1><p class="sub">Host Vanilla, Paper or Fabric servers right from the launcher. Click a server to open its console, performance and players.</p></div>
+            <button class="btn primary" id="btn-add-server"><span class="ico" data-icon="plus" data-size="16"></span>New</button>
+          </div>
+          <div class="instance-list" id="server-list"></div>
+        </div>
+        <div id="srv-add-view" style="display:none"></div>
+        <div id="srv-detail-view" style="display:none"></div>
+      </section>
       <section class="page" id="page-addons">
         <h1>Addons</h1>
-        <p class="sub">Browse Modrinth for mods, resource packs and modpacks.</p>
+        <p class="sub">Browse Modrinth for mods, resource packs, modpacks and shaders.</p>
         <div class="addons-toolbar">
           <div id="addon-type-select"></div>
           <input class="input" id="addon-query" placeholder="Search mods..." autocomplete="off" />
@@ -815,6 +923,7 @@ canvas { image-rendering: pixelated; }
       <section class="page" id="page-settings">
         <h1>Settings</h1>
         <p class="sub">Tune how the game runs.</p>
+        <div class="settings-grid">
         <div class="card setting-card">
           <div class="field" style="margin-bottom:0"><label for="settings-instance-select">Main installation</label>
             <div id="settings-instance-select"></div>
@@ -827,16 +936,27 @@ canvas { image-rendering: pixelated; }
             <input class="input" id="set-java" placeholder="Leave empty to use the right Java automatically" autocomplete="off" />
             <div class="java-line" id="java-line"></div>
           </div>
-          <div style="margin-top:18px"><button class="btn primary" id="btn-save-settings"><span class="ico" data-icon="check" data-size="16"></span>Save</button></div>
         </div>
         <div class="card setting-card">
-          <div class="setting-row">
-            <div><div class="t">Icons-only sidebar</div><div class="d">Collapse the menu down to just icons.</div></div>
-            <button class="switch" id="switch-compact" role="switch" aria-checked="false" aria-label="Icons-only sidebar"></button>
+          <div class="t" style="font-weight:600">Theme</div>
+          <div style="color:var(--dim);font-size:12.5px;margin:2px 0 12px">Pick an accent colour.</div>
+          <div class="theme-swatches" id="theme-swatches"><button class="theme-swatch" data-theme="green" style="background:#4ade80" data-tip="Green" aria-label="Green theme"></button><button class="theme-swatch" data-theme="blue" style="background:#60a5fa" data-tip="Blue" aria-label="Blue theme"></button><button class="theme-swatch" data-theme="purple" style="background:#a78bfa" data-tip="Purple" aria-label="Purple theme"></button><button class="theme-swatch" data-theme="red" style="background:#f05252" data-tip="Red" aria-label="Red theme"></button><button class="theme-swatch" data-theme="orange" style="background:#fb923c" data-tip="Orange" aria-label="Orange theme"></button><button class="theme-swatch" data-theme="pink" style="background:#f472b6" data-tip="Pink" aria-label="Pink theme"></button></div>
+        </div>
+        <div class="card setting-card">
+          <div class="setting-row"><div><div class="t">v1.3 thanks for using crit</div></div>
+              <div class="socials">
+                <button class="social-btn" id="btn-discord" data-url="https://discord.gg/SyxeBQvvwY" data-tip="Join our Discord" aria-label="Join our Discord">
+                  <svg viewBox="0 0 512 512" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="m386 137c-24-11-49.5-19-76.3-23.7c-.5 0-1 0-1.2.6c-3.3 5.9-7 13.5-9.5 19.5c-29-4.3-57.5-4.3-85.7 0c-2.6-6.2-6.3-13.7-10-19.5c-.3-.4-.7-.7-1.2-.6c-23 4.6-52.4 13-76 23.7c-.2 0-.4.2-.5.4c-49 73-62 143-55 213c0 .3.2.7.5 1c32 23.6 63 38 93.6 47.3c.5 0 1 0 1.3-.4c7.2-9.8 13.6-20.2 19.2-31.2c.3-.6 0-1.4-.7-1.6c-10-4-20-8.6-29.3-14c-.7-.4-.8-1.5 0-2c2-1.5 4-3 5.8-4.5c.3-.3.8-.3 1.2-.2c61.4 28 128 28 188 0c.4-.2.9-.1 1.2.1c1.9 1.6 3.8 3.1 5.8 4.6c.7.5.6 1.6 0 2c-9.3 5.5-19 10-29.3 14c-.7.3-1 1-.6 1.7c5.6 11 12.1 21.3 19 31c.3.4.8.6 1.3.4c30.6-9.5 61.7-23.8 93.8-47.3c.3-.2.5-.5.5-1c7.8-80.9-13.1-151-55.4-213c0-.2-.3-.4-.5-.4Zm-192 171c-19 0-34-17-34-38c0-21 15-38 34-38c19 0 34 17 34 38c0 21-15 38-34 38zm125 0c-19 0-34-17-34-38c0-21 15-38 34-38c19 0 34 17 34 38c0 21-15 38-34 38z" fill="currentColor"/></svg>
+                </button>
+                <button class="social-btn" id="btn-youtube" data-url="https://www.youtube.com/@critlauncher" data-tip="YouTube" aria-label="Crit Launcher on YouTube">
+                  <svg viewBox="0 0 640 640" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M633.468 192.038s-6.248-44.115-25.477-63.485c-24.366-25.477-51.65-25.642-64.123-27.118-89.493-6.52-223.904-6.52-223.904-6.52h-.236s-134.352 0-223.893 6.52c-12.52 1.523-39.768 1.63-64.123 27.118-19.24 19.37-25.358 63.485-25.358 63.485S-.012 243.806-.012 295.681v48.509c0 51.768 6.366 103.643 6.366 103.643s6.248 44.114 25.358 63.52c24.355 25.477 56.363 24.65 70.655 27.367 51.237 4.89 217.644 6.366 217.644 6.366s134.529-.237 224.022-6.638c12.52-1.477 39.756-1.63 64.123-27.119 19.24-19.37 25.476-63.532 25.476-63.532S640 396.03 640 344.154v-48.508c-.13-51.769-6.497-103.643-6.497-103.643l-.035.035zm-379.8 211.007V223.173L426.56 313.41l-172.892 89.635z"/></svg>
+                </button>
+                <button class="social-btn" id="btn-instagram" data-url="https://www.instagram.com/crit_launcher/" data-tip="Instagram" aria-label="Crit Launcher on Instagram">
+                  <svg viewBox="0 0 360 360" width="23" height="23" fill="currentColor" aria-hidden="true"><g transform="translate(-77.12909,-99.75057)"><path d="m 257.12909,129.76098 c -40.73362,0 -45.84008,0.25899 -61.83741,0.91733 -15.96445,0.7292 -26.846,3.22727 -36.38561,6.93669 -9.8635,3.83171 -18.26206,8.98306 -26.60017,17.32165 -8.33835,8.33859 -13.44169,16.69125 -17.27412,26.55409 -3.70877,9.54051 -6.25479,20.46653 -6.98302,36.43098 -0.73154,15.99732 -0.91968,21.10396 -0.91968,61.83716 0,40.73554 0.18808,45.83984 0.91968,61.83717 0.72919,15.96445 3.27425,26.84576 6.98302,36.38633 3.83243,9.86278 8.93577,18.21549 17.27412,26.55403 8.33811,8.33859 16.73667,13.48525 26.60017,17.3193 9.53961,3.70708 20.42116,6.25455 36.38561,6.98374 15.99733,0.7292 21.10379,0.87029 61.83741,0.87029 40.73362,0 45.83984,-0.23496 61.8374,-0.87029 15.96422,-0.72919 26.89185,-3.27666 36.43147,-6.98374 9.8635,-3.83405 18.21621,-8.98071 26.55432,-17.3193 8.33835,-8.33854 13.44145,-16.69125 17.27388,-26.55403 3.70876,-9.54057 6.25503,-20.42188 6.98326,-36.38633 0.73154,-15.99733 0.91968,-21.10163 0.91968,-61.83717 0,-40.7332 -0.18808,-45.83984 -0.91968,-61.83716 -0.7292,-15.96445 -3.2745,-26.89047 -6.98326,-36.43098 -3.83243,-9.86284 -8.93553,-18.2155 -17.27388,-26.55409 -8.33811,-8.33859 -16.69082,-13.48994 -26.55432,-17.32165 -9.53962,-3.70942 -20.46725,-6.20749 -36.43147,-6.93669 -15.99732,-0.72919 -21.10378,-0.91733 -61.8374,-0.91733 z m 0,27.01275 c 40.04775,0 44.78087,0.23495 60.59684,0.87028 14.623,0.65865 22.60141,3.13785 27.88658,5.19137 7.00117,2.72149 11.98006,5.96281 17.22809,11.21061 5.24894,5.24779 8.48978,10.2274 11.20964,17.22754 2.05353,5.28542 4.52401,13.26413 5.19155,27.88544 0.71982,15.81622 0.87269,20.5512 0.87269,60.59757 0,40.04865 -0.16464,44.78369 -0.87269,60.59756 -0.66802,14.62366 -3.13802,22.55533 -5.19155,27.84074 -2.71986,7.00014 -5.9607,12.02211 -11.20964,17.27225 -5.24803,5.2478 -10.22692,8.48912 -17.22809,11.2106 -5.28517,2.04643 -13.26358,4.48099 -27.88658,5.14667 -15.81363,0.72913 -20.54555,0.87028 -60.59684,0.87028 -40.0513,0 -44.78322,-0.23495 -60.59684,-0.87028 -14.62301,-0.65865 -22.55557,-3.09321 -27.84074,-5.14667 -7.0011,-2.72148 -12.0259,-5.9628 -17.27394,-11.2106 -5.24773,-5.25014 -8.48863,-10.27211 -11.20964,-17.27225 -2.05352,-5.28541 -4.47792,-13.21708 -5.14546,-27.84074 -0.71982,-15.81387 -0.87269,-20.54891 -0.87269,-60.59756 0,-40.04637 0.16465,-44.78135 0.87269,-60.59757 0.66803,-14.62131 3.09194,-22.60002 5.14546,-27.88544 2.72101,-7.00014 5.96191,-11.97975 11.20964,-17.22754 5.24804,-5.2478 10.27284,-8.48912 17.27394,-11.21061 5.28517,-2.04643 13.21773,-4.52334 27.84074,-5.19137 15.81597,-0.72913 20.54909,-0.87028 60.59684,-0.87028 z m 80.07621,24.90046 c -9.93951,0 -18.0092,8.06807 -18.0092,18.00848 0,9.94042 8.06969,18.00854 18.0092,18.00854 9.94066,0 18.00896,-8.06812 18.00896,-18.00854 0,-9.94041 -8.0683,-18.00848 -18.00896,-18.00848 z m -80.07621,21.04051 c -42.53614,0 -76.99809,34.50924 -76.99809,77.04418 0,42.53735 34.46195,76.99713 76.99809,76.99713 42.53614,0 77.04394,-34.45978 77.04394,-76.99713 0,-42.53494 -34.5078,-77.04418 -77.04394,-77.04418 z m 0,27.0598 c 27.61161,0 49.98438,22.37415 49.98438,49.98438 0,27.61257 -22.37277,49.98438 -49.98438,49.98438 -27.61161,0 -49.98444,-22.37181 -49.98444,-49.98438 0,-27.61023 22.37283,-49.98438 49.98444,-49.98438 z"/></g></svg>
+                </button>
+              </div>
           </div>
         </div>
-        <div class="card setting-card">
-          <div class="setting-row"><div><div class="t">Crit Launcher</div><div class="d">Version 1.0 · offline-mode Minecraft launcher</div></div></div>
         </div>
       </section>
     </main>
@@ -862,6 +982,7 @@ const ICONS = {
   "trash": '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',
   "check": '<path d="M20 6 9 17l-5-5"/>',
   "x": '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  "hard-drive": '<line x1="22" x2="2" y1="12" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" x2="6.01" y1="16" y2="16"/><line x1="10" x2="10.01" y1="16" y2="16"/>',
   "folder-open": '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
   "chevron-down": '<path d="m6 9 6 6 6-6"/>',
   "chevron-left": '<path d="m15 18-6-6 6-6"/>',
@@ -886,9 +1007,10 @@ const ICONS = {
   "star": '<polygon points="12 2.5 15.3 9.2 22.5 10.2 17.3 15.3 18.5 22.5 12 19 5.5 22.5 6.7 15.3 1.5 10.2 8.7 9.2"/>',
   "pin": '<path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/>',
   "hexagon": '<polygon points="21 12 16.5 20 7.5 20 3 12 7.5 4 16.5 4"/>',
+  "square-diamond": '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M12 7.5 16.5 12 12 16.5 7.5 12Z"/>',
   "diamond": '<polygon points="12 2 22 12 12 22 2 12"/>',
   "heart": '<path d="M20.8 4.9a5.5 5.5 0 0 0-7.8 0L12 5.9l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21.5l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8Z"/>',
-  "cat": '<path d="M4 8 8 4v4"/><path d="M20 8 16 4v4"/><circle cx="12" cy="13" r="7"/><circle cx="9.5" cy="12.5" r=".6" fill="currentColor"/><circle cx="14.5" cy="12.5" r=".6" fill="currentColor"/><path d="M10 16c1 1 3 1 4 0"/>',
+  "cat": '<path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" stroke="none" d="M12.0196 14.9374C11.7284 14.9374 11.4307 14.9818 11.1784 15.0796C11.0546 15.1275 10.9032 15.2031 10.7699 15.3252C10.6361 15.4479 10.4632 15.6749 10.4632 15.9999C10.4632 16.3249 10.6361 16.5519 10.7699 16.6745C10.9032 16.7967 11.0546 16.8722 11.1784 16.9202C11.4307 17.018 11.7284 17.0624 12.0196 17.0624C12.3109 17.0624 12.6085 17.018 12.8609 16.9202C12.9846 16.8722 13.136 16.7967 13.2693 16.6745C13.4032 16.5519 13.5761 16.3249 13.5761 15.9999C13.5761 15.6749 13.4032 15.4479 13.2693 15.3252C13.136 15.2031 12.9846 15.1275 12.8609 15.0796C12.6085 14.9818 12.3109 14.9374 12.0196 14.9374Z"/><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" stroke="none" d="M14.0365 12.6464C14.2015 12.38 14.5274 12.0625 15.0163 12.0625C15.5051 12.0625 15.831 12.38 15.996 12.6464C16.1681 12.9243 16.2501 13.2612 16.2501 13.5938C16.2501 13.9263 16.1681 14.2632 15.996 14.5411C15.831 14.8075 15.5051 15.125 15.0163 15.125C14.5274 15.125 14.2015 14.8075 14.0365 14.5411C13.8644 14.2632 13.7824 13.9263 13.7824 13.5938C13.7824 13.2612 13.8644 12.9243 14.0365 12.6464Z"/><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" stroke="none" d="M9.01634 12.0625C8.52751 12.0625 8.20161 12.38 8.03658 12.6464C7.86445 12.9243 7.78247 13.2612 7.78247 13.5938C7.78247 13.9263 7.86445 14.2632 8.03658 14.5411C8.20161 14.8075 8.52751 15.125 9.01634 15.125C9.50518 15.125 9.83108 14.8075 9.9961 14.5411C10.1682 14.2632 10.2502 13.9263 10.2502 13.5938C10.2502 13.2612 10.1682 12.9243 9.9961 12.6464C9.83108 12.38 9.50518 12.0625 9.01634 12.0625Z"/><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" stroke="none" d="M6.09485 4.25C5.48148 4.25 4.77463 4.42871 4.20882 4.91616C3.62226 5.4215 3.27004 6.18781 3.27004 7.1875V9.0625L3.27005 9.06545C3.2712 9.35941 3.3211 9.94757 3.4888 10.4392C3.54365 10.6001 3.63129 10.8134 3.77764 11.0058C3.49364 11.5688 3.35904 12.1495 3.29787 12.7095C3.2468 13.1771 3.24611 13.6679 3.25424 14.1211C2.5932 14.3507 1.90877 14.6349 1.5932 14.8387C1.24524 15.0634 1.14534 15.5277 1.37006 15.8756C1.59478 16.2236 2.05903 16.3235 2.40698 16.0988C2.5234 16.0236 2.86686 15.8664 3.31867 15.6939C3.38755 16.173 3.52716 16.6095 3.7221 17.0063C3.56621 17.1035 3.42847 17.1935 3.31889 17.2652C3.27694 17.2926 3.23912 17.3173 3.20599 17.3387C2.85803 17.5634 2.75813 18.0277 2.98285 18.3756C3.20757 18.7236 3.67182 18.8235 4.01978 18.5988C4.0609 18.5722 4.10473 18.5436 4.15098 18.5134C4.28216 18.4278 4.43287 18.3294 4.59701 18.2288C5.18653 18.8313 5.91865 19.2964 6.67916 19.6462C8.45998 20.4654 10.569 20.75 12.0001 20.75C13.4311 20.75 15.5402 20.4654 17.321 19.6462C18.0815 19.2964 18.8136 18.8313 19.4031 18.2288C19.5673 18.3294 19.718 18.4278 19.8491 18.5134C19.8954 18.5436 19.9392 18.5722 19.9803 18.5988C20.3283 18.8235 20.7925 18.7236 21.0173 18.3756C21.242 18.0277 21.1421 17.5634 20.7941 17.3387C20.761 17.3173 20.7232 17.2926 20.6812 17.2652C20.5716 17.1935 20.4339 17.1035 20.2781 17.0063C20.473 16.6095 20.6127 16.173 20.6815 15.6938C21.1335 15.8663 21.4771 16.0236 21.5936 16.0988C21.9415 16.3235 22.4058 16.2236 22.6305 15.8756C22.8552 15.5277 22.7553 15.0634 22.4074 14.8387C22.0917 14.6349 21.4071 14.3506 20.7459 14.121C20.7541 13.6678 20.7534 13.177 20.7023 12.7095C20.6412 12.1495 20.5065 11.5688 20.2225 11.0058C20.3689 10.8134 20.4565 10.6001 20.5114 10.4392C20.6791 9.94758 20.729 9.35941 20.7301 9.06545L20.7302 9.0625V7.18761C20.7302 6.18792 20.3779 5.42162 19.7914 4.91628C19.2256 4.42882 18.5187 4.25011 17.9054 4.25011C17.4969 4.25011 17.0744 4.40685 16.7337 4.56076C16.3726 4.72392 15.9952 4.9359 15.6558 5.13136C15.5828 5.17339 15.5119 5.21444 15.443 5.25432L15.441 5.25548C15.177 5.4084 14.9427 5.5441 14.7339 5.65167C14.6042 5.7185 14.5035 5.7643 14.4285 5.79206C14.3969 5.80377 14.3767 5.80966 14.3663 5.81242C14.1129 5.81102 13.9514 5.79033 13.7181 5.76044C13.6681 5.75403 13.6147 5.74719 13.5564 5.74003C13.2098 5.69743 12.7722 5.65636 12.0001 5.65636C11.228 5.65636 10.7905 5.69743 10.4438 5.74003C10.3855 5.74719 10.3322 5.75403 10.2821 5.76044C10.0489 5.79033 9.88738 5.81102 9.63388 5.81242C9.62352 5.80966 9.60332 5.80376 9.57174 5.79206C9.49678 5.7643 9.39604 5.71849 9.26633 5.65166C9.05755 5.54408 8.82331 5.40842 8.55926 5.25548C8.48975 5.21523 8.41818 5.17377 8.34446 5.13132C8.00502 4.93584 7.62764 4.72384 7.26652 4.56067C6.92587 4.40675 6.50329 4.25 6.09485 4.25ZM6.16192 17.6138C6.49595 17.8657 6.8808 18.0879 7.30604 18.2835C8.83694 18.9877 10.7179 19.25 12.0001 19.25C13.2823 19.25 15.1632 18.9877 16.6941 18.2835C17.1194 18.0879 17.5042 17.8657 17.8382 17.6138C17.4858 17.5524 17.2179 17.245 17.2179 16.875C17.2179 16.4608 17.5537 16.125 17.9679 16.125C18.2951 16.125 18.6295 16.2068 18.9399 16.3204C19.0985 15.9885 19.1959 15.625 19.2226 15.2271C18.9249 15.1544 18.7193 15.125 18.6134 15.125C18.1992 15.125 17.8634 14.7892 17.8634 14.375C17.8634 13.9608 18.1992 13.625 18.6134 13.625C18.8081 13.625 19.0284 13.6542 19.2504 13.6974C19.2505 13.4213 19.2415 13.1502 19.2112 12.8724C19.1407 12.227 18.958 11.6541 18.5269 11.1447C18.3727 10.9625 18.1809 10.7813 17.9402 10.6045C17.6063 10.3594 17.5344 9.88999 17.7796 9.55611C18.0247 9.22224 18.4941 9.15031 18.828 9.39546C18.9471 9.48292 19.0597 9.57282 19.1659 9.66506C19.2099 9.43686 19.2295 9.19817 19.2302 9.06087V7.18761C19.2302 6.56231 19.0238 6.23486 18.8123 6.0527C18.5801 5.85266 18.2496 5.75011 17.9054 5.75011C17.835 5.75011 17.659 5.78868 17.3513 5.92771C17.064 6.0575 16.7432 6.23612 16.4043 6.43125C16.3407 6.4679 16.2759 6.50544 16.2106 6.54328C15.9428 6.69843 15.666 6.85883 15.4209 6.98509C15.2663 7.06473 15.1052 7.14099 14.9495 7.19867C14.8058 7.25192 14.607 7.3125 14.3941 7.3125C14.0223 7.3125 13.7617 7.27877 13.5115 7.2464C13.4654 7.24043 13.4196 7.23449 13.3735 7.22883C13.0848 7.19336 12.7084 7.15636 12.0001 7.15636C11.2919 7.15636 10.9154 7.19336 10.6267 7.22883C10.5807 7.23449 10.5349 7.24042 10.4887 7.24639C10.2386 7.27877 9.97796 7.3125 9.6061 7.3125C9.39326 7.3125 9.19445 7.25191 9.05069 7.19866C8.89497 7.14098 8.73386 7.06471 8.57928 6.98506C8.33423 6.8588 8.05742 6.69839 7.78968 6.54325C7.72435 6.50539 7.65955 6.46784 7.59589 6.43118C7.25702 6.23603 6.93614 6.05741 6.64888 5.92761C6.34115 5.78856 6.16522 5.75 6.09485 5.75C5.75062 5.75 5.42007 5.85254 5.18787 6.05259C4.97643 6.23475 4.77004 6.56219 4.77004 7.1875V9.06088C4.7707 9.19819 4.79025 9.43686 4.83425 9.66506C4.94053 9.57281 5.05309 9.48292 5.1722 9.39546C5.50608 9.15031 5.97547 9.22224 6.22062 9.55612C6.46577 9.88999 6.39385 10.3594 6.05997 10.6045C5.81926 10.7813 5.62748 10.9625 5.47331 11.1447C5.04223 11.6541 4.85949 12.227 4.789 12.8724C4.75865 13.1502 4.74966 13.4213 4.74975 13.6975C4.97192 13.6543 5.19231 13.625 5.38719 13.625C5.80141 13.625 6.13719 13.9608 6.13719 14.375C6.13719 14.7892 5.80141 15.125 5.38719 15.125C5.28121 15.125 5.07549 15.1544 4.77758 15.2271C4.80434 15.625 4.90168 15.9885 5.06027 16.3203C5.37069 16.2068 5.70504 16.125 6.03224 16.125C6.44646 16.125 6.78224 16.4608 6.78224 16.875C6.78224 17.245 6.51433 17.5524 6.16192 17.6138Z"/>',
   "ghost": '<path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8Z"/>',
   "skull": '<circle cx="12" cy="11" r="8"/><circle cx="9" cy="11" r="1.3" fill="currentColor"/><circle cx="15" cy="11" r="1.3" fill="currentColor"/><path d="M9 16.5h6"/><path d="M10 20.5v-2"/><path d="M14 20.5v-2"/>',
   "zap": '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
@@ -898,6 +1020,12 @@ const ICONS = {
   "external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
   "shield-check": '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
   "list": '<line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>',
+  "server": '<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
+  "terminal": '<polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/>',
+  "users": '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  "activity": '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+  "send": '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+  "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
   "check-circle": '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>',
 };
 const FILLED = new Set(["play", "square"]);
@@ -916,7 +1044,8 @@ const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 let STATE = { accounts: [], instances: [], running: [], sessions: {}, installing: [], playtime_total: 0,
   active_account: null, active_instance: null, settings: { memory_mb: 2048, sidebar_collapsed: false }, java_ok: false, java_version: null };
-let PROGRESS = null;      let _resolveApi;
+let PROGRESS = null;
+let _resolveApi;
 const apiReady = new Promise((r) => (_resolveApi = r));
 window.addEventListener("pywebviewready", () => _resolveApi());
 async function callApi(method, ...args) {
@@ -1018,7 +1147,8 @@ document.addEventListener("scroll", (e) => {
 class CSelect {
   constructor(root, opts = {}) {
     this.root = root;
-    this.opts = opts;     this.options = [];
+    this.opts = opts;
+    this.options = [];
     this.value = null;
     this.active = -1;
     this.typed = "";
@@ -1178,7 +1308,7 @@ function hydrateFaces(root = document) {
     tryLoad(0);
   });
 }
-const PAGE_TITLES = { home: "Home", instances: "Instances", addons: "Addons", accounts: "Accounts", skins: "Skins", import: "Import", settings: "Settings" };
+const PAGE_TITLES = { home: "Home", instances: "Instances", servers: "Servers", addons: "Addons", accounts: "Accounts", skins: "Skins", import: "Import", settings: "Settings" };
 let currentPage = "home";
 function navigateTo(page) {
   currentPage = page;
@@ -1194,14 +1324,23 @@ function navigateTo(page) {
   if (page === "import" && !importLoaded) loadImportSources();
   if (page === "settings") renderSettings();
   if (page === "skins") openSkinsPage();
+  if (page === "servers") { if (!SRV.cur) showServerView("list"); loadServers(); showServerBetaNotice(); }
+  if (page === "servers") refreshDisk("servers");
+  updateSaveBar();
 }
+function applyTheme(key, persist) {
+  if (!["green", "blue", "purple", "red", "orange", "pink"].includes(key)) key = "green";
+  document.documentElement.dataset.theme = key;
+  $$("#theme-swatches .theme-swatch").forEach((b) => b.classList.toggle("on", b.dataset.theme === key));
+  try { localStorage.setItem("crit-theme", key); } catch (e) {}
+  if (persist) { STATE.settings.theme = key; callApi("save_settings", { theme: key }); }
+}
+try { applyTheme(localStorage.getItem("crit-theme") || "green", false); } catch (e) {}
+$("#theme-swatches").addEventListener("click", (e) => { const b = e.target.closest(".theme-swatch"); if (b) applyTheme(b.dataset.theme, true); });
 let sidebarSelect;
 function applyCompact(compact, persist) {
   document.body.classList.toggle("compact", compact);
   $("#btn-collapse").dataset.tip = compact ? "Expand sidebar" : "Collapse sidebar";
-  const sw = $("#switch-compact");
-  sw.classList.toggle("on", compact);
-  sw.setAttribute("aria-checked", compact ? "true" : "false");
   OPEN_SELECTS.forEach((s) => s.close());
   if (persist) callApi("save_settings", { sidebar_collapsed: compact });
 }
@@ -1279,6 +1418,15 @@ function renderHome() {
   btn.disabled = !inst || running || installing;
 }
 $("#btn-home-play").addEventListener("click", () => { if (STATE.active_instance) launchInstance(STATE.active_instance.name); });
+const DISK = { instances: {}, servers: {} };
+function diskLabel(kind, name) { const n = DISK[kind][name]; return n == null ? "Calculating..." : fmtBytes(n); }
+async function refreshDisk(kind) {
+  const r = await callApi("get_disk_usage", kind);
+  if (!r || !r.success) { $$(`[data-disk^="${kind}|"]`).forEach((el) => { el.textContent = ""; }); return; }
+  DISK[kind] = r.sizes || {};
+  $$(`[data-disk^="${kind}|"]`).forEach((el) => { el.textContent = diskLabel(kind, el.dataset.disk.slice(kind.length + 1)); });
+  if (kind === "servers" && SRV.cur && $("#sdp-overview")) renderOverview();
+}
 function renderInstances() {
   const list = $("#instance-list");
   if (!STATE.instances.length) {
@@ -1301,7 +1449,7 @@ function renderInstances() {
       <div class="btn-row">${main}
         <button class="btn small icon-only${i.name === activeName ? " is-main" : ""}" data-action="main" data-name="${esc(i.name)}" ${i.name === activeName ? "disabled" : ""} data-tip="${i.name === activeName ? "Main installation" : "Set as main installation"}" aria-label="${i.name === activeName ? "Main installation" : "Set as main installation"}">${icon("star", 15)}</button>
         <button class="btn small icon-only" data-action="shots" data-name="${esc(i.name)}" data-tip="View screenshots" aria-label="View screenshots">${icon("image", 15)}</button>
-        <button class="btn small icon-only" data-action="content" data-name="${esc(i.name)}" data-tip="${i.loader === "vanilla" ? "View resource packs" : "View mods &amp; resource packs"}" aria-label="View content">${icon("list", 15)}</button>
+        <button class="btn small icon-only" data-action="content" data-name="${esc(i.name)}" data-tip="View addons" aria-label="View addons">${icon("list", 15)}</button>
         <button class="btn small icon-only" data-action="folder" data-name="${esc(i.name)}" data-tip="Open game folder" aria-label="Open game folder">${icon("folder-open", 15)}</button>
         <button class="btn small icon-only danger" data-action="delete" data-name="${esc(i.name)}" data-tip="Delete instance" aria-label="Delete instance">${icon("trash", 15)}</button>
       </div></div>`;
@@ -1630,9 +1778,52 @@ async function openScreenshots(name) {
   const body = $("#shots-body"); if (!body) return;
   if (!r.success) { body.innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(r.error)}</div></div>`; return; }
   if (!r.screenshots.length) { body.innerHTML = `<div class="empty">${icon("image", 28)}<div>No screenshots yet. Press F2 in-game to take one.</div></div>`; return; }
-  body.innerHTML = `<div class="shots-grid">${r.screenshots.map((s) =>
-    `<a class="shot" href="${s.path}" target="_blank" data-tip="${esc(s.file)}"><img src="${s.path}" loading="lazy" alt="" /></a>`).join("")}</div>`;
-  stagger($(".shots-grid", body));
+  const shots = r.screenshots;
+  const cache = new Map();
+  const fetchShot = async (file) => {
+    if (cache.has(file)) return cache.get(file);
+    const res = await callApi("get_screenshot_image", name, file);
+    const uri = res && res.success ? res.image : null;
+    cache.set(file, uri);
+    return uri;
+  };
+  const showGrid = () => {
+    body.innerHTML = `<div class="shots-grid">${shots.map((s, n) =>
+      `<button class="shot" data-n="${n}" data-tip="${esc(s.file)}"><span class="ico shot-ph">${icon("image", 22)}</span></button>`).join("")}</div>`;
+    const grid = $(".shots-grid", body);
+    stagger(grid);
+    const queue = []; let active = 0;
+    const pump = () => {
+      while (active < 2 && queue.length) {
+        const el = queue.shift(); active++;
+        fetchShot(shots[+el.dataset.n].file).then((uri) => {
+          if (!el.isConnected) return;
+          el.innerHTML = uri ? `<img src="${uri}" alt="" />` : `<span class="ico shot-ph">${icon("alert", 22)}</span>`;
+        }).finally(() => { active--; pump(); });
+      }
+    };
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => { if (en.isIntersecting) { io.unobserve(en.target); queue.push(en.target); } });
+      pump();
+    }, { root: grid, rootMargin: "200px" });
+    $$(".shot", grid).forEach((el) => io.observe(el));
+    grid.addEventListener("click", (e) => {
+      const b = e.target.closest(".shot"); if (!b) return;
+      showOne(+b.dataset.n);
+    });
+  };
+  const showOne = async (n) => {
+    const s = shots[n];
+    body.innerHTML = `<div class="shot-view">
+      <div class="shot-view-bar"><button class="btn small" id="shot-back">${icon("chevrons-left", 14)}Back</button>
+        <span class="shot-view-name">${esc(s.file)}</span></div>
+      <div class="shot-view-img"><div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Loading...</div></div></div>`;
+    $("#shot-back", body).addEventListener("click", showGrid);
+    const uri = await fetchShot(s.file);
+    const box = $(".shot-view-img", body); if (!box) return;
+    box.innerHTML = uri ? `<img src="${uri}" alt="" />` : `<div class="empty">${icon("alert", 28)}<div>Couldn't load this screenshot.</div></div>`;
+  };
+  showGrid();
 }
 function openIconPicker(name) {
   const inst = STATE.instances.find((i) => i.name === name); if (!inst) return;
@@ -1654,7 +1845,7 @@ function openIconPicker(name) {
   stagger(grid);
 }
 let importLoaded = false, importSources = [], importBusy = false;
-const LAUNCHER_ICONS = { prismlauncher: "gem", fastclient: "zap" };
+const LAUNCHER_ICONS = { prismlauncher: "gem", polymc: "hexagon", sklauncher: "square-diamond", fastclient: "zap" };
 async function loadImportSources() {
   importLoaded = true;
   const body = $("#import-body");
@@ -1668,7 +1859,7 @@ $("#btn-import-scan").addEventListener("click", loadImportSources);
 function renderImportSources() {
   const body = $("#import-body");
   if (!importSources.length) {
-    body.innerHTML = `<div class="empty">${icon("download", 30)}<div>No other launchers were found on this PC.<br>Checked for the Minecraft Launcher, Prism Launcher and Fast Client.</div></div>`;
+    body.innerHTML = `<div class="empty">${icon("download", 30)}<div>No other launchers were found on this PC.<br>Checked for the Minecraft Launcher, Prism Launcher, PolyMC, SKLauncher and Fast Client.</div></div>`;
     return;
   }
   body.innerHTML = importSources.map((src) => `
@@ -1685,6 +1876,9 @@ function renderImportSources() {
                 ${inst.config_count ? `<span class="import-badge">${inst.config_count} config files</span>` : ""}
                 ${inst.resourcepacks_count ? `<span class="import-badge">${inst.resourcepacks_count} resource packs</span>` : ""}
                 ${inst.saves_count ? `<span class="import-badge">${inst.saves_count} worlds</span>` : ""}
+                ${inst.shaderpacks_count ? `<span class="import-badge">${inst.shaderpacks_count} shader packs</span>` : ""}
+                ${inst.schematics_count ? `<span class="import-badge">${inst.schematics_count} schematics</span>` : ""}
+                ${inst.screenshots_count ? `<span class="import-badge">${inst.screenshots_count} screenshots</span>` : ""}
                 ${!["vanilla", "fabric", "forge"].includes(inst.loader) ? `<span class="import-badge warn">${esc(loaderNice(inst.loader))} not supported</span>` : ""}
               </div></div></div>
           <span class="ico" style="color:var(--faint)">${icon("chevron-right", 18)}</span>
@@ -1703,7 +1897,7 @@ async function openImportModal(launcher, sourceId) {
   $("#modal-body").innerHTML = `
     <div class="m-title" style="margin-bottom:4px">Import "${esc(inst.name)}"</div>
     <div class="m-desc">From ${esc(src.label)} · ${esc(inst.version || "unknown version")} · ${esc(loaderLabel(inst))}</div>
-    ${unsupported ? `<div class="warn-box" style="margin-bottom:14px">${icon("alert", 18)}<div>${unknownLoader ? "Couldn't work out which mod loader this uses, so mods can't be copied in safely." : `Crit Launcher doesn't support ${esc(loaderNice(inst.loader))} yet, so mods can't be copied in.`} Options and resource packs still can be.</div></div>` : ""}
+    ${unsupported ? `<div class="warn-box" style="margin-bottom:14px">${icon("alert", 18)}<div>${unknownLoader ? "Couldn't work out which mod loader this uses, so mods can't be copied in safely." : `Crit Launcher doesn't support ${esc(loaderNice(inst.loader))} yet, so mods can't be copied in.`} Options, resource packs, worlds, shader packs, schematics and screenshots still can be, and it'll be created as a Vanilla instance.</div></div>` : ""}
     <div class="section-title" style="margin-top:0">What to copy</div>
     <div id="import-checks"></div>
     <div class="section-title">Destination</div>
@@ -1713,12 +1907,15 @@ async function openImportModal(launcher, sourceId) {
     <div class="form-error" id="import-error" style="margin-top:12px"></div>
     <button class="btn primary" id="import-go" style="margin-top:6px;width:100%">${icon("download", 16)}Import</button>`;
   const checks = [
-    { key: "options", label: "Copy options.txt", desc: "Video, controls and other game settings.", available: inst.has_options },
+    { key: "options", label: "Copy options.txt", desc: "Video, controls and other game settings, plus your server list (servers.dat) and hotbars (hotbar.nbt).", available: inst.has_options },
     { key: "mods", label: `Copy mods${inst.mods_count ? ` (${inst.mods_count})` : ""}`, desc: "Only works for Fabric or Forge.", available: inst.mods_count > 0 && !unsupported },
     { key: "config", label: `Copy mod config${inst.config_count ? ` (${inst.config_count})` : ""}`, desc: "Per-mod settings from the instance's config folder. Only works for Fabric or Forge.", available: inst.config_count > 0 && !unsupported },
     { key: "resourcepacks", label: `Copy resource packs${inst.resourcepacks_count ? ` (${inst.resourcepacks_count})` : ""}`, desc: "", available: inst.resourcepacks_count > 0 },
     { key: "saves", label: `Copy worlds${inst.saves_count ? ` (${inst.saves_count})` : ""}`, desc: "Singleplayer save files.", available: inst.saves_count > 0 },
-  ];
+    { key: "shaderpacks", label: `Copy shader packs${inst.shaderpacks_count ? ` (${inst.shaderpacks_count})` : ""}`, desc: "From the shaderpacks folder.", available: inst.shaderpacks_count > 0, hideIfMissing: true },
+    { key: "schematics", label: `Copy schematics${inst.schematics_count ? ` (${inst.schematics_count})` : ""}`, desc: "From the schematics folder.", available: inst.schematics_count > 0, hideIfMissing: true },
+    { key: "screenshots", label: `Copy screenshots${inst.screenshots_count ? ` (${inst.screenshots_count})` : ""}`, desc: "From the screenshots folder.", available: inst.screenshots_count > 0, hideIfMissing: true },
+  ].filter((c) => !c.hideIfMissing || c.available);
   const checksEl = $("#import-checks");
   checksEl.innerHTML = checks.map((c) => `
     <div class="check-row${c.available ? "" : " disabled"}" data-check="${c.key}">
@@ -1778,6 +1975,9 @@ async function openImportModal(launcher, sourceId) {
     const wantConfig = $('.check-row[data-check="config"] .checkbox').classList.contains("on");
     const wantPacks = $('.check-row[data-check="resourcepacks"] .checkbox').classList.contains("on");
     const wantSaves = $('.check-row[data-check="saves"] .checkbox').classList.contains("on");
+    const wantShaders = wantChecked("shaderpacks");
+    const wantSchematics = wantChecked("schematics");
+    const wantScreenshots = wantChecked("screenshots");
     let destName = null, existing = null;
     if (dest === "new") {
       destName = $("#import-name").value.trim();
@@ -1790,7 +1990,7 @@ async function openImportModal(launcher, sourceId) {
     importBusy = true;
     const btn = $("#import-go"); const oldHtml = btn.innerHTML;
     btn.disabled = true; btn.innerHTML = `<span class="ico spin">${icon("loader", 15)}</span>Importing...`;
-    const r = await callApi("import_launcher_instance", launcher, sourceId, destName, existing, wantOptions, wantMods, wantPacks, wantSaves, wantConfig);
+    const r = await callApi("import_launcher_instance", launcher, sourceId, destName, existing, wantOptions, wantMods, wantPacks, wantSaves, wantConfig, wantShaders, wantSchematics, wantScreenshots);
     if (!r.success) {
       importBusy = false; btn.disabled = false; btn.innerHTML = oldHtml;
       err.textContent = r.error;
@@ -1802,6 +2002,7 @@ const ADDON_TYPES = [
   { value: "mod", label: "Mods", icon: "puzzle", placeholder: "Search mods...", noun: "mod" },
   { value: "resourcepack", label: "Resource Packs", icon: "image", placeholder: "Search resource packs...", noun: "resource pack" },
   { value: "modpack", label: "Modpacks", icon: "layers", placeholder: "Search modpacks...", noun: "modpack" },
+  { value: "shader", label: "Shaders", icon: "sun", placeholder: "Search shaders...", noun: "shader" },
 ];
 let addonType = "mod", addonLoaded = false, addonToken = 0, addonHits = [];
 let addonTypeSel;
@@ -1831,18 +2032,33 @@ $("#addon-results").addEventListener("click", (e) => {
   const c = e.target.closest(".addon-card"); if (c) openAddon(addonHits[parseInt(c.dataset.i, 10)]);
 });
 let modalHit = null, modalBusy = false;
-function openModal(wide = false) { $("#modal").classList.toggle("wide", wide); $("#modal-overlay").classList.add("open"); }
+function openModal(wide = false) { $("#modal").classList.remove("xl"); $("#modal").classList.toggle("wide", wide); $("#modal-overlay").classList.add("open"); }
 function closeModal() {
   if (modalBusy) return;
   msCancel(); addStep++;
   $("#modal-overlay").classList.remove("open");
-  modalHit = null; CV = null; iconQueue = [];
+  modalHit = null; CV = null; SM = null; iconQueue = [];
   if (iconObserver) iconObserver.disconnect();
+}
+function showServerBetaNotice() {
+  if (STATE.settings.server_beta_seen) return;
+  STATE.settings.server_beta_seen = true;
+  callApi("save_settings", { server_beta_seen: true });
+  modalHit = null; addStep++;
+  $("#modal-body").innerHTML = `
+    <div class="m-title" style="margin-bottom:4px">Server hosting is in beta</div>
+    <div class="m-desc">Hosting servers from Crit Launcher is still being worked on, so you might run into bugs or missing features. Back up anything important, and let us know if something breaks.</div>
+    <div class="warn-box" style="margin-bottom:14px">${icon("alert", 18)}<div>Beta feature: things may change or not work perfectly yet.</div></div>
+    <button class="btn primary" id="srv-beta-ok" style="width:100%">Got it</button>`;
+  $("#srv-beta-ok").addEventListener("click", closeModal);
+  openModal();
 }
 $("#modal-close").addEventListener("click", closeModal);
 $("#modal-overlay").addEventListener("mousedown", (e) => { if (e.target.id === "modal-overlay") closeModal(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !OPEN_SELECTS.size) closeModal(); });
-let pendingInstall = null; function openAddon(hit) {
+let ADDON_TARGETS = [];
+let pendingInstall = null;
+function openAddon(hit) {
   modalHit = hit; pendingInstall = null;
   const t = ADDON_TYPES.find((x) => x.value === addonType);
   const cats = (hit.display_categories || hit.categories || []).slice(0, 6);
@@ -1863,15 +2079,15 @@ let pendingInstall = null; function openAddon(hit) {
     $("#btn-install-pack").addEventListener("click", installModpack);
   } else if (isMod) {
     action.innerHTML = `<div class="btn-row">
-        <button class="btn primary" id="btn-pick-target" style="flex:1">${icon("download", 16)}Install</button>
-        <button class="btn" id="btn-pick-all" data-tip="Install this mod and everything it needs">${icon("layers", 15)}Download all</button>
+        <button class="btn primary" id="btn-pick-target" style="min-width:220px;justify-content:center;font-size:16px;font-weight:650;padding:11px 26px">${icon("download", 16)}Install</button>
+        <button class="btn" id="btn-pick-all" style="display:none" data-tip="Install this mod and everything it needs">${icon("layers", 15)}Download all</button>
       </div>
       <div class="target-list" id="target-list"></div>`;
     $("#btn-pick-target").addEventListener("click", () => pickTargetFor(hit.project_id, false, hit.title));
     $("#btn-pick-all").addEventListener("click", () => pickTargetFor(hit.project_id, true, hit.title));
     loadDependencies(hit.project_id);
   } else {
-    action.innerHTML = `<button class="btn primary" id="btn-pick-target">${icon("download", 16)}Install to instance</button>
+    action.innerHTML = `<button class="btn primary" id="btn-pick-target" style="font-size:16px;font-weight:650;padding:11px 26px">${icon("download", 16)}Install to instance</button>
       <div class="target-list" id="target-list"></div>`;
     $("#btn-pick-target").addEventListener("click", () => pickTargetFor(hit.project_id, false, hit.title));
   }
@@ -1884,6 +2100,7 @@ async function loadDependencies(projectId) {
   const r = await callApi("get_addon_dependencies", projectId, targetName);
   if (!el.isConnected) return;
   if (!r.success || !r.dependencies.length) { el.innerHTML = ""; return; }
+  const all = $("#btn-pick-all"); if (all) all.style.display = "";
   el.innerHTML = `<div class="section-title" style="margin-top:14px">Dependencies</div>
     <div class="dep-list">${r.dependencies.map((d) => `
       <div class="dep-row" data-id="${esc(d.project_id)}" data-title="${esc(d.title)}">
@@ -1906,8 +2123,9 @@ async function toggleTargets(forceOpen) {
   list.classList.add("open");
   const r = await callApi("get_addon_targets", addonType);
   if (!r.success) { list.innerHTML = `<div class="target-empty">${esc(r.error)}</div>`; return; }
+  ADDON_TARGETS = r.instances;
   if (!r.instances.length) {
-    list.innerHTML = `<div class="target-empty">${addonType === "mod" ? "You need a Fabric or Forge instance first." : "Create an instance first."}</div>`;
+    list.innerHTML = `<div class="target-empty">${addonType === "mod" ? "You need a Fabric or Forge instance first." : addonType === "shader" ? "You need a Fabric instance first (shaders run through Iris)." : "Create an instance first."}</div>`;
     return;
   }
   list.innerHTML = r.instances.map((i) => `<button class="target" data-name="${esc(i.name)}">
@@ -1915,12 +2133,37 @@ async function toggleTargets(forceOpen) {
     <span class="ico">${icon("download", 15)}</span></button>`).join("");
   $$(".target", list).forEach((b) => b.addEventListener("click", () => installTo(b)));
 }
+function askInstallIris(instName) {
+  return new Promise((resolve) => {
+    const old = $("#iris-ask"); if (old) old.remove();
+    const box = document.createElement("div");
+    box.id = "iris-ask"; box.className = "iris-ask";
+    box.innerHTML = `<div class="t">${esc(instName)} doesn't have Iris</div>
+      <div class="d">Shaders only work with Iris. Install Iris as well?</div>
+      <div class="btn-row"><button class="btn primary small" data-iris="yes">${icon("download", 13)}Install Iris</button><button class="btn small" data-iris="no">No</button></div>`;
+    $("#target-list").insertAdjacentElement("afterend", box);
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-iris]"); if (!b) return;
+      box.remove(); resolve(b.dataset.iris === "yes");
+    });
+  });
+}
 async function installTo(btn) {
-  if (modalBusy || !modalHit) return;
+  if (modalBusy || !modalHit || $("#iris-ask")) return;
   const job = pendingInstall || { project_id: modalHit.project_id, include_deps: true, label: modalHit.title };
+  const target = ADDON_TARGETS.find((x) => x.name === btn.dataset.name);
+  const needIris = addonType === "shader" && target && !target.iris;
+  if (needIris && !(await askInstallIris(btn.dataset.name))) return;
+  if (!modalHit) return;
   modalBusy = true;
   const spot = btn.lastElementChild;
   spot.innerHTML = icon("loader", 15); spot.classList.add("spin");
+  if (needIris) {
+    const ir = await callApi("install_iris", btn.dataset.name);
+    if (!ir.success) { modalBusy = false; spot.classList.remove("spin"); spot.innerHTML = icon("alert", 15); toast(ir.error, "error"); return; }
+    target.iris = true;
+    toast(`Installed Iris${ir.files.length > 1 ? ` (+${ir.files.length - 1} dependenc${ir.files.length === 2 ? "y" : "ies"})` : ""} into ${btn.dataset.name}`);
+  }
   const r = await callApi("install_addon", job.project_id, addonType, btn.dataset.name, job.include_deps);
   modalBusy = false;
   spot.classList.remove("spin");
@@ -1940,6 +2183,11 @@ async function installModpack() {
   const r = await callApi("install_modpack", modalHit.project_id);
   if (!r.success) { modalBusy = false; $("#btn-install-pack").disabled = false; $("#pack-box").classList.remove("show"); $("#pack-error").textContent = r.error; }
 }
+$$(".social-btn").forEach((btn) => btn.addEventListener("click", () => {
+  const url = btn.dataset.url;
+  if (window.pywebview && window.pywebview.api && window.pywebview.api.open_url) window.pywebview.api.open_url(url);
+  else window.open(url, "_blank");
+}));
 let CV = null, iconObserver = null, iconQueue = [], iconActive = 0;
 const ICON_CACHE = new Map();
 async function openContent(name) {
@@ -1948,13 +2196,15 @@ async function openContent(name) {
   modalHit = null; addStep++;
   const vanilla = inst.loader === "vanilla";
   CV = { name, loader: inst.loader, kind: vanilla ? "resourcepacks" : "mods", items: [], visible: [], filter: "", token: 0 };
+  const tabDefs = vanilla
+    ? [["resourcepacks", "image", "Resource packs"]]
+    : [["mods", "puzzle", "Mods"], ["resourcepacks", "image", "Resource packs"], ["shaderpacks", "sun", "Shaders"]];
   $("#modal-body").innerHTML = `
     <div class="m-head"><div class="ac-icon">${icon("box", 26)}</div>
-      <div><div class="m-title">${esc(name)}</div><div class="ac-author">${esc(inst.version)} · ${esc(loaderLabel(inst))}</div></div></div>
+      <div><div class="m-title">${esc(name)} · View addons</div><div class="ac-author">${esc(inst.version)} · ${esc(loaderLabel(inst))}</div></div></div>
     <div class="cv-bar">
-      ${vanilla ? "" : `<div class="seg" id="cv-tabs" style="--n:2"><div class="seg-pill"></div>
-        <button data-kind="mods" class="on">${icon("puzzle", 15)}Mods</button>
-        <button data-kind="resourcepacks">${icon("image", 15)}Resource packs</button></div>`}
+      ${tabDefs.length < 2 ? "" : `<div class="seg" id="cv-tabs" style="--n:${tabDefs.length}"><div class="seg-pill"></div>
+        ${tabDefs.map(([k, ic, label], n) => `<button data-kind="${k}"${n === 0 ? ' class="on"' : ""}>${icon(ic, 15)}${label}</button>`).join("")}</div>`}
       <div class="cv-search">${icon("search", 15)}<input class="input" id="cv-filter" placeholder="Filter..." autocomplete="off" /></div>
     </div>
     <div class="cv-count" id="cv-count"></div>
@@ -1986,16 +2236,17 @@ async function loadContent() {
 function loaderNice(l) { return { fabric: "Fabric", quilt: "Quilt", forge: "Forge", neoforge: "NeoForge", unknown: "Unknown" }[l] || "Other"; }
 function renderContentList(animate) {
   const list = $("#cv-list"); if (!list || !CV) return;
-  const noun = CV.kind === "mods" ? "mod" : "resource pack";
+  const noun = { mods: "mod", resourcepacks: "resource pack", shaderpacks: "shader pack" }[CV.kind];
+  const kindIcon = { mods: "puzzle", resourcepacks: "image", shaderpacks: "sun" }[CV.kind];
   $("#cv-count").textContent = CV.items.length ? `${CV.items.length} ${noun}${CV.items.length === 1 ? "" : "s"}` : "";
   if (!CV.items.length) {
-    list.innerHTML = `<div class="empty">${icon(CV.kind === "mods" ? "puzzle" : "image", 30)}<div>No ${noun}s in this instance yet.<br>Find some on the Addons page.</div></div>`;
+    list.innerHTML = `<div class="empty">${icon(kindIcon, 30)}<div>No ${noun}s in this instance yet.<br>Find some on the Addons page.</div></div>`;
     return;
   }
   const q = CV.filter;
   CV.visible = CV.items.filter((i) => !q || i.name.toLowerCase().includes(q) || i.file.toLowerCase().includes(q));
   if (!CV.visible.length) { list.innerHTML = `<div class="empty">${icon("search", 28)}<div>No matches.</div></div>`; return; }
-  const fallback = CV.kind === "mods" ? "puzzle" : "image";
+  const fallback = kindIcon;
   list.innerHTML = CV.visible.map((i, n) => {
     const mismatch = CV.kind === "mods" && ((CV.loader === "fabric" && ["forge", "neoforge"].includes(i.loader)) || (CV.loader === "forge" && ["fabric", "quilt"].includes(i.loader)));
     return `<div class="cv-row${i.enabled ? "" : " off"}" data-i="${n}">
@@ -2305,20 +2556,37 @@ $("#btn-skin-reset").addEventListener("click", async () => {
   if (!r.success) { toast(r.error, "error"); return; }
   toast("Skin reset to default"); loadSkinProfile();
 });
+function settingsDraft() {
+  return { memory_mb: parseInt($("#set-memory").value, 10) || 2048, java_path: $("#set-java").value.trim() };
+}
+function settingsDirty() {
+  const d = settingsDraft();
+  return d.memory_mb !== (STATE.settings.memory_mb || 2048) || d.java_path !== (STATE.settings.java_path || "");
+}
+function updateSaveBar() {
+  $("#save-bar").classList.toggle("show", currentPage === "settings" && settingsDirty());
+}
+function fillSettingsInputs() {
+  $("#set-memory").value = STATE.settings.memory_mb;
+  $("#set-java").value = STATE.settings.java_path || "";
+}
 function renderSettings() {
-  const memInput = $("#set-memory"), javaInput = $("#set-java");
-  if (document.activeElement !== memInput) memInput.value = STATE.settings.memory_mb;
-  if (document.activeElement !== javaInput) javaInput.value = STATE.settings.java_path || "";
+  if (!settingsDirty()) fillSettingsInputs();
   const line = $("#java-line");
   line.innerHTML = STATE.java_ok
     ? `${icon("check", 14)}<span>${esc(STATE.java_version || "Java detected")}</span>`
     : `<span style="color:var(--dim)">No Java found on this PC. Crit Launcher will download the right one automatically.</span>`;
+  updateSaveBar();
 }
-$("#btn-save-settings").addEventListener("click", async () => {
-  const r = await callApi("save_settings", { memory_mb: parseInt($("#set-memory").value, 10) || 2048, java_path: $("#set-java").value.trim() });
+$("#set-memory").addEventListener("input", updateSaveBar);
+$("#set-java").addEventListener("input", updateSaveBar);
+$("#sb-reset").addEventListener("click", () => { fillSettingsInputs(); updateSaveBar(); });
+$("#sb-save").addEventListener("click", async () => {
+  const d = settingsDraft();
+  const r = await callApi("save_settings", d);
+  if (r.success) { STATE.settings.memory_mb = d.memory_mb; STATE.settings.java_path = d.java_path || null; fillSettingsInputs(); updateSaveBar(); }
   toast(r.success ? "Settings saved" : (r.error || "Couldn't save"), r.success ? "success" : "error");
 });
-$("#switch-compact").addEventListener("click", () => applyCompact(!document.body.classList.contains("compact"), true));
 $("#btn-collapse").addEventListener("click", () => applyCompact(!document.body.classList.contains("compact"), true));
 function renderAll() {
   renderSidebar(); renderStats(); renderTopbar(); renderHome(); renderInstances(); renderAccounts();
@@ -2381,7 +2649,7 @@ window.__critEvent = function (name, data) {
       break;
     case "importFinished": {
       importBusy = false;
-      const n = (data.copied && (data.copied.mods || 0) + (data.copied.resourcepacks || 0) + (data.copied.saves || 0) + (data.copied.config || 0)) || 0;
+      const n = (data.copied && (data.copied.mods || 0) + (data.copied.resourcepacks || 0) + (data.copied.saves || 0) + (data.copied.config || 0) + (data.copied.shaderpacks || 0) + (data.copied.schematics || 0) + (data.copied.screenshots || 0)) || 0;
       toast(`Imported "${data.instance}"${n ? ` (${n} item${n === 1 ? "" : "s"} copied in)` : ""}`);
       if ($("#import-go")) closeModal();
       break;
@@ -2393,11 +2661,571 @@ window.__critEvent = function (name, data) {
         const btn = $("#import-go"); if (btn) { btn.disabled = false; btn.innerHTML = `${icon("download", 16)}Import`; }
       } else toast(data.message || "Import failed.", "error");
       break;
+    default:
+      handleServerEvent(name, data);
   }
 };
+const SRV = { list: [], gamerules: [], progress: {}, cur: null, tab: "overview", lastSeq: 0, hist: { cpu: [], ram: [], tps: [] },
+  stats: {}, players: [], sel: null, pinfo: null, cmdHist: [], cmdIdx: 0, formBuilt: false, versions: {}, sel_: {}, verToken: 0 };
+const SOFTWARE = { vanilla: "Vanilla", paper: "Paper", fabric: "Fabric" };
+const srvByName = (n) => SRV.list.find((s) => s.name === n);
+const STATUS_TXT = { installing: "Installing", starting: "Starting", online: "Online", stopping: "Stopping", offline: "Offline" };
+function statusDot(st) { return `<span class="dot ${st === "online" ? "run" : (st === "starting" || st === "stopping" || st === "installing") ? "warn" : ""}"></span>${STATUS_TXT[st] || st}`; }
+function fmtUp(s) { s = Math.max(0, s | 0); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return h ? `${h}h ${m}m` : `${m}m ${String(s % 60).padStart(2, "0")}s`; }
+
+async function loadServers() {
+  const r = await callApi("get_servers");
+  if (!r.success) { $("#server-list").innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(r.error)}</div></div>`; return; }
+  SRV.list = r.servers; SRV.gamerules = r.gamerules;
+  renderServers(); renderServerHeader();
+}
+function showServerView(v) {
+  ["list", "add", "detail"].forEach((x) => { $("#srv-" + x + "-view").style.display = x === v ? "" : "none"; });
+  if (v !== "detail") SRV.cur = null;
+}
+function renderServers() {
+  const list = $("#server-list"); if (!list) return;
+  if (!SRV.list.length) { list.innerHTML = `<div class="empty">${icon("server", 30)}<div>No servers yet. Create one to get started.</div></div>`; return; }
+  list.innerHTML = SRV.list.map((s) => {
+    const prog = SRV.progress[s.name];
+    const meta = `${SOFTWARE[s.software]} ${esc(s.version)} · port ${s.port}`;
+    const sub = s.status === "installing"
+      ? `<div class="bar" style="margin-top:8px;width:260px"><div style="width:${prog ? prog.percent : 0}%"></div></div>`
+      : "";
+    const main = s.status === "installing" ? `<button class="btn small primary" disabled>${icon("loader", 13)}Installing</button>`
+      : s.status === "offline" ? `<button class="btn small primary" data-action="start" data-name="${esc(s.name)}">${icon("play", 13)}Start</button>`
+      : `<button class="btn small" data-action="stop" data-name="${esc(s.name)}" ${s.status === "stopping" ? "disabled" : ""}>${icon("square", 13)}Stop</button>`;
+    return `<div class="instance-row srv-row" data-open="${esc(s.name)}">
+      <div class="ir-left"><div class="instance-icon">${icon("server", 20)}</div>
+        <div style="min-width:0"><div class="instance-name">${esc(s.name)}</div>
+          <div class="instance-meta"><span>${meta}</span><span style="display:inline-flex;align-items:center;gap:6px">${statusDot(s.status)}</span>
+          ${s.status === "online" ? `<span>${s.players}/${s.max_players} players</span>` : ""}<span class="disk-size" data-disk="servers|${esc(s.name)}" data-tip="Disk space used">${diskLabel("servers", s.name)}</span></div>${sub}</div></div>
+      <div class="btn-row">${main}
+        <button class="btn small icon-only" data-action="mods" data-name="${esc(s.name)}" data-tip="Manage mods" ${s.installed ? "" : "disabled"}>${icon("puzzle", 15)}</button>
+        <button class="btn small icon-only" data-action="folder" data-name="${esc(s.name)}" data-tip="Open server folder">${icon("folder-open", 15)}</button>
+        <button class="btn small icon-only danger" data-action="delete" data-name="${esc(s.name)}" data-tip="Delete server">${icon("trash", 15)}</button>
+      </div></div>`;
+  }).join("");
+}
+$("#server-list").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) { const row = e.target.closest("[data-open]"); if (row) { const s = srvByName(row.dataset.open); if (s && s.installed) openServerDetail(s.name); } return; }
+  const { action, name } = btn.dataset;
+  if (action === "start") { const r = await callApi("start_server", name); if (!r.success) toast(r.error, "error"); }
+  else if (action === "stop") { const r = await callApi("stop_server", name, false); if (!r.success) toast(r.error, "error"); }
+  else if (action === "mods") openServerMods(name);
+  else if (action === "folder") { const r = await callApi("open_server_folder", name); if (!r.success) toast(r.error, "error"); }
+  else if (action === "delete") {
+    if (!btn.classList.contains("armed")) {
+      btn.classList.add("armed"); btn.innerHTML = icon("check", 15); btn.dataset.tip = "Click again to delete";
+      clearTimeout(armedTimer);
+      armedTimer = setTimeout(() => { btn.classList.remove("armed"); btn.innerHTML = icon("trash", 15); btn.dataset.tip = "Delete server"; }, 3000);
+      return;
+    }
+    const r = await callApi("delete_server", name); if (!r.success) toast(r.error, "error");
+  }
+});
+
+const SF = {};
+function chkRow(key, label, on, desc) {
+  return `<div class="check-row" data-k="${key}"><div class="checkbox${on ? " on" : ""}">${icon("check", 13)}</div><div><div class="t">${label}</div>${desc ? `<div class="d">${desc}</div>` : ""}</div></div>`;
+}
+function numField(key, label, val, min, max) {
+  return `<div class="field"><label>${label}</label><input class="input" data-n="${key}" type="number" min="${min}" max="${max}" value="${val}" /></div>`;
+}
+function buildServerForm() {
+  if (SRV.formBuilt) return; SRV.formBuilt = true;
+  const gr = SRV.gamerules.map((g) => g.type === "bool" ? chkRow("gr:" + g.id, g.label, g.default)
+    : `<div class="field"><label>${g.label}</label><input class="input" data-gr="${g.id}" type="number" min="0" value="${g.default}" /></div>`).join("");
+  $("#srv-add-view").innerHTML = `
+    <button class="btn ghost small" id="srv-back" style="margin-bottom:14px">${icon("chevron-left", 16)}Back</button>
+    <h1>New server</h1><p class="sub">The server files are downloaded now. Start it whenever you're ready.</p>
+    <div class="card form-card" style="max-width:none">
+      <div class="section-title" style="margin-top:0">Software</div>
+      <div class="form-grid">
+        <div class="field"><label>Name</label><input class="input" id="sf-name" maxlength="64" placeholder="My server" autocomplete="off" /></div>
+        <div class="field"><label>Server type</label>
+          <div class="seg" id="sf-software" style="--n:3"><div class="seg-pill"></div>
+            <button data-sw="vanilla" class="on">Vanilla</button><button data-sw="paper">Paper</button><button data-sw="fabric">Fabric</button></div></div>
+        <div class="field"><label>Minecraft version</label><div id="sf-version"></div></div>
+        <div class="field row-hidden" id="sf-loader-row"><label>Fabric loader version</label><div id="sf-loader"></div></div>
+      </div>
+      <div class="section-title">World</div>
+      <div class="form-grid">
+        <div class="field"><label>World name</label><input class="input" data-s="level_name" value="world" maxlength="40" /></div>
+        <div class="field"><label>Seed (optional)</label><input class="input" data-s="level_seed" placeholder="Random" maxlength="40" /></div>
+        <div class="field"><label>World type</label><div id="sf-worldtype"></div></div>
+        <div class="field"><label>Game mode</label><div id="sf-gamemode"></div></div>
+        <div class="field"><label>Difficulty</label><div id="sf-difficulty"></div></div>
+        <div>${chkRow("generate_structures", "Generate structures", true)}${chkRow("allow_nether", "Allow the Nether", true)}</div>
+      </div>
+      <div class="section-title">Gameplay</div>
+      <div class="form-grid cols3">
+        ${chkRow("hardcore", "Hardcore", false)}${chkRow("pvp", "PvP", true)}${chkRow("allow_flight", "Allow flight", false)}
+        ${chkRow("enable_command_block", "Command blocks", false)}${chkRow("spawn_monsters", "Spawn monsters", true)}${chkRow("spawn_animals", "Spawn animals", true)}
+        ${chkRow("spawn_npcs", "Spawn villagers", true)}${chkRow("white_list", "Whitelist", false)}
+        ${chkRow("offline_mode", "Offline mode", true, "Lets offline players join")}
+      </div>
+      <div class="section-title">Server</div>
+      <div class="form-grid cols3">
+        <div class="field" style="grid-column:span 3"><label>MOTD</label><input class="input" data-s="motd" value="A Crit Launcher server" maxlength="120" /></div>
+        ${numField("port", "Port", 25565, 1024, 65535)}${numField("max_players", "Max players", 20, 1, 1000)}${numField("memory_mb", "Memory (MB)", 2048, 512, 65536)}
+        ${numField("view_distance", "View distance", 10, 2, 32)}${numField("simulation_distance", "Simulation distance", 10, 2, 32)}${numField("spawn_protection", "Spawn protection", 16, 0, 1000)}
+      </div>
+      <div class="section-title">Game rules</div>
+      <div class="form-grid cols3">${gr}</div>
+      <div class="form-error" id="sf-error" style="margin-top:14px"></div>
+      <button class="btn primary" id="sf-create">${icon("check", 16)}Create server</button>
+    </div>`;
+  SF.version = new CSelect($("#sf-version"), { placement: "auto", placeholder: "Loading versions..." });
+  SF.loader = new CSelect($("#sf-loader"), { placement: "auto", placeholder: "Loading..." });
+  SF.worldtype = new CSelect($("#sf-worldtype"), { placement: "auto" });
+  SF.worldtype.setOptions([["minecraft:normal", "Default"], ["minecraft:flat", "Superflat"], ["minecraft:large_biomes", "Large biomes"], ["minecraft:amplified", "Amplified"]].map(([value, label]) => ({ value, label })), "minecraft:normal");
+  SF.gamemode = new CSelect($("#sf-gamemode"), { placement: "auto" });
+  SF.gamemode.setOptions(["survival", "creative", "adventure", "spectator"].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), "survival");
+  SF.difficulty = new CSelect($("#sf-difficulty"), { placement: "auto" });
+  SF.difficulty.setOptions(["peaceful", "easy", "normal", "hard"].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), "easy");
+  SF.version.opts.onChange = () => updateServerLoaders();
+  $$("#srv-add-view .check-row").forEach((r) => r.addEventListener("click", () => $(".checkbox", r).classList.toggle("on")));
+  $("#srv-back").addEventListener("click", () => showServerView("list"));
+  $("#sf-software").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-sw]"); if (!b || b.dataset.sw === SF.software) return;
+    SF.software = b.dataset.sw; $("#sf-loader-row").classList.toggle("row-hidden", SF.software !== "fabric"); SF.loader.setOptions([]);
+    const bs = $$("#sf-software button");
+    bs.forEach((x) => x.classList.toggle("on", x === b)); $("#sf-software").style.setProperty("--idx", bs.indexOf(b));
+    loadServerVersions();
+  });
+  $("#sf-create").addEventListener("click", submitServer);
+}
+async function loadServerVersions() {
+  const token = ++SRV.verToken, sw = SF.software;
+  SF.version.setDisabled(true); SF.version.setOptions([]);
+  const r = await callApi("get_server_versions", sw);
+  if (token !== SRV.verToken) return;
+  if (!r.success) { $("#sf-error").textContent = r.error; SF.version.setPlaceholder && SF.version.setPlaceholder("Couldn't load versions"); return; }
+  $("#sf-error").textContent = "";
+  SF.version.setOptions(r.versions.map((v) => ({ value: v, label: v })), r.versions[0]);
+  SF.version.setDisabled(false);
+  updateServerLoaders();
+}
+async function updateServerLoaders() {
+  const row = $("#sf-loader-row");
+  if (SF.software !== "fabric") { row.classList.add("row-hidden"); return; }
+  row.classList.remove("row-hidden");
+  const token = SRV.verToken, mc = SF.version.getValue();
+  SF.loader.setDisabled(true); SF.loader.setOptions([]);
+  if (!mc) return;
+  const r = await callApi("get_fabric_loaders", mc);
+  if (token !== SRV.verToken || mc !== SF.version.getValue()) return;
+  const entries = r.success ? r.loaders.map((e) => e.loader || e) : [];
+  const stable = entries.find((e) => e.stable !== false);
+  SF.loader.opts.placeholder = "No builds for this version";
+  SF.loader.setOptions(entries.map((e) => ({ value: e.version, label: e.version, tag: e.stable === false ? "beta" : "" })), stable ? stable.version : (entries[0] && entries[0].version));
+  SF.loader.setDisabled(!entries.length);
+}
+function openServerCreate() {
+  buildServerForm(); SF.software = "vanilla";
+  const bs = $$("#sf-software button"); bs.forEach((x, i) => x.classList.toggle("on", i === 0)); $("#sf-software").style.setProperty("--idx", 0);
+  $("#sf-name").value = ""; $("#sf-error").textContent = "";
+  showServerView("add"); const v = $("#srv-add-view"); v.classList.remove("row-show"); void v.offsetWidth; v.classList.add("row-show");
+  $("#content").scrollTop = 0; loadServerVersions();
+}
+async function submitServer() {
+  const err = $("#sf-error"); err.textContent = "";
+  const cfg = { name: $("#sf-name").value.trim(), software: SF.software, version: SF.version.getValue(), loader_version: SF.software === "fabric" ? SF.loader.getValue() : null,
+    level_type: SF.worldtype.getValue(), gamemode: SF.gamemode.getValue(), difficulty: SF.difficulty.getValue(), gamerules: {} };
+  if (!cfg.name) { err.textContent = "Give the server a name."; return; }
+  $$("#srv-add-view .check-row").forEach((r) => {
+    const k = r.dataset.k, on = $(".checkbox", r).classList.contains("on");
+    if (k.startsWith("gr:")) cfg.gamerules[k.slice(3)] = on; else cfg[k] = on;
+  });
+  cfg.online_mode = !cfg.offline_mode; delete cfg.offline_mode;
+  $$("#srv-add-view [data-s]").forEach((i) => { cfg[i.dataset.s] = i.value; });
+  $$("#srv-add-view [data-n]").forEach((i) => { cfg[i.dataset.n] = i.value; });
+  $$("#srv-add-view [data-gr]").forEach((i) => { cfg.gamerules[i.dataset.gr] = i.value; });
+  const btn = $("#sf-create"); btn.disabled = true;
+  const r = await callApi("create_server", cfg);
+  btn.disabled = false;
+  if (!r.success) { err.textContent = r.error; return; }
+  toast(`Installing ${cfg.name}...`);
+  showServerView("list"); loadServers();
+}
+$("#btn-add-server").addEventListener("click", openServerCreate);
+
+function openServerDetail(name) {
+  SRV.cur = name; SRV.tab = "overview"; SRV.lastSeq = 0; SRV.sel = null; SRV.pinfo = null; SRV.stats = {};
+  SRV.hist = { cpu: [], ram: [], tps: [] }; SRV.players = [];
+  showServerView("detail"); SRV.cur = name; refreshDisk("servers");
+  const s = srvByName(name);
+  $("#srv-detail-view").innerHTML = `
+    <div class="sd-top"><button class="sd-back" id="sd-back" aria-label="Back to servers" data-tip="Back to servers">${icon("chevron-left", 26)}</button>
+      <div class="sd-title"><h1 style="margin:0">${esc(name)}</h1><span class="sd-status" id="sd-status"></span><button class="sd-addr" id="sd-copy" data-tip="Copy address">localhost:${s.port}</button></div>
+      <div class="btn-row" id="sd-actions"></div></div>
+    <div class="seg sd-tabs" id="sd-tabs" style="--n:4"><div class="seg-pill"></div>
+      <button data-t="overview" class="on">${icon("activity", 15)}Overview</button>
+      <button data-t="console">${icon("terminal", 15)}Console</button>
+      <button data-t="players">${icon("users", 15)}Players</button>
+      <button data-t="settings">${icon("settings", 15)}Settings</button></div>
+    <div class="sd-panel" id="sdp-overview"></div>
+    <div class="sd-panel" id="sdp-console" style="display:none">
+      <div class="console" id="console"></div>
+      <div class="console-input">${icon("terminal", 16)}<input class="input" id="console-cmd" placeholder="Type a command (no slash needed) and press Enter" autocomplete="off" spellcheck="false" />
+        <button class="btn primary" id="console-send">${icon("send", 15)}Send</button></div></div>
+    <div class="sd-panel" id="sdp-players" style="display:none"><div class="pl-list" id="pl-list"></div></div>
+    <div class="sd-panel" id="sdp-settings" style="display:none"></div>`;
+  hydrateIcons($("#srv-detail-view"));
+  $("#sd-back").addEventListener("click", () => { showServerView("list"); renderServers(); });
+  $("#sd-copy").addEventListener("click", async () => { const sv = srvByName(SRV.cur); if (sv && await copyText(`localhost:${sv.port}`)) toast("Address copied"); });
+  $("#sd-tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-t]"); if (b) setServerTab(b.dataset.t); });
+  $("#console-send").addEventListener("click", sendConsole);
+  $("#console-cmd").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendConsole();
+    else if (e.key === "ArrowUp") { e.preventDefault(); if (SRV.cmdIdx > 0) $("#console-cmd").value = SRV.cmdHist[--SRV.cmdIdx] || ""; }
+    else if (e.key === "ArrowDown") { e.preventDefault(); SRV.cmdIdx = Math.min(SRV.cmdHist.length, SRV.cmdIdx + 1); $("#console-cmd").value = SRV.cmdHist[SRV.cmdIdx] || ""; }
+  });
+  renderServerHeader(); renderOverview(); renderPlayers();
+  callApi("get_server_log", name).then((r) => {
+    if (SRV.cur !== name || !r.success) return;
+    $("#console").innerHTML = ""; SRV.lastSeq = 0; appendLog(r.lines);
+    SRV.players = r.players || []; renderPlayers();
+  });
+}
+function setServerTab(t) {
+  SRV.tab = t;
+  const bs = $$("#sd-tabs button"); bs.forEach((b) => b.classList.toggle("on", b.dataset.t === t));
+  $("#sd-tabs").style.setProperty("--idx", bs.findIndex((b) => b.dataset.t === t));
+  ["overview", "console", "players", "settings"].forEach((x) => { $("#sdp-" + x).style.display = x === t ? "" : "none"; });
+  if (t === "console") { const c = $("#console"); c.scrollTop = c.scrollHeight; $("#console-cmd").focus(); }
+  if (t === "players") refreshPlayers();
+  if (t === "settings") loadServerSettings();
+}
+function renderServerHeader() {
+  if (!SRV.cur || !$("#sd-status")) return;
+  const s = srvByName(SRV.cur); if (!s) return;
+  $("#sd-status").innerHTML = statusDot(s.status);
+  const off = s.status === "offline";
+  $("#sd-actions").innerHTML = (off ? `<button class="btn primary small" data-a="start">${icon("play", 13)}Start</button>`
+    : `<button class="btn small" data-a="stop" ${s.status === "stopping" ? "disabled" : ""}>${icon("square", 13)}Stop</button>
+       <button class="btn small" data-a="restart" ${s.status !== "online" ? "disabled" : ""}>${icon("refresh", 13)}Restart</button>
+       <button class="btn small danger" data-a="kill" data-tip="Force-kill the process (may lose progress)">${icon("x", 13)}Kill</button>`)
+    + `<button class="btn small" data-a="mods">${icon("puzzle", 14)}Mods</button><button class="btn small icon-only" data-a="folder" data-tip="Open server folder">${icon("folder-open", 15)}</button>`;
+  hydrateIcons($("#sd-actions"));
+  renderOverview();
+}
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("#sd-actions [data-a]"); if (!b || !SRV.cur) return;
+  const n = SRV.cur, a = b.dataset.a; let r;
+  if (a === "start") r = await callApi("start_server", n);
+  else if (a === "stop") r = await callApi("stop_server", n, false);
+  else if (a === "kill") r = await callApi("stop_server", n, true);
+  else if (a === "restart") r = await callApi("restart_server", n);
+  else if (a === "mods") return openServerMods(n);
+  else if (a === "folder") r = await callApi("open_server_folder", n);
+  if (r && !r.success) toast(r.error, "error");
+});
+function spark(vals, max, color) {
+  if (!vals.length) return `<svg viewBox="0 0 120 34" preserveAspectRatio="none"></svg>`;
+  const pts = vals.map((v, i) => `${(i / Math.max(59, vals.length - 1) * 120).toFixed(1)},${(32 - Math.min(1, Math.max(0, v / max)) * 30).toFixed(1)}`).join(" ");
+  return `<svg viewBox="0 0 120 34" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function renderOverview() {
+  const el = $("#sdp-overview"); if (!el || !SRV.cur) return;
+  const s = srvByName(SRV.cur); if (!s) return;
+  const st = SRV.stats, live = s.status === "online";
+  const cpu = live && st.cpu != null ? st.cpu.toFixed(1) + "%" : "–";
+  const ram = live && st.ram != null ? fmtBytes(st.ram) : "–";
+  const card = (label, val, sub, graph) => `<div class="sd-stat"><div class="sc-label">${label}</div><div class="sc-val">${val}</div><div class="sc-sub">${sub || "&nbsp;"}</div>${graph || ""}</div>`;
+  el.innerHTML = `<div class="sd-head-row">
+    <span class="sd-players">${icon("users", 15)}${live ? SRV.players.length : 0} / ${s.max_players}</span></div>
+  <div class="stat-grid">
+    ${card("Status", statusDot(s.status), `${SOFTWARE[s.software]} ${esc(s.version)}`)}
+    ${card("Uptime", live ? fmtUp(st.uptime ?? s.uptime) : "–", "")}
+    ${card("Disk space", DISK.servers[s.name] != null ? fmtBytes(DISK.servers[s.name]) : "–", "server folder")}
+    ${card("CPU", cpu, `of this PC`, `<div class="spark">${spark(SRV.hist.cpu, 100, "#60a5fa")}</div>`)}
+    ${card("Memory", ram, `${s.memory_mb} MB allocated`, `<div class="spark">${spark(SRV.hist.ram, s.memory_mb * 1048576, "#f59e0b")}</div>`)}
+  </div>`;
+}
+function classifyLog(t) {
+  if (t.startsWith("> ")) return "cmd"; if (t.startsWith("[Crit")) return "sys";
+  if (/\/(ERROR|FATAL)\]|Exception|Caused by/.test(t)) return "err"; if (/\/WARN\]/.test(t)) return "warn"; return "";
+}
+function appendLog(lines) {
+  const c = $("#console"); if (!c || !lines.length) return;
+  const near = c.scrollHeight - c.scrollTop - c.clientHeight < 60;
+  const frag = document.createDocumentFragment();
+  for (const [seq, text] of lines) {
+    if (seq <= SRV.lastSeq) continue; SRV.lastSeq = seq;
+    const d = document.createElement("div"); d.className = "l " + classifyLog(text);
+    d.textContent = text.replace(/\u001b\[[0-9;?]*[ -\/]*[@-~]/g, ""); frag.appendChild(d);
+  }
+  c.appendChild(frag);
+  while (c.childElementCount > 1500) c.removeChild(c.firstChild);
+  if (near) c.scrollTop = c.scrollHeight;
+}
+async function sendConsole() {
+  const inp = $("#console-cmd"), cmd = inp.value.trim(); if (!cmd || !SRV.cur) return;
+  inp.value = ""; SRV.cmdHist.push(cmd); SRV.cmdIdx = SRV.cmdHist.length;
+  const r = await callApi("send_server_command", SRV.cur, cmd);
+  if (!r.success) toast(r.error, "error");
+}
+
+const GAMEMODES = ["survival", "creative", "adventure", "spectator"];
+async function refreshPlayers() {
+  if (!SRV.cur) return;
+  const r = await callApi("get_server_players", SRV.cur); if (!r.success || !SRV.cur) return;
+  SRV.players = r.players.map((p) => p.name); SRV.ops = new Set(r.players.filter((p) => p.op).map((p) => p.name));
+  renderPlayers();
+}
+function renderPlayers() {
+  const list = $("#pl-list"); if (!list) return;
+  const s = srvByName(SRV.cur);
+  const inModal = () => $("#pl-detail") && $("#modal-overlay").classList.contains("open");
+  if (!SRV.players.length) {
+    list.innerHTML = `<div class="empty" style="padding:30px 14px;grid-column:1/-1">${icon("users", 28)}<div>${s && s.status === "online" ? "Nobody is online." : "Start the server to see players."}</div></div>`;
+    if (inModal()) { modalBusy = false; closeModal(); }
+    SRV.sel = null; return;
+  }
+  const ops = SRV.ops || new Set();
+  list.innerHTML = SRV.players.map((p) => `<button class="pl-row" data-p="${esc(p)}">${faceHTML(p, 28)}<span class="pl-name">${esc(p)}</span>${ops.has(p) ? `<span class="tag">OP</span>` : ""}</button>`).join("");
+  hydrateFaces(list);
+  if (inModal()) {
+    if (SRV.sel && !SRV.players.includes(SRV.sel)) { closeModal(); SRV.sel = null; }
+    else renderPlayerDetail();
+  }
+}
+function openPlayerModal(p) {
+  SRV.sel = p; SRV.pinfo = null; modalHit = null; CV = null; addStep++;
+  $("#modal-body").innerHTML = `<div class="pl-detail" id="pl-detail"></div>`;
+  openModal();
+  renderPlayerDetail(); loadPlayerInfo();
+}
+$("#srv-detail-view").addEventListener("click", (e) => {
+  const r = e.target.closest(".pl-row"); if (r) openPlayerModal(r.dataset.p);
+});
+$("#modal-body").addEventListener("click", (e) => {
+  const b = e.target.closest("#pl-detail [data-pa]"); if (b) playerAct(b);
+});
+async function loadPlayerInfo() {
+  const p = SRV.sel, n = SRV.cur; if (!p) return;
+  const r = await callApi("get_player_info", n, p);
+  if (SRV.sel !== p || SRV.cur !== n) return;
+  SRV.pinfo = r.success ? r : null; renderPlayerDetail();
+}
+function renderPlayerDetail() {
+  const el = $("#pl-detail"); if (!el || !SRV.sel) return;
+  const p = SRV.sel, info = SRV.pinfo || {}, isOp = (SRV.ops || new Set()).has(p);
+  const gmBtns = GAMEMODES.map((g) => `<button class="btn small${info.gamemode === g ? " primary" : ""}" data-pa="gamemode" data-v="${g}">${g[0].toUpperCase() + g.slice(1)}</button>`).join("");
+  el.innerHTML = `<div class="pd-head">${faceHTML(p, 44)}<div><div class="m-title">${esc(p)}${isOp ? ` <span class="tag">OP</span>` : ""}</div>
+      <div class="ac-author">${info.health != null ? `${info.health} HP` : "HP unknown"} · ${info.gamemode ? info.gamemode + " mode" : "mode unknown"}</div></div>
+      <button class="btn small icon-only" style="margin-left:auto" data-pa="refresh" data-tip="Refresh">${icon("refresh", 14)}</button></div>
+    <div class="section-title">Game mode</div><div class="btn-row wrap">${gmBtns}</div>
+    <div class="section-title">Permissions</div>
+    <div class="btn-row wrap"><button class="btn small${isOp ? "" : " primary"}" data-pa="op">${icon("shield-check", 14)}Make OP</button><button class="btn small" data-pa="deop">Remove OP</button></div>
+    <div class="section-title">Health</div>
+    <div class="btn-row wrap"><button class="btn small" data-pa="heal">${icon("heart", 14)}Heal fully</button><button class="btn small" data-pa="feed">Feed</button>
+      <input class="input mini" id="pd-hp" type="number" min="1" max="20" placeholder="HP" /><button class="btn small" data-pa="set_health">Set HP</button>
+      <input class="input mini" id="pd-mhp" type="number" min="1" max="1024" placeholder="Max" /><button class="btn small" data-pa="max_health">Set max HP</button></div>
+    <div class="section-title">Danger zone</div>
+    <div class="btn-row wrap"><button class="btn small danger" data-pa="kill">${icon("skull", 14)}Kill</button><button class="btn small danger" data-pa="kick">Kick</button><button class="btn small danger" data-pa="ban" data-confirm="1">${icon("x", 14)}Ban</button></div>`;
+  hydrateFaces(el);
+}
+async function playerAct(btn) {
+  const a = btn.dataset.pa, p = SRV.sel, n = SRV.cur; if (!p) return;
+  if (a === "refresh") return loadPlayerInfo();
+  if (btn.dataset.confirm && !btn.classList.contains("armed")) {
+    const old = btn.innerHTML; btn.classList.add("armed"); btn.textContent = "Click again";
+    setTimeout(() => { btn.classList.remove("armed"); btn.innerHTML = old; }, 3000); return;
+  }
+  let v = btn.dataset.v || null;
+  if (a === "set_health") v = $("#pd-hp").value; if (a === "max_health") v = $("#pd-mhp").value;
+  if ((a === "set_health" || a === "max_health") && !v) { toast("Type a number first.", "error"); return; }
+  const r = await callApi("player_action", n, p, a, v);
+  if (!r.success) { toast(r.error, "error"); return; }
+  toast(`${a.replace("_", " ")} → ${p}`);
+  if (["op", "deop"].includes(a)) setTimeout(refreshPlayers, 700);
+  if (!["kick", "ban", "kill"].includes(a)) setTimeout(loadPlayerInfo, 900); else setTimeout(refreshPlayers, 900);
+}
+
+const SS = {};
+async function loadServerSettings() {
+  const name = SRV.cur, el = $("#sdp-settings"); if (!el) return;
+  el.innerHTML = `<div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Loading settings...</div>`;
+  const r = await callApi("get_server_settings", name);
+  if (SRV.cur !== name) return;
+  if (!r.success) { el.innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(r.error)}</div></div>`; return; }
+  const s = r.settings;
+  el.innerHTML = `<div class="card form-card sd-set" style="max-width:none">
+    <div class="section-title">Server</div>
+    <div class="form-grid cols3">
+      <div class="field" style="grid-column:span 3"><label>MOTD</label><input class="input" data-s="motd" value="${esc(s.motd)}" maxlength="120" /></div>
+      ${numField("port", "Port", s.port, 1024, 65535)}${numField("memory_mb", "Memory (MB)", s.memory_mb, 512, 65536)}
+      ${numField("view_distance", "View distance", s.view_distance, 2, 32)}${numField("simulation_distance", "Simulation distance", s.simulation_distance, 2, 32)}${numField("spawn_protection", "Spawn protection", s.spawn_protection, 0, 1000)}
+    </div>
+    <div class="section-title">Players</div>
+    <div class="form-grid cols3">
+      ${numField("max_players", "Max players", s.max_players, 1, 1000)}
+      <div class="field"><label>Default game mode</label><div id="ss-gamemode"></div></div>
+      <div class="field"><label>Difficulty</label><div id="ss-difficulty"></div></div>
+      ${chkRow("offline_mode", "Offline mode", s.offline_mode, "Lets offline players join")}${chkRow("white_list", "Whitelist", s.white_list)}${chkRow("pvp", "PvP", s.pvp)}
+      ${chkRow("allow_flight", "Allow flight", s.allow_flight)}${chkRow("enable_command_block", "Command blocks", s.enable_command_block)}${chkRow("allow_nether", "Allow the Nether", s.allow_nether)}
+      ${chkRow("spawn_monsters", "Spawn monsters", s.spawn_monsters)}${chkRow("spawn_animals", "Spawn animals", s.spawn_animals)}${chkRow("spawn_npcs", "Spawn villagers", s.spawn_npcs)}
+    </div>
+    <div class="form-error" id="ss-error" style="margin-top:14px"></div>
+    <div class="sd-set-save"><button class="btn primary" id="ss-save">${icon("check", 16)}Save</button><span class="hint">${r.status === "offline" ? "" : "Restart the server to apply changes."}</span></div>
+  </div>`;
+  SS.gamemode = new CSelect($("#ss-gamemode"), { placement: "auto" });
+  SS.gamemode.setOptions(GAMEMODES.map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), s.gamemode);
+  SS.difficulty = new CSelect($("#ss-difficulty"), { placement: "auto" });
+  SS.difficulty.setOptions(["peaceful", "easy", "normal", "hard"].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), s.difficulty);
+  $$("#sdp-settings .check-row").forEach((row) => row.addEventListener("click", () => $(".checkbox", row).classList.toggle("on")));
+  $("#ss-save").addEventListener("click", saveServerSettings);
+}
+async function saveServerSettings() {
+  const name = SRV.cur; if (!name) return;
+  const cfg = { gamemode: SS.gamemode.getValue(), difficulty: SS.difficulty.getValue() };
+  $$("#sdp-settings .check-row").forEach((r) => { cfg[r.dataset.k] = $(".checkbox", r).classList.contains("on"); });
+  $$("#sdp-settings [data-s]").forEach((i) => { cfg[i.dataset.s] = i.value; });
+  $$("#sdp-settings [data-n]").forEach((i) => { cfg[i.dataset.n] = i.value; });
+  const btn = $("#ss-save"), err = $("#ss-error"); err.textContent = ""; btn.disabled = true;
+  const r = await callApi("update_server_settings", name, cfg);
+  btn.disabled = false;
+  if (!r.success) { err.textContent = r.error; return; }
+  toast("Settings saved");
+  const s = srvByName(name); if (s) { s.port = +cfg.port || s.port; s.max_players = +cfg.max_players || s.max_players; s.memory_mb = +cfg.memory_mb || s.memory_mb; }
+  renderOverview();
+}
+
+function showEulaPrompt(name) {
+  modalHit = null; CV = null;
+  $("#modal-body").innerHTML = `<div class="m-head"><div class="ac-icon">${icon("shield-check", 26)}</div><div><div class="m-title">Accept the Minecraft EULA?</div><div class="ac-author">${esc(name)}</div></div></div>
+    <div class="m-desc">To run a Minecraft server you have to agree to Mojang's End User License Agreement (aka.ms/MinecraftEULA). Click <b>Yes</b> and Crit Launcher will set <code>eula=true</code> in this server's <code>eula.txt</code> and restart it.</div>
+    <div class="btn-row"><button class="btn primary" id="eula-yes">${icon("check", 16)}Yes, I accept</button><button class="btn" id="eula-copy">${icon("copy", 15)}Copy EULA link</button><button class="btn ghost" id="eula-no">No</button></div>`;
+  openModal();
+  $("#eula-no").addEventListener("click", closeModal);
+  $("#eula-copy").addEventListener("click", () => copyText("https://aka.ms/MinecraftEULA"));
+  $("#eula-yes").addEventListener("click", async () => {
+    $("#eula-yes").disabled = true;
+    const r = await callApi("accept_eula", name);
+    if (!r.success) { toast(r.error, "error"); $("#eula-yes").disabled = false; return; }
+    toast("EULA accepted. Restarting the server...");
+    closeModal(); if (SRV.cur === name) setServerTab("console");
+  });
+}
+
+let SM = null;
+async function openServerMods(name) {
+  const s = srvByName(name); if (!s) return;
+  modalHit = null; CV = null; addStep++;
+  SM = { name, tab: "browse", offset: 0, token: 0, items: [], installed: new Set(), sw: s.software };
+  const unit = s.software === "paper" ? "plugins" : "mods";
+  $("#modal-body").innerHTML = `<div class="m-head"><div class="ac-icon">${icon("server", 26)}</div>
+      <div><div class="m-title">${esc(name)} · ${unit}</div><div class="ac-author">${SOFTWARE[s.software]} ${esc(s.version)} · only ${unit} that work on this server are shown</div></div></div>
+    ${s.software === "vanilla" ? `<div class="empty">${icon("puzzle", 30)}<div>Vanilla servers can't run mods or plugins.<br>Create a Fabric server (mods) or a Paper server (plugins) instead.</div></div>` : `
+    <div class="cv-bar"><div class="seg" id="sm-tabs" style="--n:2;min-width:260px"><div class="seg-pill"></div>
+        <button data-t="browse" class="on">${icon("search", 15)}Browse</button><button data-t="installed">${icon("list", 15)}Installed</button></div>
+      <div class="cv-search" id="sm-searchbox">${icon("search", 15)}<input class="input" id="sm-q" placeholder="Search ${unit} for ${SOFTWARE[s.software]} ${esc(s.version)}..." autocomplete="off" /></div>
+      <button class="btn primary" id="sm-go">${icon("search", 15)}Search</button></div>
+    <div class="cv-count" id="sm-count"></div><div class="sm-body" id="sm-body"></div>`}`;
+  openModal(false); $("#modal").classList.add("xl");
+  if (s.software === "vanilla") return;
+  $("#sm-tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-t]"); if (!b || b.dataset.t === SM.tab) return;
+    SM.tab = b.dataset.t; const bs = $$("#sm-tabs button"); bs.forEach((x) => x.classList.toggle("on", x === b));
+    $("#sm-tabs").style.setProperty("--idx", bs.indexOf(b));
+    $("#sm-go").style.display = SM.tab === "browse" ? "" : "none";
+    $("#sm-q").placeholder = SM.tab === "browse" ? `Search ${unit} for ${SOFTWARE[SM.sw]} ${esc(srvByName(SM.name).version)}...` : "Filter installed...";
+    $("#sm-q").value = ""; SM.tab === "browse" ? smSearch(true) : smInstalled();
+  });
+  $("#sm-go").addEventListener("click", () => smSearch(true));
+  $("#sm-q").addEventListener("keydown", (e) => { if (e.key === "Enter" && SM.tab === "browse") smSearch(true); });
+  $("#sm-q").addEventListener("input", () => { if (SM.tab === "installed") smRenderInstalled(); });
+  smSearch(true);
+}
+async function smSearch(reset) {
+  if (!SM) return; const token = ++SM.token, body = $("#sm-body");
+  if (reset) { SM.offset = 0; SM.items = []; body.innerHTML = `<div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Searching Modrinth...</div>`; }
+  const r = await callApi("search_server_mods", SM.name, $("#sm-q").value.trim(), SM.offset);
+  if (!SM || token !== SM.token) return;
+  if (!r.success) { body.innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(r.error)}</div></div>`; return; }
+  SM.items = SM.items.concat(r.hits); SM.total = r.total; SM.offset = SM.items.length;
+  $("#sm-count").textContent = r.total ? `${fmtCount(r.total)} result${r.total === 1 ? "" : "s"}` : "";
+  if (!SM.items.length) { body.innerHTML = `<div class="empty">${icon("search", 28)}<div>Nothing found for this server.</div></div>`; return; }
+  body.innerHTML = `<div class="addon-grid sm-grid">${SM.items.map((h, i) => `
+    <div class="addon-card sm-card" data-i="${i}"><div class="ac-head"><div class="ac-icon">${h.icon_url ? `<img src="${esc(h.icon_url)}" alt="" loading="lazy" onerror="this.remove()">` : icon("puzzle", 20)}</div>
+      <div style="min-width:0"><div class="ac-title">${esc(h.title)}</div><div class="ac-author">by ${esc(h.author || "unknown")}</div></div></div>
+      <div class="ac-desc">${esc(h.description || "")}</div>
+      <div class="ac-foot" style="justify-content:space-between"><span style="display:inline-flex;gap:6px;align-items:center">${icon("download", 13)}${fmtCount(h.downloads)}</span>
+        <button class="btn small primary" data-inst="${i}">${SM.installed.has(h.project_id) ? icon("check", 13) + "Installed" : icon("download", 13) + "Install"}</button></div></div>`).join("")}</div>
+    ${SM.items.length < SM.total ? `<div style="text-align:center;margin:16px 0"><button class="btn" id="sm-more">Load more</button></div>` : ""}`;
+  const more = $("#sm-more"); if (more) more.addEventListener("click", () => { more.disabled = true; smSearch(false); });
+}
+$("#modal-body").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-inst]"); if (!b || !SM) return;
+  const h = SM.items[+b.dataset.inst]; if (!h || b.disabled) return;
+  b.disabled = true; b.innerHTML = `<span class="ico spin">${icon("loader", 13)}</span>Installing`;
+  const r = await callApi("install_server_mod", SM.name, h.project_id);
+  if (!SM) return;
+  if (!r.success) { b.disabled = false; b.innerHTML = icon("download", 13) + "Install"; toast(r.error, "error"); return; }
+  SM.installed.add(h.project_id); b.disabled = false; b.innerHTML = icon("check", 13) + "Installed";
+  toast(`Installed ${h.title}${r.files.length > 1 ? ` (+${r.files.length - 1} dependenc${r.files.length === 2 ? "y" : "ies"})` : ""}`);
+});
+async function smInstalled() {
+  const body = $("#sm-body"); $("#sm-count").textContent = "";
+  body.innerHTML = `<div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Reading files...</div>`;
+  const r = await callApi("get_server_content", SM.name); if (!SM) return;
+  if (!r.success) { body.innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(r.error)}</div></div>`; return; }
+  SM.files = r.items; smRenderInstalled();
+}
+function smRenderInstalled() {
+  const body = $("#sm-body"); if (!body || !SM || SM.tab !== "installed") return;
+  const q = $("#sm-q").value.trim().toLowerCase(), unit = SM.sw === "paper" ? "plugin" : "mod";
+  const items = (SM.files || []).filter((i) => !q || i.name.toLowerCase().includes(q) || i.file.toLowerCase().includes(q));
+  $("#sm-count").textContent = `${(SM.files || []).length} ${unit}${(SM.files || []).length === 1 ? "" : "s"} installed`;
+  if (!items.length) { body.innerHTML = `<div class="empty">${icon("puzzle", 30)}<div>${(SM.files || []).length ? "No matches." : `No ${unit}s yet. Use Browse to add some.`}</div></div>`; return; }
+  const offline = (srvByName(SM.name) || {}).status === "offline";
+  body.innerHTML = `${offline ? "" : `<div class="banner show" style="margin-bottom:10px"><span class="ico">${icon("alert", 18)}</span><div class="msg">Stop the server to enable, disable or remove ${unit}s.</div></div>`}
+    <div class="cv-list" style="max-height:none">${items.map((i, n) => `<div class="cv-row${i.enabled ? "" : " off"}"><div class="cr-icon">${icon("puzzle", 20)}</div>
+      <div class="cr-body"><div class="cr-name"><span class="cr-title">${esc(i.name)}</span>${i.version ? `<span class="cr-ver">${esc(i.version)}</span>` : ""}${i.enabled ? "" : `<span class="tag">Disabled</span>`}</div>
+        ${i.description ? `<div class="cr-desc">${esc(i.description)}</div>` : ""}<div class="cr-file">${i.authors ? `by ${esc(i.authors)} · ` : ""}${esc(i.file)}</div></div>
+      <button class="switch${i.enabled ? " on" : ""}" data-tg="${esc(i.file)}" role="switch" aria-checked="${i.enabled}" data-tip="${i.enabled ? "Disable" : "Enable"}"></button>
+      <button class="btn small icon-only danger" data-rm="${esc(i.file)}" data-tip="Remove">${icon("trash", 15)}</button></div>`).join("")}</div>`;
+}
+document.addEventListener("click", async (e) => {
+  if (!SM) return;
+  const tg = e.target.closest("[data-tg]"), rm = e.target.closest("[data-rm]");
+  if (tg) {
+    const it = SM.files.find((f) => f.file === tg.dataset.tg);
+    const r = await callApi("toggle_server_content", SM.name, tg.dataset.tg, !it.enabled);
+    if (!r.success) return toast(r.error, "error"); smInstalled();
+  } else if (rm) {
+    if (!rm.classList.contains("armed")) { rm.classList.add("armed"); rm.innerHTML = icon("check", 15); setTimeout(() => { rm.classList.remove("armed"); rm.innerHTML = icon("trash", 15); }, 3000); return; }
+    const r = await callApi("delete_server_content", SM.name, rm.dataset.rm);
+    if (!r.success) return toast(r.error, "error"); smInstalled();
+  }
+});
+
+function handleServerEvent(name, data) {
+  switch (name) {
+    case "serversChanged":
+      SRV.list = data.servers; renderServers(); renderServerHeader(); if (SM && SM.tab === "installed") smRenderInstalled(); break;
+    case "serverInstallProgress": SRV.progress[data.server] = data; { const s = srvByName(data.server); if (s && s.status === "installing" && currentPage === "servers") renderServers(); } break;
+    case "serverInstallFinished": delete SRV.progress[data.server]; toast(`${data.server} is ready. Hit Start!`); break;
+    case "serverInstallError": delete SRV.progress[data.server]; toast(data.message, "error", 8000); break;
+    case "serverLog": if (SRV.cur === data.server) appendLog(data.lines); break;
+    case "serverPlayers": if (SRV.cur === data.server) { SRV.players = data.players; renderPlayers(); renderOverview(); } break;
+    case "serverStats":
+      if (SRV.cur === data.server) {
+        SRV.stats = data; const h = SRV.hist, push = (a, v) => { if (v != null) { a.push(v); if (a.length > 60) a.shift(); } };
+        push(h.cpu, data.cpu); push(h.ram, data.ram); push(h.tps, data.tps); renderOverview();
+      } break;
+    case "serverEula": showEulaPrompt(data.server); break;
+    case "serverCrashed": toast(data.message, "error", 8000); break;
+  }
+}
+
 async function bootstrap() {
   const res = await callApi("get_state");
-  if (res.success) { STATE = res.state; applyCompact(!!STATE.settings.sidebar_collapsed, false); }
+  if (res.success) { STATE = res.state; applyCompact(!!STATE.settings.sidebar_collapsed, false); applyTheme(STATE.settings.theme || "green", false); }
   renderAll();
   stagger($("#home-cards"));
 }

@@ -52,10 +52,13 @@ input { user-select: text; }
 button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 ::selection { background: var(--accent-soft); }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-thumb { background: var(--panel-3); border-radius: 10px; border: 2px solid var(--bg); }
-::-webkit-scrollbar-thumb:hover { background: #2b303a; }
+::-webkit-scrollbar { width: 14px; height: 14px; }
 ::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.13); background-clip: padding-box; border: 4px solid transparent; border-radius: 999px; min-height: 44px; min-width: 44px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--accent-rgb), 0.55); background-clip: padding-box; border: 4px solid transparent; }
+::-webkit-scrollbar-thumb:active { background: var(--accent); background-clip: padding-box; border: 4px solid transparent; }
 .ico { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ico svg { display: block; }
 .spin svg { animation: spin 0.9s linear infinite; }
@@ -282,19 +285,34 @@ h1 { font-size: 22px; font-weight: 680; margin-bottom: 4px; }
   border-radius: 14px;
   padding: 18px;
 }
-.home-launch {
-  display: flex; align-items: center; justify-content: center; gap: 16px;
-  width: 25%; min-width: 220px; max-width: 340px;
-  padding: 22px 20px; margin: 40px auto 0;
-  border-radius: 18px; text-align: left;
-  box-shadow: 0 16px 40px -18px rgba(var(--accent-rgb), 0.6);
+.launch-split {
+  display: flex; align-items: stretch;
+  width: min(330px, 100%); height: 58px;
+  border-radius: 14px; overflow: hidden;
+  box-shadow: 0 10px 28px -14px rgba(var(--accent-rgb), 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   transition: transform 0.2s var(--ease), box-shadow 0.25s;
 }
-.home-launch:hover:not([disabled]) { transform: translateY(-2px); box-shadow: 0 20px 48px -16px rgba(var(--accent-rgb), 0.75); }
-.home-launch .ico svg { width: 40px; height: 40px; }
-.home-launch-text { display: flex; flex-direction: column; line-height: 1.25; }
-.home-launch-text .main { font-size: 26px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; }
-.home-launch-text .sub { font-size: 14px; font-weight: 600; opacity: 0.75; }
+.launch-split:hover { transform: translateY(-2px); box-shadow: 0 14px 32px -14px rgba(var(--accent-rgb), 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
+.launch-split .btn.launch-main,
+.launch-split .btn.launch-main:hover { flex: 3 1 0; min-width: 0; height: 100%; border: 0; border-radius: 0; box-shadow: none; gap: 10px; padding: 0 14px; justify-content: center; text-align: left;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 65%); }
+.launch-split .btn.launch-main:hover:not([disabled]) { background-color: var(--accent-hover); }
+.launch-split .btn.launch-main:active { transform: none; filter: brightness(0.94); }
+.launch-main .ico svg { width: 24px; height: 24px; }
+.home-launch-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow: hidden; line-height: 1.15; }
+.home-launch-text .main { font-size: 18px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.home-launch-text .ls { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; opacity: 0.75; }
+
+#launch-pick { flex: 1 1 0; min-width: 0; border-left: 1px solid rgba(0, 0, 0, 0.22); }
+#launch-pick .cselect-btn { height: 100%; padding: 0 8px; justify-content: center; gap: 4px; border: 0; border-radius: 0; box-shadow: none; background: var(--accent); background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 65%); color: var(--accent-ink); transition: background-color 0.18s; }
+#launch-pick .cselect-btn:hover, #launch-pick.open .cselect-btn { background-color: var(--accent-hover); border-color: transparent; box-shadow: none; }
+#launch-pick .cselect-value { padding: 4px; border-radius: 7px; background: rgba(0, 0, 0, 0.14); }
+#launch-pick .cselect-value span { display: none; }
+#launch-pick .cselect-value svg { width: 18px; height: 18px; }
+#launch-pick .cselect-caret { color: inherit; opacity: 0.85; transform: rotate(180deg); }
+#launch-pick .cselect-caret svg { width: 13px; height: 13px; }
+#launch-pick.open .cselect-caret { transform: none; }
+.home-dock { flex-shrink: 0; display: flex; justify-content: center; padding-top: 18px; }
 .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .stat-card { display: flex; flex-direction: column; gap: 10px; transition: border-color 0.2s, transform 0.25s var(--ease); }
 .stat-card:hover { border-color: #2f3541; transform: translateY(-2px); }
@@ -451,6 +469,27 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .cselect-opt .label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .cselect-opt .opt-tag { color: var(--faint); font-size: 11.5px; }
 .cselect-opt.active { background: var(--panel-3); }
+.cselect-opt.disabled { opacity: 0.3; cursor: not-allowed; }
+.cselect-opt.disabled.active { background: transparent; }
+.loader-toggle.oc button[data-loader="vanilla"], .loader-toggle.oc button[data-loader="forge"] { opacity: 0.3; pointer-events: none; cursor: not-allowed; }
+.nic { max-width: 640px; padding: 22px; }
+.nic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 14px; }
+.nic-grid .full { grid-column: 1 / -1; }
+.nic-grid .field { margin-bottom: 0; }
+.nic-grid:has(#loader-version-row.row-hidden) #version-field { grid-column: 1 / -1; }
+.nic .section-title { margin: 22px 0 12px; }
+.nic .section-title:first-child { margin-top: 0; }
+.nic-oc { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; border-radius: 14px;
+  background: var(--panel-2); border: 1px solid var(--border); transition: border-color .2s, background .2s; }
+.nic-oc:hover { border-color: #3a4150; }
+.nic-oc.on { border-color: rgba(var(--accent-rgb), 0.5); background: var(--accent-soft); }
+.nic-oc-ico { width: 42px; height: 42px; flex-shrink: 0; border-radius: 11px; display: grid; place-items: center; background: var(--panel-3); }
+.nic-oc-ico svg { width: 26px; height: 26px; }
+.nic-oc-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.nic-oc-text .n { font-weight: 650; }
+.nic-oc-text .d { color: var(--dim); font-size: 12.5px; }
+.nic-actions { margin-top: 22px; }
+.nic-actions .btn { width: 100%; padding: 12px 14px; }
 .cselect-opt.selected { color: var(--accent); }
 .cselect-opt .tick { width: 14px; height: 14px; display: inline-flex; color: var(--accent); opacity: 0; }
 .cselect-opt.selected .tick { opacity: 1; }
@@ -653,6 +692,24 @@ canvas { image-rendering: pixelated; }
 .skin-new-tile:hover .skin-thumb { color: var(--accent); }
 .skin-actions { display: flex; gap: 6px; }
 .skin-actions .btn.primary { flex: 1; }
+.skin-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; }
+.skin-bar .cv-search { flex: 1; }
+.skin-sub { flex: none; width: 104px; }
+#cat-refresh[hidden], #local-install[hidden] { display: none; }
+.local-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.local-bar select { min-width: 220px; }
+.skin-sub button { padding: 8px 0; }
+.cat-more { display: flex; justify-content: center; margin-top: 16px; }
+.cat-count { text-align: center; margin-top: 14px; color: var(--faint); font-size: 12px; }
+.btn.star-btn, .btn.star-btn:hover, .btn.star-btn:active, .btn.star-btn.on { background: none; border-color: transparent; box-shadow: none; }
+.btn.star-btn { color: #facc15; }
+.btn.star-btn svg { fill: none; transition: fill 0.2s, transform 0.2s var(--ease); }
+.btn.star-btn:hover { color: #fde047; }
+.btn.star-btn:hover svg { transform: scale(1.15); }
+.btn.star-btn.on svg { fill: currentColor; }
+.sc-stage.m3d { display: block; position: relative; height: 330px; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+.sc-stage.m3d.grabbing { cursor: grabbing; }
+.sc-stage.m3d canvas { display: block; width: 100%; height: 100%; animation: none; }
 .cs-row { display: flex; gap: 18px; align-items: flex-start; }
 .cs-preview { width: 120px; flex-shrink: 0; min-height: 230px; display: grid; place-items: center; border-radius: 12px; background: var(--panel-2); color: var(--faint); }
 .cs-preview canvas { display: none; }
@@ -757,6 +814,60 @@ canvas { image-rendering: pixelated; }
 .sm-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .sm-card { cursor: default; } .sm-card:hover { transform: none; }
 @media (max-width: 900px) { .form-grid.cols3 { grid-template-columns: 1fr 1fr; } }
+
+
+#instances-add-view { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 118px); }
+.nic-wrap { width: min(500px, 100%); }
+.nic-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; margin-left: -6px; }
+.nic-head h1 { margin: 0; font-size: 20px; }
+.nic { max-width: none; padding: 18px; }
+.nic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 12px; }
+.nic-grid .full { grid-column: 1 / -1; }
+.nic-grid .field { margin-bottom: 0; }
+.nic-grid .field label { margin-bottom: 5px; }
+.nic-grid:has(#loader-version-row.row-hidden) #version-field { grid-column: 1 / -1; }
+.nic-oc { padding: 9px 14px; }
+.nic-oc-ico { width: 36px; height: 36px; }
+.nic-oc-ico svg { width: 22px; height: 22px; }
+.nic-actions { margin-top: 10px; }
+.nic-actions .btn { padding: 11px 14px; }
+.oc-badge { flex-shrink: 0; display: inline-flex; }
+
+#page-home.active { display: flex; flex-direction: column; height: calc(100vh - 118px); max-width: 1100px; }
+.home-grid { flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(250px, 330px) 1fr; grid-template-rows: minmax(0, 1fr); gap: 16px; }
+.home-left { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.home-hello h1 { margin-bottom: 2px; }
+.home-hello .sub { margin-bottom: 4px; }
+.home-cards { display: flex; flex-direction: column; gap: 14px; }
+.glass { background: rgba(17, 19, 24, 0.52); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 18px; }
+.hw-label { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 12.5px; }
+.hw-value { font-size: 28px; font-weight: 700; margin-top: 8px; }
+.hw-sub { color: var(--dim); font-size: 12.5px; margin-top: 2px; }
+.hw-inst { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.hw-name { display: flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 650; min-width: 0; }
+.hw-name .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-news { background: rgba(14, 16, 20, 0.74); display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 20px 6px 20px 22px; }
+.cl-head { display: flex; align-items: center; gap: 10px; padding-right: 16px; margin-bottom: 12px; }
+.cl-head .t { font-size: 16px; font-weight: 680; }
+.cl-head .sp { flex: 1; }
+.cl-date { color: var(--faint); font-size: 12.5px; }
+.cl-body { flex: 1; min-height: 0; overflow-y: auto; padding-right: 12px; user-select: text; color: #cfd3d9; line-height: 1.55; }
+.cl-body h3 { font-size: 14px; font-weight: 650; color: var(--text); margin: 18px 0 6px; }
+.cl-body h3:first-child { margin-top: 0; }
+.cl-body p { margin: 4px 0; }
+.cl-body ul { margin: 4px 0 4px 2px; padding-left: 18px; }
+.cl-body li { margin: 3px 0; }
+.cl-center { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--dim); text-align: center; padding-right: 16px; }
+@media (max-width: 900px) { .home-grid { grid-template-columns: 1fr; grid-template-rows: none; flex: none; } #page-home.active { height: auto; min-height: calc(100vh - 118px); } .home-news { min-height: 320px; } }
+
+
+@font-face { font-family: "CritMC"; src: local("Minecraft"), local("Minecraft Regular"), local("Minecraft Ten"), url("minecraft.ttf") format("truetype"); }
+:root[data-style="minecraft"] *, :root[data-style="minecraft"] *::before, :root[data-style="minecraft"] *::after { border-radius: 0 !important; font-weight: 400; }
+:root[data-style="minecraft"] b { font-weight: 700; }
+:root[data-style="minecraft"] body { font-family: "CritMC", "Lucida Console", Consolas, "Courier New", monospace; font-size: 13.5px; }
+:root[data-style="minecraft"] h1 { font-size: 24px; }
+:root[data-style="minecraft"] ::-webkit-scrollbar-thumb { border-radius: 0; }
+:root[data-style="minecraft"] .home-launch-text .main { letter-spacing: 0.08em; }
 </style>
 </head>
 <body>
@@ -831,14 +942,21 @@ canvas { image-rendering: pixelated; }
     <main id="content">
       <div id="home-bg"></div>
       <section class="page active" id="page-home">
-        <h1>Welcome back</h1>
-        <p class="sub">Pick an instance in Settings and hit play.</p>
-        <div class="grid-4" id="home-cards"></div>
-        <div class="home-launch-spacer"></div>
-        <button class="btn primary home-launch" id="btn-home-play">
-          <span class="ico" id="home-play-icon"></span>
-          <span class="home-launch-text"><span class="main" id="home-play-label">Launch</span></span>
-        </button>
+        <div class="home-grid">
+          <div class="home-left">
+            <div class="home-cards" id="home-cards"></div>
+          </div>
+          <div class="glass home-news" id="home-changelog"></div>
+        </div>
+        <div class="home-dock">
+          <div class="launch-split" id="launch-split">
+            <button class="btn primary launch-main" id="btn-home-play">
+              <span class="ico" id="home-play-icon"></span>
+              <span class="home-launch-text"><span class="main" id="home-play-label">Launch</span><span class="ls" id="home-play-sub"></span></span>
+            </button>
+            <div id="launch-pick" data-tip="Change instance"></div>
+          </div>
+        </div>
       </section>
       <section class="page" id="page-instances">
         <div id="instances-list-view">
@@ -858,23 +976,30 @@ canvas { image-rendering: pixelated; }
           <div class="instance-list" id="instance-list"></div>
         </div>
         <div id="instances-add-view" style="display:none">
-          <button class="btn ghost small" id="btn-back" style="margin-bottom:14px"><span class="ico" data-icon="chevron-left" data-size="16"></span>Back</button>
-          <h1>New instance</h1>
-          <p class="sub">Files are downloaded the first time you play.</p>
-          <div class="card form-card">
-            <div class="field"><label for="new-name">Name</label><input class="input" id="new-name" maxlength="64" placeholder="My instance" autocomplete="off" /></div>
-            <div class="field"><label>Loader</label>
-              <div class="loader-toggle" id="loader-toggle">
-                <div class="loader-pill"></div>
-                <button data-loader="vanilla" class="on">Vanilla</button>
-                <button data-loader="fabric">Fabric</button>
-                <button data-loader="forge">Forge</button>
+          <div class="nic-wrap">
+            <div class="nic-head"><button class="btn ghost small icon-only" id="btn-back" aria-label="Back" data-tip="Back"><span class="ico" data-icon="chevron-left" data-size="18"></span></button><h1>New instance</h1></div>
+            <div class="card form-card nic">
+              <div class="nic-grid">
+                <div class="field full"><label for="new-name">Name</label><input class="input" id="new-name" maxlength="64" placeholder="My instance" autocomplete="off" /></div>
+                <div class="field full"><button type="button" class="nic-oc" id="oneclient-row" role="switch" aria-checked="false">
+                  <span class="nic-oc-ico"><svg viewBox="15 8.3627 25.1097 25.1097" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M25.4731 9H23.7907C21.8599 9 20.0759 10.029 19.1105 11.6993L15.3429 18.2182C15.2139 18.4415 15.1021 18.6716 15.0076 18.9069L20.3602 17.9218C22.5216 17.5241 24.2127 15.8347 24.6109 13.6755L25.4731 9Z" fill="#1878F1"></path><path d="M15 22.9092C15.0961 23.1511 15.2104 23.3876 15.3429 23.6169L19.1105 30.1358C20.0759 31.8062 21.8599 32.8351 23.7907 32.8351H25.4764L24.6109 28.142C24.2127 25.9828 22.5216 24.2934 20.3602 23.8957L15 22.9092Z" fill="#1878F1"></path><path d="M29.7254 32.8351H31.3258C33.2566 32.8351 35.0406 31.8062 36.006 30.1358L39.7736 23.6169C39.903 23.393 40.015 23.1621 40.1097 22.9262L34.8415 23.8957C32.6802 24.2934 30.9891 25.9828 30.5909 28.142L29.7254 32.8351Z" fill="#1878F1"></path><path d="M40.102 18.8899C40.009 18.6606 39.8995 18.4361 39.7736 18.2182L36.006 11.6993C35.0406 10.029 33.2566 9 31.3258 9H29.7287L30.5909 13.6755C30.9891 15.8346 32.6802 17.5241 34.8415 17.9218L40.102 18.8899Z" fill="#1878F1"></path><path d="M27.5482 9.46769C27.5553 9.40501 27.6465 9.40501 27.6535 9.46769L28.0703 13.1697C28.495 16.9427 31.4713 19.9231 35.2472 20.3564L39.6024 20.8562C39.6649 20.8633 39.6649 20.9541 39.6024 20.9613L35.2472 21.4611C31.4713 21.8944 28.495 24.8748 28.0703 28.6478L27.6535 32.3498C27.6465 32.4125 27.5553 32.4125 27.5482 32.3498L27.1321 28.6537C26.7071 24.8779 23.727 21.8964 19.948 21.4661L15.5148 20.9613C15.4522 20.9542 15.4522 20.8633 15.5148 20.8562L19.948 20.3514C23.727 19.9211 26.7071 16.9396 27.1321 13.1638L27.5482 9.46769Z" fill="#5187F1"></path></svg></span>
+                  <span class="nic-oc-text"><span class="n">Use OneClient</span><span class="d">Optimized Fabric client by Polyfrost</span></span>
+                  <span class="switch" id="oneclient-switch"></span></button></div>
+                <div class="field full"><label>Loader</label>
+                  <div class="loader-toggle" id="loader-toggle">
+                    <div class="loader-pill"></div>
+                    <button data-loader="vanilla" class="on">Vanilla</button>
+                    <button data-loader="fabric">Fabric</button>
+                    <button data-loader="forge">Forge</button>
+                  </div>
+                </div>
+                <div class="field" id="version-field"><label>Minecraft version</label><div id="version-select"></div></div>
+                <div class="field row-hidden" id="loader-version-row"><label id="loader-version-label">Loader version</label><div id="loader-version-select"></div></div>
               </div>
+              <div class="form-error" id="new-error" style="margin:10px 0 0;min-height:16px"></div>
+              <div class="nic-actions"><button class="btn primary" id="btn-create"><span class="ico" data-icon="check" data-size="16"></span>Create instance</button></div>
+              <div class="hint" style="text-align:center;margin-top:8px">Files are downloaded the first time you play.</div>
             </div>
-            <div class="field"><label>Minecraft version</label><div id="version-select"></div></div>
-            <div class="field row-hidden" id="loader-version-row"><label id="loader-version-label">Loader version</label><div id="loader-version-select"></div></div>
-            <div class="form-error" id="new-error"></div>
-            <button class="btn primary" id="btn-create"><span class="ico" data-icon="check" data-size="16"></span>Create instance</button>
           </div>
         </div>
       </section>
@@ -915,7 +1040,7 @@ canvas { image-rendering: pixelated; }
       </section>
       <section class="page" id="page-skins">
         <div class="page-head">
-          <div><h1>Skins</h1><p class="sub">Change your skin and cape. This works on Microsoft accounts.</p></div>
+          <div><h1>Skins</h1><p class="sub">Change your skin and cape. Microsoft accounts change their real skin; offline accounts use local skins.</p></div>
           <button class="btn" id="btn-skin-reset" data-tip="Go back to the default skin"><span class="ico" data-icon="rotate-ccw" data-size="15"></span>Reset</button>
         </div>
         <div id="skins-body"></div>
@@ -938,12 +1063,22 @@ canvas { image-rendering: pixelated; }
           </div>
         </div>
         <div class="card setting-card">
+          <div class="setting-row"><div><div class="t">Updates</div><div class="d" id="update-status">Not checked yet.</div></div>
+            <div class="btn-row"><button class="btn small" id="btn-check-updates">Check for updates</button><button class="btn small primary" id="btn-update-now" style="display:none">Update</button></div></div>
+        </div>
+        <div class="card setting-card">
           <div class="t" style="font-weight:600">Theme</div>
+          <div style="color:var(--dim);font-size:12.5px;margin:2px 0 12px">Default is smooth and rounded. Minecraft is blocky, with square corners.</div>
+          <div class="seg" id="style-seg" style="--n:2"><div class="seg-pill"></div>
+            <button data-style="default" class="on">Default</button><button data-style="minecraft">Minecraft</button></div>
+        </div>
+        <div class="card setting-card">
+          <div class="t" style="font-weight:600">Accent colour</div>
           <div style="color:var(--dim);font-size:12.5px;margin:2px 0 12px">Pick an accent colour.</div>
           <div class="theme-swatches" id="theme-swatches"><button class="theme-swatch" data-theme="green" style="background:#4ade80" data-tip="Green" aria-label="Green theme"></button><button class="theme-swatch" data-theme="blue" style="background:#60a5fa" data-tip="Blue" aria-label="Blue theme"></button><button class="theme-swatch" data-theme="purple" style="background:#a78bfa" data-tip="Purple" aria-label="Purple theme"></button><button class="theme-swatch" data-theme="red" style="background:#f05252" data-tip="Red" aria-label="Red theme"></button><button class="theme-swatch" data-theme="orange" style="background:#fb923c" data-tip="Orange" aria-label="Orange theme"></button><button class="theme-swatch" data-theme="pink" style="background:#f472b6" data-tip="Pink" aria-label="Pink theme"></button></div>
         </div>
         <div class="card setting-card">
-          <div class="setting-row"><div><div class="t">v1.3 thanks for using crit</div></div>
+          <div class="setting-row"><div><div class="t" id="ver-line">v1.3 thanks for using crit</div></div>
               <div class="socials">
                 <button class="social-btn" id="btn-discord" data-url="https://discord.gg/SyxeBQvvwY" data-tip="Join our Discord" aria-label="Join our Discord">
                   <svg viewBox="0 0 512 512" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="m386 137c-24-11-49.5-19-76.3-23.7c-.5 0-1 0-1.2.6c-3.3 5.9-7 13.5-9.5 19.5c-29-4.3-57.5-4.3-85.7 0c-2.6-6.2-6.3-13.7-10-19.5c-.3-.4-.7-.7-1.2-.6c-23 4.6-52.4 13-76 23.7c-.2 0-.4.2-.5.4c-49 73-62 143-55 213c0 .3.2.7.5 1c32 23.6 63 38 93.6 47.3c.5 0 1 0 1.3-.4c7.2-9.8 13.6-20.2 19.2-31.2c.3-.6 0-1.4-.7-1.6c-10-4-20-8.6-29.3-14c-.7-.4-.8-1.5 0-2c2-1.5 4-3 5.8-4.5c.3-.3.8-.3 1.2-.2c61.4 28 128 28 188 0c.4-.2.9-.1 1.2.1c1.9 1.6 3.8 3.1 5.8 4.6c.7.5.6 1.6 0 2c-9.3 5.5-19 10-29.3 14c-.7.3-1 1-.6 1.7c5.6 11 12.1 21.3 19 31c.3.4.8.6 1.3.4c30.6-9.5 61.7-23.8 93.8-47.3c.3-.2.5-.5.5-1c7.8-80.9-13.1-151-55.4-213c0-.2-.3-.4-.5-.4Zm-192 171c-19 0-34-17-34-38c0-21 15-38 34-38c19 0 34 17 34 38c0 21-15 38-34 38zm125 0c-19 0-34-17-34-38c0-21 15-38 34-38c19 0 34 17 34 38c0 21-15 38-34 38z" fill="currentColor"/></svg>
@@ -1015,6 +1150,7 @@ const ICONS = {
   "skull": '<circle cx="12" cy="11" r="8"/><circle cx="9" cy="11" r="1.3" fill="currentColor"/><circle cx="15" cy="11" r="1.3" fill="currentColor"/><path d="M9 16.5h6"/><path d="M10 20.5v-2"/><path d="M14 20.5v-2"/>',
   "zap": '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
   "gem": '<path d="M6 3h12l4 6-10 12L2 9Z"/><path d="M11 3 8 9l4 12 4-12-3-6"/><path d="M2 9h20"/>',
+  "grid": '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
   "chevron-right": '<path d="m9 18 6-6-6-6"/>',
   "copy": '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
   "external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
@@ -1030,6 +1166,7 @@ const ICONS = {
 };
 const FILLED = new Set(["play", "square"]);
 function icon(name, size = 16) {
+  if (name === "oneclient") return ocSvg(size);
   const body = ICONS[name] || "";
   const fill = FILLED.has(name) ? "currentColor" : "none";
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
@@ -1081,10 +1218,10 @@ const ICON_PRESETS = [
   { key: "triangle", label: "Triangle" }, { key: "star", label: "Star" }, { key: "hexagon", label: "Hexagon" },
   { key: "diamond", label: "Diamond" }, { key: "heart", label: "Heart" }, { key: "cat", label: "Cat" },
   { key: "ghost", label: "Ghost" }, { key: "skull", label: "Skull" }, { key: "zap", label: "Lightning" },
-  { key: "gem", label: "Gem" },
+  { key: "gem", label: "Gem" }, { key: "oneclient", label: "OneClient" },
 ];
 function loaderDefaultIcon(loader) { return loader === "fabric" ? "shirt" : loader === "forge" ? "flame" : "box"; }
-function instanceIconKey(i) { return i.icon || loaderDefaultIcon(i.loader); }
+function instanceIconKey(i) { return i.icon || (i.oneclient ? "oneclient" : loaderDefaultIcon(i.loader)); }
 function loaderLabel(i) {
   if (i.loader === "fabric") return `Fabric ${i.loader_version || ""}`.trim();
   if (i.loader === "forge") return `Forge ${i.loader_version || ""}`.trim();
@@ -1167,18 +1304,21 @@ class CSelect {
     this.menu.addEventListener("mousedown", (e) => e.preventDefault());
     this.menu.addEventListener("click", (e) => {
       const o = e.target.closest(".cselect-opt");
-      if (o) this.choose(o.dataset.value);
+      if (o && !o.classList.contains("disabled")) this.choose(o.dataset.value);
     });
     this.menu.addEventListener("mousemove", (e) => {
       const o = e.target.closest(".cselect-opt");
-      if (o) this.setActive(parseInt(o.dataset.i, 10), false);
+      if (o && !o.classList.contains("disabled")) this.setActive(parseInt(o.dataset.i, 10), false);
     });
     this.renderValue();
   }
   setOptions(options, value) {
     this.options = options;
     if (value !== undefined) this.value = value;
-    if (!options.some((o) => o.value === this.value)) this.value = options.length ? options[0].value : null;
+    if (!options.some((o) => o.value === this.value && !o.disabled)) {
+      const first = options.find((o) => !o.disabled);
+      this.value = first ? first.value : null;
+    }
     this.renderMenu();
     this.renderValue();
   }
@@ -1189,7 +1329,7 @@ class CSelect {
     const cur = this.options.find((o) => o.value === this.value);
     if (cur) {
       this.valueEl.classList.remove("placeholder");
-      this.valueEl.innerHTML = (cur.icon ? icon(cur.icon, 16) : "") + `<span>${esc(cur.label)}</span>`;
+      this.valueEl.innerHTML = (cur.iconHtml || (cur.icon ? icon(cur.icon, 16) : "")) + `<span>${esc(cur.label)}</span>`;
     } else {
       this.valueEl.classList.add("placeholder");
       this.valueEl.textContent = this.opts.placeholder || "Select...";
@@ -1201,8 +1341,8 @@ class CSelect {
       return;
     }
     this.menu.innerHTML = this.options.map((o, i) =>
-      `<div class="cselect-opt${o.value === this.value ? " selected" : ""}" role="option" data-i="${i}" data-value="${esc(o.value)}">
-        ${o.icon ? icon(o.icon, 16) : ""}<span class="label">${esc(o.label)}</span>${o.tag ? `<span class="opt-tag">${esc(o.tag)}</span>` : ""}
+      `<div class="cselect-opt${o.value === this.value ? " selected" : ""}${o.disabled ? " disabled" : ""}" role="option"${o.disabled ? ' aria-disabled="true"' : ""} data-i="${i}" data-value="${esc(o.value)}">
+        ${o.iconHtml || (o.icon ? icon(o.icon, 16) : "")}<span class="label">${esc(o.label)}</span>${o.tag ? `<span class="opt-tag">${esc(o.tag)}</span>` : ""}
         <span class="tick">${icon("check", 14)}</span></div>`).join("");
   }
   toggle() { this.menu.classList.contains("open") ? this.close() : this.open(); }
@@ -1213,7 +1353,8 @@ class CSelect {
     this.root.classList.add("open");
     this.btn.setAttribute("aria-expanded", "true");
     const r = this.btn.getBoundingClientRect();
-    this.menu.style.width = Math.max(r.width, 170) + "px";
+    const minW = this.opts.minWidth || 170;
+    this.menu.style.width = Math.max(r.width, minW) + "px";
     this.menu.style.maxHeight = "270px";
     const wanted = Math.min(this.menu.scrollHeight + 2, 270);
     const below = window.innerHeight - r.bottom - 12, above = r.top - 12;
@@ -1222,7 +1363,7 @@ class CSelect {
     const room = placement === "bottom" ? below : above;
     this.menu.style.maxHeight = Math.max(120, Math.min(270, room)) + "px";
     const h = Math.min(wanted, parseInt(this.menu.style.maxHeight, 10));
-    let left = Math.min(r.left, window.innerWidth - Math.max(r.width, 170) - 8);
+    let left = Math.min(r.left, window.innerWidth - Math.max(r.width, minW) - 8);
     this.menu.style.left = Math.max(8, left) + "px";
     if (placement === "bottom") {
       this.menu.style.top = r.bottom + 6 + "px";
@@ -1264,7 +1405,9 @@ class CSelect {
       if (!isOpen) return this.open();
       const n = this.options.length;
       if (!n) return;
-      const next = (this.active + (e.key === "ArrowDown" ? 1 : -1) + n) % n;
+      const step = e.key === "ArrowDown" ? 1 : -1;
+      let next = this.active;
+      for (let k = 0; k < n; k++) { next = (next + step + n) % n; if (!this.options[next].disabled) break; }
       this.setActive(next, true);
       const el = this.menu.querySelector(`.cselect-opt[data-i="${next}"]`);
       if (el) { const t = el.offsetTop, b = t + el.offsetHeight;
@@ -1274,7 +1417,7 @@ class CSelect {
       e.preventDefault();
       if (!isOpen) return this.open();
       const o = this.options[this.active];
-      if (o) this.choose(o.value);
+      if (o && !o.disabled) this.choose(o.value);
     } else if (e.key === "Escape") {
       if (isOpen) { e.preventDefault(); this.close(); }
     } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
@@ -1319,7 +1462,7 @@ function navigateTo(page) {
   if (page === "instances") { showInstanceList(); stagger($("#instance-list")); }
   if (page === "accounts") stagger($("#account-list"));
   $("#home-bg").classList.toggle("active", page === "home");
-  if (page === "home") stagger($("#home-cards"));
+  if (page === "home") { stagger($("#home-cards")); if (!CHANGELOG.data && !CHANGELOG.loading) loadChangelog(); }
   if (page === "addons" && !addonLoaded) runAddonSearch();
   if (page === "import" && !importLoaded) loadImportSources();
   if (page === "settings") renderSettings();
@@ -1336,8 +1479,19 @@ function applyTheme(key, persist) {
   if (persist) { STATE.settings.theme = key; callApi("save_settings", { theme: key }); }
 }
 try { applyTheme(localStorage.getItem("crit-theme") || "green", false); } catch (e) {}
+const UI_STYLES = ["default", "minecraft"];
+function applyStyle(key, persist) {
+  if (!UI_STYLES.includes(key)) key = "default";
+  document.documentElement.dataset.style = key;
+  $$("#style-seg button").forEach((b) => b.classList.toggle("on", b.dataset.style === key));
+  $("#style-seg").style.setProperty("--idx", UI_STYLES.indexOf(key));
+  try { localStorage.setItem("crit-style", key); } catch (e) {}
+  if (persist) { STATE.settings.ui_style = key; callApi("save_settings", { ui_style: key }); }
+}
+try { applyStyle(localStorage.getItem("crit-style") || "default", false); } catch (e) {}
+$("#style-seg").addEventListener("click", (e) => { const b = e.target.closest("button[data-style]"); if (b) applyStyle(b.dataset.style, true); });
 $("#theme-swatches").addEventListener("click", (e) => { const b = e.target.closest(".theme-swatch"); if (b) applyTheme(b.dataset.theme, true); });
-let sidebarSelect;
+let sidebarSelect, launchSelect;
 function applyCompact(compact, persist) {
   document.body.classList.toggle("compact", compact);
   $("#btn-collapse").dataset.tip = compact ? "Expand sidebar" : "Collapse sidebar";
@@ -1393,21 +1547,29 @@ function renderTopbar() {
   }
   $("#top-account-name").textContent = acc ? acc.name : "No account";
 }
+function ocIcon(size) {
+  const el = $(".nic-oc-ico");
+  return el ? `<span class="oc-badge" data-tip="OneClient install">${el.innerHTML.replace("<svg ", `<svg width="${size}" height="${size}" `)}</span>` : "";
+}
+function ocSvg(size) {
+  const el = $(".nic-oc-ico svg");
+  return el ? el.outerHTML.replace("<svg ", `<svg width="${size}" height="${size}" style="flex-shrink:0" `) : "";
+}
 function renderHome() {
   const inst = STATE.active_instance;
-  const acc = STATE.active_account;
   const total = (STATE.playtime_total || 0) + Object.values(STATE.sessions || {}).reduce((a, t) => a + Math.max(0, Date.now() / 1000 - t), 0);
-  const cards = [
-    { label: "Account", icon: "user", value: acc ? `${faceHTML(acc.name, 28)}<span>${esc(acc.name)}</span>` : `<span style="color:var(--dim)">None yet</span>` },
-    { label: "Main installation", icon: "box", value: inst ? `<span>${esc(inst.name)}</span>` : `<span style="color:var(--dim)">None yet</span>` },
-    { label: "Running", icon: "play", value: `<span>${STATE.running.length}</span>` },
-    { label: "Time played", icon: "clock", value: `<span>${fmtDuration(total)}</span>` },
-  ];
-  const wrap = $("#home-cards");
-  wrap.innerHTML = cards.map((c) => `<div class="card stat-card"><div class="label">${icon(c.icon, 15)}${c.label}</div><div class="value">${c.value}</div></div>`).join("");
-  hydrateFaces(wrap);
   const running = inst && STATE.running.includes(inst.name);
   const installing = inst && STATE.installing.includes(inst.name);
+  const n = STATE.running.length;
+  const status = installing ? "Installing" : running ? "Running" : inst ? (inst.installed ? "Ready" : "Not installed") : "";
+  $("#home-cards").innerHTML = `
+    <div class="glass"><div class="hw-label">${icon("clock", 15)}Time played</div>
+      <div class="hw-value">${fmtDuration(total)}</div><div class="hw-sub">${n} instance${n === 1 ? "" : "s"} running now</div></div>
+    <div class="glass"><div class="hw-label">${icon("box", 15)}Main instance</div>
+      ${inst ? `<div class="hw-inst"><span class="instance-icon" style="cursor:default">${icon(instanceIconKey(inst), 20)}</span>
+        <div style="min-width:0"><div class="hw-name"><span class="n">${esc(inst.name)}</span>${inst.oneclient ? ocIcon(16) : ""}</div>
+          <div class="hw-sub">${esc(inst.version)} · ${esc(loaderLabel(inst))} · ${status}</div></div></div>`
+        : `<div class="hw-sub" style="margin-top:10px">No instance yet. Create one on the Instances page.</div>`}</div>`;
   const btn = $("#btn-home-play");
   let hname = "play", htext = "Launch";
   if (installing) { hname = "loader"; htext = "Installing..."; }
@@ -1416,6 +1578,106 @@ function renderHome() {
   $("#home-play-icon").classList.toggle("spin", installing);
   $("#home-play-label").textContent = htext;
   btn.disabled = !inst || running || installing;
+  $("#home-play-sub").textContent = inst ? `${inst.name} · ${inst.version}` : "No instance selected";
+  if (launchSelect) {
+    launchSelect.setOptions(STATE.instances.map((i) => ({ value: i.name, label: i.name, icon: instanceIconKey(i), tag: i.version })), inst ? inst.name : null);
+    launchSelect.setDisabled(!STATE.instances.length);
+  }
+}
+const UPDATE = { info: null, checking: false, shown: false };
+const verLabel = (t) => (/^v/i.test(String(t)) ? String(t) : "v" + t);
+function renderUpdateCard() {
+  const st = $("#update-status"), btn = $("#btn-update-now"); if (!st) return;
+  const u = UPDATE.info;
+  if (UPDATE.checking) st.textContent = "Checking...";
+  else if (!u) st.textContent = "Not checked yet.";
+  else if (u.available) st.textContent = `${verLabel(u.latest)} is available (you have ${verLabel(u.current)}).`;
+  else st.textContent = `You're up to date (${verLabel(u.current)}).`;
+  btn.style.display = u && u.available ? "" : "none";
+  $("#btn-check-updates").disabled = UPDATE.checking;
+}
+async function checkUpdates({ auto = false, force = false } = {}) {
+  if (UPDATE.checking) return null;
+  UPDATE.checking = true; renderUpdateCard();
+  const r = await callApi("check_for_updates", !!force);
+  UPDATE.checking = false;
+  if (!r.success) { if (!auto) toast(r.error || "Couldn't check for updates.", "error"); renderUpdateCard(); return null; }
+  UPDATE.info = r; renderUpdateCard();
+  if (auto && r.available && !r.muted && !UPDATE.shown && !$("#modal-overlay").classList.contains("open")) { UPDATE.shown = true; openUpdatePrompt(); }
+  return r;
+}
+function openUpdatePrompt() {
+  const u = UPDATE.info; if (!u) return;
+  modalHit = null; addStep++;
+  $("#modal-body").innerHTML = `
+    <div class="m-head"><div class="ac-icon">${icon("download", 26)}</div>
+      <div><div class="m-title">Update available</div><div class="ac-author">${esc(verLabel(u.current))} → ${esc(verLabel(u.latest))}</div></div></div>
+    <div class="m-desc">You're not on the latest version of Crit Launcher. Update now? The launcher will close and the installer will open.</div>
+    <div class="btn-row wrap"><button class="btn primary" id="up-yes">${icon("download", 15)}Update</button><button class="btn" id="up-skip">Skip</button><button class="btn ghost" id="up-mute">Don't remind me</button></div>
+    <div class="hint" style="margin-top:10px">"Skip" asks again next time. "Don't remind me" stays quiet until you update.</div>`;
+  $("#up-yes").addEventListener("click", runUpdate);
+  $("#up-skip").addEventListener("click", closeModal);
+  $("#up-mute").addEventListener("click", async () => {
+    await callApi("mute_updates"); if (UPDATE.info) UPDATE.info.muted = true;
+    toast("Okay, no more reminders until you update."); closeModal();
+  });
+  openModal();
+}
+function runUpdate() {
+  modalHit = null; addStep++;
+  $("#modal-body").innerHTML = `
+    <div class="m-title" style="margin-bottom:4px">Updating Crit Launcher</div>
+    <div class="m-desc" id="up-text">Downloading the installer...</div>
+    <div class="bar big"><div id="up-bar"></div></div>
+    <div class="form-error" id="up-error" style="margin-top:12px"></div>`;
+  openModal(); modalBusy = true;
+  callApi("install_update").then((r) => { if (!r.success) updateFailed(r.error); });
+}
+function updateFailed(msg) {
+  modalBusy = false;
+  if ($("#up-error")) { $("#up-text").textContent = "The update didn't go through."; $("#up-error").textContent = msg || "The update failed."; }
+  else toast(msg || "The update failed.", "error");
+}
+$("#btn-check-updates").addEventListener("click", async () => {
+  const r = await checkUpdates({ force: true });
+  if (!r) return;
+  if (r.available) openUpdatePrompt(); else toast("You're on the latest version.");
+});
+$("#btn-update-now").addEventListener("click", runUpdate);
+const CHANGELOG = { data: null, loading: false, error: null };
+function changelogHtml(text) {
+  let out = "", list = false;
+  const close = () => { if (list) { out += "</ul>"; list = false; } };
+  for (const raw of String(text).replace(/\r/g, "").split("\n")) {
+    const l = raw.trim(); let m;
+    if (!l) { close(); continue; }
+    if ((m = l.match(/^#{1,6}\s+(.*)$/))) { close(); out += `<h3>${esc(m[1])}</h3>`; }
+    else if ((m = l.match(/^[-*\u2022]\s+(.*)$/))) { if (!list) { out += "<ul>"; list = true; } out += `<li>${esc(m[1])}</li>`; }
+    else { close(); out += `<p>${esc(l)}</p>`; }
+  }
+  close(); return out;
+}
+function renderChangelog() {
+  const el = $("#home-changelog"); if (!el) return;
+  const c = CHANGELOG;
+  if (c.loading && !c.data) { el.innerHTML = `<div class="cl-center"><span class="ico spin">${icon("loader", 22)}</span>Loading changelog...</div>`; return; }
+  if (!c.data) {
+    el.innerHTML = `<div class="cl-center">${icon("alert", 26)}<div>${esc(c.error || "No changelog available.")}</div><button class="btn small" id="cl-retry">${icon("refresh", 14)}Try again</button></div>`;
+    $("#cl-retry").addEventListener("click", () => loadChangelog(true));
+    return;
+  }
+  const d = c.data, when = d.date ? new Date(d.date).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
+  el.innerHTML = `<div class="cl-head">${icon("list", 17)}<span class="t">Changelog</span>${d.tag ? `<span class="tag ok">${esc(d.tag)}</span>` : ""}<span class="sp"></span>
+      <span class="cl-date">${esc(when)}</span></div>
+    <div class="cl-body">${changelogHtml(d.text)}</div>`;
+}
+async function loadChangelog(force) {
+  if (CHANGELOG.loading) return;
+  CHANGELOG.loading = true; renderChangelog();
+  const r = await callApi("get_changelog", !!force);
+  CHANGELOG.loading = false;
+  if (r.success) { CHANGELOG.data = r; CHANGELOG.error = null; } else if (!CHANGELOG.data) CHANGELOG.error = r.error;
+  renderChangelog();
 }
 $("#btn-home-play").addEventListener("click", () => { if (STATE.active_instance) launchInstance(STATE.active_instance.name); });
 const DISK = { instances: {}, servers: {} };
@@ -1444,7 +1706,7 @@ function renderInstances() {
       : `<button class="btn small primary" data-action="launch" data-name="${esc(i.name)}" ${installing ? "disabled" : ""}>${icon(installing ? "loader" : i.installed ? "play" : "download", 13)}${i.installed ? "Launch" : "Install &amp; play"}</button>`;
     return `<div class="instance-row${i.name === activeName ? " active" : ""}">
       <div class="ir-left"><button class="instance-icon" data-action="icon" data-name="${esc(i.name)}" data-tip="Change icon" aria-label="Change icon">${icon(instanceIconKey(i), 20)}</button>
-        <div style="min-width:0"><div class="instance-name" data-rename="${esc(i.name)}" data-tip="Double-click to rename">${esc(i.name)}</div>
+        <div style="min-width:0"><div style="display:flex;align-items:center;gap:7px;min-width:0"><div class="instance-name" data-rename="${esc(i.name)}" data-tip="Double-click to rename">${esc(i.name)}</div>${i.oneclient ? ocIcon(16) : ""}</div>
           <div class="instance-meta"><span>${esc(i.version)} · ${esc(loaderLabel(i))}</span>${status.startsWith("<") ? `<span style="display:inline-flex;align-items:center;gap:6px">${status}</span>` : ""}${played}</div></div></div>
       <div class="btn-row">${main}
         <button class="btn small icon-only${i.name === activeName ? " is-main" : ""}" data-action="main" data-name="${esc(i.name)}" ${i.name === activeName ? "disabled" : ""} data-tip="${i.name === activeName ? "Main installation" : "Set as main installation"}" aria-label="${i.name === activeName ? "Main installation" : "Set as main installation"}">${icon("star", 15)}</button>
@@ -1500,7 +1762,8 @@ function renderInstallBox() {
   $("#ib-detail").textContent = `${PROGRESS.current || ""}${detail ? " · " + detail : ""}`;
   $("#ib-bar").style.width = PROGRESS.percent + "%";
 }
-const NEW = { loader: "vanilla", version: null, loaderVersion: null };
+const NEW = { loader: "vanilla", version: null, loaderVersion: null, oneclient: false };
+let ONECLIENT = { versions: null };
 let VERSIONS = [];
 let versionSel, loaderVerSel;
 let formToken = 0;
@@ -1510,6 +1773,7 @@ function showAddView() {
   const v = $("#instances-add-view"); v.style.display = ""; v.classList.remove("row-show"); void v.offsetWidth; v.classList.add("row-show");
   $("#new-error").textContent = "";
   if (!VERSIONS.length) loadVersions();
+  loadOneClientInfo(true);
 }
 $("#btn-add-instance").addEventListener("click", showAddView);
 $("#btn-back").addEventListener("click", () => { showInstanceList(); stagger($("#instance-list")); });
@@ -1528,7 +1792,11 @@ async function updateVersionList() {
   else if (NEW.loader === "forge") { const r = await callApi("get_forge_mc_versions"); if (r.success) allowed = new Set(r.versions); }
   if (token !== formToken) return;
   const list = VERSIONS.filter((v) => !allowed || allowed.has(v.id));
-  versionSel.setOptions(list.map((v) => ({ value: v.id, label: v.id })), NEW.version);
+  const oc = NEW.oneclient && ONECLIENT.versions;
+  const okV = (id) => !oc || ONECLIENT.versions.has(id);
+  let want = NEW.version;
+  if (!okV(want)) { const f = list.find((v) => okV(v.id)); if (f) want = f.id; }
+  versionSel.setOptions(list.map((v) => ({ value: v.id, label: v.id, disabled: !okV(v.id), tag: okV(v.id) ? "" : "not supported" })), want);
   NEW.version = versionSel.getValue();
   versionSel.setDisabled(false);
   await updateLoaderVersions(token);
@@ -1563,7 +1831,7 @@ async function updateLoaderVersions(token = formToken) {
 }
 $("#loader-toggle").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-loader]");
-  if (!b || b.dataset.loader === NEW.loader) return;
+  if (!b || b.dataset.loader === NEW.loader || NEW.oneclient) return;
   NEW.loader = b.dataset.loader;
   const buttons = $$("#loader-toggle button");
   buttons.forEach((x) => x.classList.toggle("on", x === b));
@@ -1576,11 +1844,55 @@ $("#btn-create").addEventListener("click", async () => {
   err.textContent = "";
   if (!name) { err.textContent = "Give the instance a name."; return; }
   if (NEW.loader !== "vanilla" && !NEW.loaderVersion) { err.textContent = `No ${NEW.loader} build available for ${NEW.version}.`; return; }
-  const r = await callApi("create_instance", NEW.version, NEW.loader, NEW.loaderVersion, name);
+  const r = await callApi("create_instance", NEW.version, NEW.loader, NEW.loaderVersion, name, NEW.oneclient);
   if (!r.success) { err.textContent = r.error || "Couldn't create the instance."; return; }
   $("#new-name").value = "";
-  toast(`Created ${name}`);
+  const wasOc = NEW.oneclient;
+  toast(wasOc ? `Creating ${name} with OneClient...` : `Created ${name}`);
+  if (wasOc) setOneClient(false);
   showInstanceList(); stagger($("#instance-list"));
+});
+function setOneClient(on) {
+  NEW.oneclient = on;
+  const row = $("#oneclient-row");
+  row.classList.toggle("on", on);
+  row.setAttribute("aria-checked", on);
+  $("#oneclient-switch").classList.toggle("on", on);
+  const tg = $("#loader-toggle");
+  tg.classList.toggle("oc", on);
+  if (on) {
+    NEW.loader = "fabric";
+    const bs = $$("#loader-toggle button");
+    bs.forEach((x) => x.classList.toggle("on", x.dataset.loader === "fabric"));
+    tg.style.setProperty("--idx", bs.findIndex((x) => x.dataset.loader === "fabric"));
+  }
+  updateVersionList();
+}
+async function loadOneClientInfo(quiet) {
+  if (ONECLIENT.versions) return true;
+  const r = await callApi("get_oneclient_info");
+  if (!r.success) { if (!quiet) toast(r.error, "error"); return false; }
+  ONECLIENT.versions = new Set(r.versions);
+  return true;
+}
+function showOneClientNotice() {
+  if (STATE.settings.oneclient_notice_seen) return;
+  STATE.settings.oneclient_notice_seen = true;
+  callApi("save_settings", { oneclient_notice_seen: true });
+  modalHit = null; addStep++;
+  $("#modal-body").innerHTML = `
+    <div class="m-head"><div class="ac-icon" style="padding:10px">${$(".nic-oc-ico").innerHTML}</div><div><div class="m-title">About OneClient</div></div></div>
+    <div class="m-desc">OneClient is an external modpack made by Polyfrost. I do not want to make my own client, so I'm using theirs for now.</div>
+    <button class="btn primary" id="oc-ok" style="width:100%">${icon("check", 16)}Got it</button>`;
+  $("#oc-ok").addEventListener("click", closeModal);
+  openModal();
+}
+$("#oneclient-row").addEventListener("click", async () => {
+  if (NEW.oneclient) return setOneClient(false);
+  setOneClient(true);
+  showOneClientNotice();
+  if (!(await loadOneClientInfo())) { setOneClient(false); return; }
+  if (NEW.oneclient) updateVersionList();
 });
 function sessionNote(a) {
   if (!a.session) return "";
@@ -2035,6 +2347,7 @@ let modalHit = null, modalBusy = false;
 function openModal(wide = false) { $("#modal").classList.remove("xl"); $("#modal").classList.toggle("wide", wide); $("#modal-overlay").classList.add("open"); }
 function closeModal() {
   if (modalBusy) return;
+  if (pickResolve) { const f = pickResolve; pickResolve = null; f(null); }
   msCancel(); addStep++;
   $("#modal-overlay").classList.remove("open");
   modalHit = null; CV = null; SM = null; iconQueue = [];
@@ -2294,7 +2607,8 @@ async function loadIcon(el) {
   }
   if (uri && el.isConnected) el.innerHTML = `<img src="${uri}" alt="" />`;
 }
-const SK = { uuid: null, profile: null, error: null, tab: "skins", custom: null, saved: [], token: 0, busy: false };
+const SK = { uuid: null, profile: null, error: null, tab: "skins", sub: "catalog", q: "", custom: null, saved: [], token: 0, busy: false, inst: null, targets: [], localCapes: null,
+  cat: { skins: null, shown: 60, token: 0, io: null } };
 function loadImage(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
 function drawSkinFront(canvas, src, { scale = 4, slim = false } = {}) {
   const k = src.width / 64, S = scale, aw = slim ? 3 : 4;
@@ -2327,29 +2641,146 @@ function drawCape(canvas, src, scale = 6) {
   g.drawImage(src, 1 * k, 1 * k, 10 * k, 16 * k, 0, 0, canvas.width, canvas.height);
 }
 function skinAccountOk() { return !!STATE.active_account && STATE.active_account.type === "microsoft"; }
-async function openSkinsPage() {
-  const body = $("#skins-body");
-  SK.uuid = STATE.active_account ? STATE.active_account.uuid : null;
-  $("#btn-skin-reset").disabled = !skinAccountOk();
-  if (!skinAccountOk()) {
-    body.innerHTML = `<div class="empty">${icon("shirt", 30)}<div>Skins and capes need a Microsoft account.<br>Offline accounts always use the default skin.</div>
-      <button class="btn primary" id="skin-go" style="margin-top:16px">${icon("user", 15)}Go to accounts</button></div>`;
-    $("#skin-go").addEventListener("click", () => navigateTo("accounts"));
-    return;
-  }
-  SK.profile = null; SK.error = null; SK.custom = null;
-  body.innerHTML = `<div class="skins-layout">
+function skinOffline() { return !!STATE.active_account && STATE.active_account.type === "offline"; }
+function skinsLayoutHtml() {
+  return `<div class="skins-layout">
     <div class="card skin-current" id="skin-current"></div>
     <div>
       <div class="seg" id="skin-tabs" style="--n:2"><div class="seg-pill"></div>
         <button data-tab="skins">${icon("shirt", 15)}Skins</button><button data-tab="capes">${icon("flag", 15)}Capes</button></div>
       <div id="skin-tab-body" style="margin-top:16px"></div>
     </div></div>`;
-  $("#skin-tabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) setSkinTab(b.dataset.tab); });
+}
+function wireSkinsLayout() {
+  const skinTabs = $("#skin-tabs");
+  if (skinTabs) skinTabs.addEventListener("click", (e) => { const b = e.target.closest("button[data-tab]"); if (b) setSkinTab(b.dataset.tab); });
   setSkinTab(SK.tab);
   renderCurrent();
   loadSkinProfile();
   loadSavedSkins();
+}
+async function openSkinsPage() {
+  const body = $("#skins-body");
+  SK.uuid = STATE.active_account ? STATE.active_account.uuid : null;
+  if (skinOffline()) return openLocalSkins(body);
+  $("#btn-skin-reset").disabled = !skinAccountOk();
+  if (!skinAccountOk()) {
+    body.innerHTML = `<div class="empty">${icon("shirt", 30)}<div>Add an account to change your skin and cape.</div>
+      <button class="btn primary" id="skin-go" style="margin-top:16px">${icon("user", 15)}Go to accounts</button></div>`;
+    $("#skin-go").addEventListener("click", () => navigateTo("accounts"));
+    return;
+  }
+  SK.profile = null; SK.error = null; SK.custom = null;
+  body.innerHTML = skinsLayoutHtml();
+  wireSkinsLayout();
+}
+
+
+let pickResolve = null;
+function showLocalSkinWarning(acc) {
+  const seen = STATE.settings.local_skin_warning_seen || [];
+  if (!acc || seen.includes(acc.uuid)) return;
+  const next = seen.concat(acc.uuid);
+  STATE.settings.local_skin_warning_seen = next;
+  callApi("save_settings", { local_skin_warning_seen: next });
+  modalHit = null; addStep++;
+  $("#modal-body").innerHTML = `
+    <div class="m-title" style="margin-bottom:12px">Offline account: local skins</div>
+    <div class="warn-box">${icon("alert", 20)}<div>Since <b>${esc(acc.name)}</b> is an offline account, you need to use a <b>local skin</b> (and cape), which will <b>not show to other players</b>.<br><br>Local skins need the <b>CustomSkinLoader</b> mod. Your skin and cape are applied to <b>every instance that has it</b>, and Crit Launcher offers to install it on other Fabric or Forge instances that can use it. Vanilla instances can't.<br><br>After the mod is installed on an instance, you must <b>run the game at least once</b> there before a skin can be applied.</div></div>
+    <button class="btn primary" id="lsw-ok" style="margin-top:18px">${icon("check", 16)}I understand</button>`;
+  $("#lsw-ok").addEventListener("click", closeModal);
+  openModal();
+}
+
+function askInstallSupport(list, hasInstalled) {
+  return new Promise((resolve) => {
+    modalHit = null; addStep++;
+    $("#modal-body").innerHTML = `
+      <div class="m-title" style="margin-bottom:4px">Support more instances?</div>
+      <div class="m-desc">${hasInstalled ? "Your skin will be applied to every instance that already has CustomSkinLoader. " : "No instance has CustomSkinLoader yet. "}These instances can support local skins but don't have it. Install it on:</div>
+      <div id="sup-list">${list.map((i) => `
+        <div class="check-row" data-name="${esc(i.name)}"><div class="checkbox on">${icon("check", 13)}</div>
+          <div><div class="t">${esc(i.name)}</div><div class="d">${esc(i.version)} · ${esc(i.loader.charAt(0).toUpperCase() + i.loader.slice(1))}</div></div></div>`).join("")}</div>
+      <div class="btn-row" style="margin-top:16px"><button class="btn primary" id="sup-go"></button><button class="btn ghost" id="sup-skip">Skip these</button></div>`;
+    const names = () => $$("#sup-list .check-row").filter((r) => $(".checkbox", r).classList.contains("on")).map((r) => r.dataset.name);
+    const refresh = () => {
+      const n = names().length, go = $("#sup-go");
+      go.disabled = !n;
+      go.innerHTML = `${icon("download", 16)}${n ? `Install on ${n} &amp; apply` : "Nothing selected"}`;
+    };
+    $$("#sup-list .check-row").forEach((row) => row.addEventListener("click", () => { $(".checkbox", row).classList.toggle("on"); refresh(); }));
+    $("#sup-go").addEventListener("click", () => { const n = names(); pickResolve = null; resolve(n); closeModal(); });
+    $("#sup-skip").addEventListener("click", () => { pickResolve = null; resolve([]); closeModal(); });
+    pickResolve = resolve;
+    refresh();
+    openModal();
+  });
+}
+
+async function planLocal(mode) {
+  const r = await callApi("local_skin_plan");
+  if (!r.success) { toast(r.error, "error"); return null; }
+  if (!r.total) { toast("Local skins need a Fabric or Forge instance. Vanilla instances can't load CustomSkinLoader.", "error", 7000); return null; }
+  let install = [];
+  if (mode !== "reset" && r.installable.length) {
+    const picked = await askInstallSupport(r.installable, r.installed.length > 0);
+    if (picked === null || !skinOffline()) return null;
+    install = picked;
+  }
+  if (!r.installed.length && !install.length) {
+    toast(mode === "reset" ? "No instance has CustomSkinLoader, so there's no local skin to reset."
+      : r.installable.length ? "Local skins need CustomSkinLoader on at least one instance."
+      : "CustomSkinLoader doesn't support the Minecraft versions of your instances.", "error", 7000);
+    return null;
+  }
+  return install;
+}
+function reportLocal(r, okMsg) {
+  if (!r.results) { toast(r.error || "Something went wrong.", "error"); return false; }
+  const ok = r.results.filter((x) => x.ok), bad = r.results.filter((x) => !x.ok);
+  if (ok.length) toast(`${okMsg} on ${ok.length === 1 ? ok[0].name : ok.length + " instances"}`);
+  const groups = {};
+  bad.forEach((b) => { (groups[b.error] = groups[b.error] || []).push(b.name); });
+  Object.entries(groups).forEach(([err, names]) => toast(`${err} (${names.join(", ")})`, "error"));
+  return ok.length > 0;
+}
+async function openLocalSkins(body) {
+  SK.profile = null; SK.error = null; SK.custom = null;
+  $("#btn-skin-reset").disabled = false;
+  body.innerHTML = skinsLayoutHtml();
+  wireSkinsLayout();
+  showLocalSkinWarning(STATE.active_account);
+}
+async function renderLocalCapes(el) {
+  if (!SK.localCapes) {
+    el.innerHTML = `<div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Loading capes...</div>`;
+    const r = await callApi("local_capes");
+    if (!r.success) { el.innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(r.error || "Couldn't load capes.")}</div></div>`; return; }
+    SK.localCapes = r.capes;
+    el = $("#skin-tab-body"); if (!el || SK.tab !== "capes") return;
+  }
+  const active = SK.profile ? SK.profile.cape_id : null;
+  el.innerHTML = `<div class="skin-grid" id="cape-grid"></div>`;
+  const grid = $("#cape-grid");
+  const none = document.createElement("div");
+  none.className = "skin-card";
+  none.innerHTML = `<div class="skin-thumb cape-thumb">${icon("x", 28)}</div><div class="skin-name">No cape</div>
+    <div class="skin-actions"><button class="btn small primary" ${active ? "" : "disabled"}>${icon("check", 13)}${active ? "Remove cape" : "No cape"}</button></div>`;
+  $("button", none).addEventListener("click", () => setCape(null, "cape removed"));
+  grid.appendChild(none);
+  SK.localCapes.forEach((c) => {
+    const card = document.createElement("div");
+    card.className = "skin-card";
+    const on = c.id === active;
+    card.innerHTML = `<div class="skin-thumb cape-thumb"><canvas></canvas></div><div class="skin-name" title="${esc(c.name)}">${esc(c.name)}</div>
+      <div class="skin-actions"><button class="btn small primary" ${on ? "disabled" : ""}>${icon("check", 13)}${on ? "Equipped" : "Equip"}</button></div>`;
+    const cv = $("canvas", card);
+    loadImage(c.url).then((img) => drawCape(cv, img, 6)).catch(() =>
+      callApi("local_cape_image", c.id).then((r) => (r.success && r.image ? loadImage(r.image) : null)).then((img) => { if (img) drawCape(cv, img, 6); }).catch(() => {}));
+    $("button", card).addEventListener("click", () => setCape(c.id, `${c.name} equipped`));
+    grid.appendChild(card);
+  });
+  stagger(grid);
 }
 function setSkinTab(tab) {
   SK.tab = tab;
@@ -2363,8 +2794,16 @@ function setSkinTab(tab) {
 }
 async function loadSkinProfile() {
   const token = ++SK.token;
-  const r = await callApi("get_skin_profile");
+  const offline = skinOffline();
+  const localDefault = () => ({ success: true, name: STATE.active_account ? STATE.active_account.name : "", variant: "classic", skin: null, cape_id: null, capes: [] });
+  let r = offline ? await callApi("local_skin_state") : await callApi("get_skin_profile");
+  if (offline && !r.success) r = localDefault();
   if (token !== SK.token || !$("#skin-current")) return;
+  if (offline && r.success && r.skin) {
+    const img = await loadImage(r.skin).catch(() => null);
+    if (token !== SK.token || !$("#skin-current")) return;
+    r.variant = img && detectSlim(img) ? "slim" : "classic";
+  }
   if (r.success) { SK.profile = r; SK.error = null; } else { SK.profile = null; SK.error = r.error; }
   renderCurrent();
   if (SK.tab === "capes") renderSkinTab();
@@ -2383,20 +2822,27 @@ async function renderCurrent() {
   }
   if (!SK.profile) { el.innerHTML = `<div class="sc-stage"><span class="ico spin">${icon("loader", 22)}</span></div>`; return; }
   const p = SK.profile, cape = p.capes.find((c) => c.active);
-  el.innerHTML = `<div class="sc-stage">${p.skin ? `<canvas id="cur-canvas"></canvas>` : `<div style="color:var(--dim)">Default skin</div>`}</div>
+  el.innerHTML = `<div class="sc-stage">${p.skin ? "" : `<div style="color:var(--dim);padding-top:150px">Default skin</div>`}</div>
     <div class="sc-name">${esc(p.name)}</div>
     <div class="sc-tags"><span class="tag">${p.variant === "slim" ? "Slim arms" : "Classic arms"}</span>${cape ? `<span class="tag">${esc(cape.alias)} cape</span>` : ""}</div>`;
   if (p.skin) {
-    const img = await loadImage(p.skin).catch(() => null), cv = $("#cur-canvas");
-    if (img && cv) drawSkinFront(cv, img, { scale: 8, slim: p.variant === "slim" });
+    const img = await loadImage(p.skin).catch(() => null), stage = $("#skin-current .sc-stage");
+    if (img && stage && stage.isConnected) mount3D(stage, img, { slim: p.variant === "slim", scale: 7 });
   }
 }
 function lockSkins(on) { SK.busy = on; const b = $("#skins-body"); if (b) b.classList.toggle("locked", on); }
 async function applySkin(uri, variant, label) {
   if (SK.busy) return;
+  const local = skinOffline();
+  let install = [];
+  if (local) {
+    install = await planLocal("apply");
+    if (install === null) return;
+  }
   lockSkins(true);
-  const r = await callApi("set_skin", uri, variant);
+  const r = local ? await callApi("local_set_skin", uri, install) : await callApi("set_skin", uri, variant);
   lockSkins(false);
+  if (local) { if (reportLocal(r, label ? `Local skin set: ${label}` : "Local skin set")) loadSkinProfile(); return; }
   if (!r.success) { toast(r.error, "error"); return; }
   toast(`Skin changed${label ? ": " + label : ""}`);
   loadSkinProfile();
@@ -2414,9 +2860,195 @@ function skinCard({ name, source, slim, onApply, onDelete }) {
   if (onDelete) $('[data-do="del"]', el).addEventListener("click", onDelete);
   return el;
 }
+
+
+function mount3D(stage, src, { slim = false } = {}) {
+  stage.innerHTML = "";
+  stage.classList.add("m3d");
+  const cv = document.createElement("canvas");
+  stage.appendChild(cv);
+  const ctx = cv.getContext("2d");
+  const tc = document.createElement("canvas"); tc.width = src.width; tc.height = src.height;
+  const tg = tc.getContext("2d", { willReadFrequently: true }); tg.drawImage(src, 0, 0);
+  const tex = tg.getImageData(0, 0, src.width, src.height).data, TW = src.width;
+  const k = Math.max(1, Math.round(src.width / 64)), legacy = src.height === 32 * k, aw = slim ? 3 : 4;
+
+  
+  const faces = [];
+  const part = (u, v, w, h, d, cx, cy, grow = 0, mirror = false) => {
+    const hw = (w + grow) / 2, hh = (h + grow) / 2, hd = (d + grow) / 2;
+    const R = { top: [u + d, v, w, d], bottom: [u + d + w, v, w, d], right: [u, v + d, d, h],
+      front: [u + d, v + d, w, h], left: [u + d + w, v + d, d, h], back: [u + d + w + d, v + d, w, h] };
+    const pick = (n) => (mirror ? (n === "right" ? "left" : n === "left" ? "right" : n) : n);
+    const add = (n, P0, U, V, N) => {
+      const r = R[pick(n)];
+      faces.push({ P0, U, V, N, rx: r[0] * k, ry: r[1] * k, rw: r[2] * k, rh: r[3] * k, flip: mirror });
+    };
+    add("front",  [cx - hw, cy - hh,  hd], [2 * hw, 0, 0],  [0, 2 * hh, 0], [0, 0, 1]);
+    add("back",   [cx + hw, cy - hh, -hd], [-2 * hw, 0, 0], [0, 2 * hh, 0], [0, 0, -1]);
+    add("right",  [cx - hw, cy - hh, -hd], [0, 0, 2 * hd],  [0, 2 * hh, 0], [-1, 0, 0]);
+    add("left",   [cx + hw, cy - hh,  hd], [0, 0, -2 * hd], [0, 2 * hh, 0], [1, 0, 0]);
+    add("top",    [cx - hw, cy - hh, -hd], [2 * hw, 0, 0],  [0, 0, 2 * hd], [0, -1, 0]);
+    add("bottom", [cx - hw, cy + hh,  hd], [2 * hw, 0, 0],  [0, 0, -2 * hd], [0, 1, 0]);
+  };
+  const ax = 4 + aw / 2;
+  part(0, 0, 8, 8, 8, 0, -12);
+  part(16, 16, 8, 12, 4, 0, -2);
+  part(40, 16, aw, 12, 4, -ax, -2);
+  legacy ? part(40, 16, aw, 12, 4, ax, -2, 0, true) : part(32, 48, aw, 12, 4, ax, -2);
+  part(0, 16, 4, 12, 4, -2, 10);
+  legacy ? part(0, 16, 4, 12, 4, 2, 10, 0, true) : part(16, 48, 4, 12, 4, 2, 10);
+  part(32, 0, 8, 8, 8, 0, -12, 1);
+  if (!legacy) {
+    part(16, 32, 8, 12, 4, 0, -2, 0.5);
+    part(40, 32, aw, 12, 4, -ax, -2, 0.5);
+    part(48, 48, aw, 12, 4, ax, -2, 0.5);
+    part(0, 32, 4, 12, 4, -2, 10, 0.5);
+    part(0, 48, 4, 12, 4, 2, 10, 0.5);
+  }
+
+  
+  const ratio = Math.min(window.devicePixelRatio || 1, 1.5);
+  let W = 0, H = 0, imgData, u32, zbuf;
+  const resize = () => {
+    const nw = Math.round((stage.clientWidth || 260) * ratio), nh = Math.round((stage.clientHeight || 330) * ratio);
+    if (nw === W && nh === H) return;
+    W = nw; H = nh; cv.width = W; cv.height = H;
+    imgData = ctx.createImageData(W, H); u32 = new Uint32Array(imgData.data.buffer); zbuf = new Float32Array(W * H);
+  };
+  const tri = (a, b, c, F, shade) => {
+    const minX = Math.max(0, Math.floor(Math.min(a[0], b[0], c[0]))), maxX = Math.min(W - 1, Math.ceil(Math.max(a[0], b[0], c[0])));
+    const minY = Math.max(0, Math.floor(Math.min(a[1], b[1], c[1]))), maxY = Math.min(H - 1, Math.ceil(Math.max(a[1], b[1], c[1])));
+    const den = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+    if (Math.abs(den) < 1e-6) return;
+    const id = 1 / den;
+    for (let y = minY; y <= maxY; y++) {
+      const py = y + 0.5;
+      for (let x = minX; x <= maxX; x++) {
+        const px = x + 0.5;
+        const l0 = ((b[1] - c[1]) * (px - c[0]) + (c[0] - b[0]) * (py - c[1])) * id;
+        const l1 = ((c[1] - a[1]) * (px - c[0]) + (a[0] - c[0]) * (py - c[1])) * id;
+        const l2 = 1 - l0 - l1;
+        if (l0 < -1e-4 || l1 < -1e-4 || l2 < -1e-4) continue;
+        const iw = l0 * a[2] + l1 * b[2] + l2 * c[2], i = y * W + x;
+        if (iw <= zbuf[i]) continue;
+        let u = (l0 * a[3] + l1 * b[3] + l2 * c[3]) / iw;
+        const v = (l0 * a[4] + l1 * b[4] + l2 * c[4]) / iw;
+        if (F.flip) u = 1 - u;
+        const tx = Math.min(F.rx + F.rw - 1, Math.max(F.rx, F.rx + Math.floor(u * F.rw)));
+        const ty = Math.min(F.ry + F.rh - 1, Math.max(F.ry, F.ry + Math.floor(v * F.rh)));
+        const t = (ty * TW + tx) * 4;
+        if (tex[t + 3] < 128) continue;
+        zbuf[i] = iw;
+        u32[i] = (255 << 24) | ((tex[t + 2] * shade) << 16) | ((tex[t + 1] * shade) << 8) | (tex[t] * shade);
+      }
+    }
+  };
+  const LD = [-0.35, -0.55, -0.75], LL = Math.hypot(...LD), L = LD.map((n) => n / LL);
+  const DIST = 100;
+  const draw = (yawDeg, pitchDeg) => {
+    resize();
+    u32.fill(0); zbuf.fill(0);
+    const cyw = Math.cos(yawDeg * Math.PI / 180), syw = Math.sin(yawDeg * Math.PI / 180);
+    const cp = Math.cos(pitchDeg * Math.PI / 180), sp = Math.sin(pitchDeg * Math.PI / 180);
+    const f = 0.8 * H * DIST / 32;
+    const rot = (p) => {
+      const x1 = p[0] * cyw + p[2] * syw, z1 = -p[0] * syw + p[2] * cyw;
+      return [x1, p[1] * cp - z1 * sp, p[1] * sp + z1 * cp];
+    };
+    const view = (p) => { const r = rot(p); return [r[0], r[1], DIST - r[2]]; };
+    for (const F of faces) {
+      const n = rot(F.N); const nv = [n[0], n[1], -n[2]];
+      const cen = view([F.P0[0] + (F.U[0] + F.V[0]) / 2, F.P0[1] + (F.U[1] + F.V[1]) / 2, F.P0[2] + (F.U[2] + F.V[2]) / 2]);
+      if (nv[0] * cen[0] + nv[1] * cen[1] + nv[2] * cen[2] >= 0) continue; 
+      const shade = 0.58 + 0.42 * Math.max(0, nv[0] * L[0] + nv[1] * L[1] + nv[2] * L[2]);
+      const corner = (du, dv) => {
+        const p = view([F.P0[0] + F.U[0] * du + F.V[0] * dv, F.P0[1] + F.U[1] * du + F.V[1] * dv, F.P0[2] + F.U[2] * du + F.V[2] * dv]);
+        if (p[2] < 1) p[2] = 1;
+        const iw = 1 / p[2];
+        return [W / 2 + f * p[0] * iw, H / 2 + f * p[1] * iw, iw, du * iw, dv * iw];
+      };
+      const A = corner(0, 0), B = corner(1, 0), C = corner(1, 1), D = corner(0, 1);
+      tri(A, B, C, F, shade); tri(A, C, D, F, shade);
+    }
+    ctx.putImageData(imgData, 0, 0);
+  };
+
+  
+  const id = (stage._m3d = {});
+  let yaw = 25, pitch = -10, drag = null;
+  stage.addEventListener("pointerdown", (e) => {
+    drag = { x: e.clientX, y: e.clientY };
+    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    stage.classList.add("grabbing");
+  });
+  stage.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    yaw += (e.clientX - drag.x) * 0.8;
+    pitch = Math.max(-80, Math.min(80, pitch - (e.clientY - drag.y) * 0.5));
+    drag = { x: e.clientX, y: e.clientY };
+  });
+  const end = () => { drag = null; stage.classList.remove("grabbing"); };
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => stage.addEventListener(ev, end));
+  let last = performance.now();
+  const tick = (t) => {
+    if (!stage.isConnected || stage._m3d !== id) return;
+    const dt = Math.min(50, t - last); last = t;
+    if (stage.offsetParent !== null) {
+      if (!drag) yaw += dt * 0.022;
+      draw(yaw, pitch);
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+
 function renderSkinTab() {
   const el = $("#skin-tab-body"); if (!el) return;
   if (SK.tab === "capes") return renderCapes(el);
+  let fresh = false;
+  if (!$("#skin-sub", el)) {
+    fresh = true;
+    el.innerHTML = `<div class="skin-bar">
+        <div class="seg skin-sub" id="skin-sub" style="--n:2;--idx:${SK.sub === "catalog" ? 1 : 0}"><div class="seg-pill"></div>
+          <button data-sub="mine" class="${SK.sub === "mine" ? "on" : ""}" data-tip="My skins" aria-label="My skins">${icon("shirt", 16)}</button>
+          <button data-sub="catalog" class="${SK.sub === "catalog" ? "on" : ""}" data-tip="Catalog" aria-label="Catalog">${icon("grid", 16)}</button></div>
+        <div class="cv-search">${icon("search", 15)}<input class="input" id="skin-q" autocomplete="off" value="${esc(SK.q)}" /></div>
+        <button class="btn icon-only" id="cat-refresh" data-tip="Reload catalog" aria-label="Reload catalog">${icon("refresh", 15)}</button>
+      </div><div id="skin-sub-body"></div>`;
+    $("#skin-sub").addEventListener("click", (e) => { const b = e.target.closest("button[data-sub]"); if (b) setSkinSub(b.dataset.sub); });
+    let timer = null;
+    $("#skin-q").addEventListener("input", (e) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { SK.q = e.target.value; SK.cat.shown = CAT_PAGE; SK.sub === "catalog" ? (SK.cat.skins && renderCatGrid()) : renderMine($("#skin-sub-body")); }, 150);
+    });
+    $("#cat-refresh").addEventListener("click", () => { if (SK.sub !== "catalog") return; SK.cat.skins = null; loadCatalog(true); });
+    syncSkinBar();
+  }
+  const body = $("#skin-sub-body");
+  if (SK.sub === "catalog") { fresh ? renderCatalog(body) : refreshStars(); }
+  else renderMine(body);
+}
+function syncSkinBar() {
+  const q = $("#skin-q"), r = $("#cat-refresh"); if (!q) return;
+  q.placeholder = SK.sub === "catalog" ? "Search the catalog..." : "Search my skins...";
+  if (r) r.hidden = SK.sub !== "catalog";
+}
+function setSkinSub(sub) {
+  if (sub === SK.sub) return;
+  SK.sub = sub;
+  if (SK.cat.io) SK.cat.io.disconnect();
+  const tabs = $("#skin-sub");
+  $$("button", tabs).forEach((b) => b.classList.toggle("on", b.dataset.sub === sub));
+  tabs.style.setProperty("--idx", sub === "catalog" ? 1 : 0);
+  syncSkinBar();
+  const body = $("#skin-sub-body"); if (!body) return;
+  sub === "catalog" ? renderCatalog(body) : renderMine(body);
+}
+function renderMine(el) {
+  if (!el) return;
+  const q = SK.q.trim().toLowerCase();
   el.innerHTML = `<div class="skin-grid" id="saved-grid"></div>`;
   const grid = $("#saved-grid");
   const newTile = document.createElement("button");
@@ -2424,12 +3056,135 @@ function renderSkinTab() {
   newTile.innerHTML = `<div class="skin-thumb">${icon("plus", 26)}</div><div class="skin-name">New skin</div>`;
   newTile.addEventListener("click", openSkinUploadModal);
   grid.appendChild(newTile);
-  SK.saved.forEach((s) => grid.appendChild(skinCard({
+  const list = q ? SK.saved.filter((s) => s.name.toLowerCase().includes(q)) : SK.saved;
+  list.forEach((s) => grid.appendChild(skinCard({
     name: s.name, source: s.image, slim: s.variant === "slim",
     onApply: () => applySkin(s.image, s.variant, s.name),
     onDelete: async () => { const r = await callApi("delete_saved_skin", s.id); if (r.success) { SK.saved = r.skins; renderSkinTab(); } else toast(r.error, "error"); },
   })));
+  if (q && !list.length) el.insertAdjacentHTML("beforeend", `<div class="empty" style="margin-top:14px">No saved skins match your search.</div>`);
   stagger(grid);
+}
+
+
+const CAT_PAGE = 60;
+function loadImageCors(src) { return new Promise((res, rej) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+
+function detectSlim(img) {
+  try {
+    if (img.width !== 64 || img.height !== 64) return false;
+    const c = document.createElement("canvas"); c.width = 64; c.height = 64;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0);
+    const d = g.getImageData(54, 20, 2, 12).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] !== 0) return false;
+    return true;
+  } catch (_) { return false; }
+}
+function savedFor(url) { return SK.saved.find((x) => x.source === url); }
+function setStar(card) {
+  const btn = $('[data-do="star"]', card); if (!btn) return;
+  const on = !!savedFor(card.dataset.url);
+  btn.classList.toggle("on", on);
+  const tip = on ? "Remove from my skins" : "Add to my skins";
+  btn.dataset.tip = tip; btn.setAttribute("aria-label", tip);
+  btn.innerHTML = icon("star", 17);
+}
+function refreshStars() { $$(".skin-card[data-url]").forEach(setStar); }
+async function catalogData(s) {
+  const r = await callApi("catalog_fetch_skin", s.url);
+  if (!r.success) throw new Error(r.error || "Couldn't download that skin.");
+  const img = await loadImage(r.image);
+  return { uri: r.image, variant: detectSlim(img) ? "slim" : "classic" };
+}
+async function applyCatalogSkin(s) {
+  if (SK.busy) return;
+  lockSkins(true);
+  let d;
+  try { d = await catalogData(s); } catch (e) { lockSkins(false); toast(e.message, "error"); return; }
+  lockSkins(false);
+  await applySkin(d.uri, d.variant, s.name);
+}
+async function toggleStar(s, card) {
+  const btn = $('[data-do="star"]', card);
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  try {
+    const ex = savedFor(s.url);
+    if (ex) {
+      const r = await callApi("delete_saved_skin", ex.id);
+      if (!r.success) throw new Error(r.error);
+      SK.saved = r.skins; toast("Removed from My skins");
+    } else {
+      const d = await catalogData(s);
+      const r = await callApi("save_skin", s.name, d.uri, d.variant, s.url);
+      if (!r.success) throw new Error(r.error);
+      SK.saved = r.skins; toast(`Added to My skins: ${s.name}`);
+    }
+  } catch (e) { toast(e.message || "Something went wrong.", "error"); }
+  btn.disabled = false;
+  refreshStars();
+}
+function catalogCard(s) {
+  const el = document.createElement("div");
+  el.className = "skin-card"; el.dataset.url = s.url;
+  el.innerHTML = `<div class="skin-thumb"><canvas></canvas></div><div class="skin-name" title="${esc(s.name)}">${esc(s.name)}</div>
+    <div class="skin-actions"><button class="btn small primary" data-do="apply">${icon("check", 13)}Apply</button>
+      <button class="btn small icon-only star-btn" data-do="star"></button></div>`;
+  setStar(el);
+  const cv = $("canvas", el);
+  loadImageCors(s.url).then((img) => drawSkinFront(cv, img, { scale: 4, slim: detectSlim(img) }))
+    .catch(() => loadImage(s.url).then((img) => drawSkinFront(cv, img, { scale: 4 }))
+      .catch(() => { cv.parentElement.innerHTML = icon("alert", 22); }));
+  $('[data-do="apply"]', el).addEventListener("click", () => applyCatalogSkin(s));
+  $('[data-do="star"]', el).addEventListener("click", () => toggleStar(s, el));
+  return el;
+}
+function catMessage(html, retry) {
+  const box = $("#cat-content"); if (!box) return;
+  box.innerHTML = `<div class="empty">${html}${retry ? `<div><button class="btn primary" id="cat-retry" style="margin-top:16px">${icon("refresh", 15)}Try again</button></div>` : ""}</div>`;
+  if (retry) $("#cat-retry").addEventListener("click", retry);
+}
+function renderCatalog(body) {
+  if (!body) return;
+  body.innerHTML = `<div id="cat-content"></div>`;
+  SK.cat.skins ? (SK.cat.shown = CAT_PAGE, renderCatGrid()) : loadCatalog();
+}
+async function loadCatalog(force) {
+  const C = SK.cat, tk = ++C.token;
+  const box = $("#cat-content"); if (!box) return;
+  box.innerHTML = `<div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Loading catalog...</div>`;
+  const r = await callApi("catalog_all", !!force);
+  if (tk !== C.token || !$("#cat-content")) return;
+  if (!r.success) return catMessage(`${icon("alert", 28)}<div>${esc(r.error)}</div>`, () => loadCatalog(true));
+  C.skins = r.skins; C.shown = CAT_PAGE;
+  renderCatGrid();
+}
+function renderCatGrid(from = 0) {
+  const C = SK.cat, box = $("#cat-content"); if (!box || !C.skins) return;
+  if (C.io) C.io.disconnect();
+  const q = SK.q.trim().toLowerCase();
+  const list = q ? C.skins.filter((s) => s.name.toLowerCase().includes(q)) : C.skins;
+  if (!list.length) return catMessage(`${icon("shirt", 28)}<div>${q ? "No skins match your search." : "The catalog is empty right now."}</div>`);
+  if (!from || !$("#cat-grid")) { from = 0; box.innerHTML = `<div class="skin-grid" id="cat-grid"></div><div id="cat-foot"></div>`; }
+  const grid = $("#cat-grid"), end = Math.min(C.shown, list.length);
+  const frag = document.createDocumentFragment();
+  list.slice(from, end).forEach((s) => frag.appendChild(catalogCard(s)));
+  grid.appendChild(frag);
+  if (!from) stagger(grid);
+  const foot = $("#cat-foot");
+  if (end < list.length) {
+    const more = () => { if (C.io) C.io.disconnect(); const prev = C.shown; C.shown += CAT_PAGE; renderCatGrid(prev); };
+    foot.className = "cat-more";
+    foot.innerHTML = `<button class="btn" id="cat-more">Show more (${list.length - end} left)</button>`;
+    $("#cat-more").addEventListener("click", more);
+    if ("IntersectionObserver" in window) {
+      C.io = new IntersectionObserver((es) => { if (es[0].isIntersecting) more(); }, { rootMargin: "600px" });
+      C.io.observe(foot);
+    }
+  } else {
+    foot.className = "cat-count";
+    foot.textContent = `${list.length} skin${list.length === 1 ? "" : "s"}`;
+  }
 }
 function openSkinUploadModal() {
   modalHit = null; addStep++; SK.custom = null;
@@ -2515,6 +3270,7 @@ function wireCustomCard() {
   $("#cs-player").addEventListener("keydown", (e) => { if (e.key === "Enter") fetchSkin(); });
 }
 function renderCapes(el) {
+  if (skinOffline()) return renderLocalCapes(el);
   if (SK.error) { el.innerHTML = `<div class="empty">${icon("alert", 28)}<div>${esc(SK.error)}</div></div>`; return; }
   if (!SK.profile) { el.innerHTML = `<div class="loading-row"><span class="ico spin">${icon("loader", 18)}</span>Loading capes...</div>`; return; }
   const capes = SK.profile.capes;
@@ -2541,18 +3297,29 @@ function renderCapes(el) {
 }
 async function setCape(id, msg) {
   if (SK.busy) return;
+  const local = skinOffline();
+  let install = [];
+  if (local) {
+    install = await planLocal(id ? "apply" : "reset");
+    if (install === null) return;
+  }
   lockSkins(true);
-  const r = await callApi("set_cape", id);
+  const r = local ? await callApi("local_set_cape", id, install) : await callApi("set_cape", id);
   lockSkins(false);
+  const text = msg.charAt(0).toUpperCase() + msg.slice(1);
+  if (local) { if (reportLocal(r, text)) loadSkinProfile(); return; }
   if (!r.success) { toast(r.error, "error"); return; }
-  toast(msg.charAt(0).toUpperCase() + msg.slice(1));
+  toast(text);
   loadSkinProfile();
 }
 $("#btn-skin-reset").addEventListener("click", async () => {
-  if (SK.busy || !skinAccountOk()) return;
+  const local = skinOffline();
+  if (SK.busy || !(local || skinAccountOk())) return;
+  if (local && (await planLocal("reset")) === null) return;
   lockSkins(true);
-  const r = await callApi("reset_skin");
+  const r = local ? await callApi("local_reset") : await callApi("reset_skin");
   lockSkins(false);
+  if (local) { if (reportLocal(r, "Local skin reset")) loadSkinProfile(); return; }
   if (!r.success) { toast(r.error, "error"); return; }
   toast("Skin reset to default"); loadSkinProfile();
 });
@@ -2572,6 +3339,8 @@ function fillSettingsInputs() {
 }
 function renderSettings() {
   if (!settingsDirty()) fillSettingsInputs();
+  $("#ver-line").textContent = `${verLabel(STATE.version || "1.3")} thanks for using crit`;
+  renderUpdateCard();
   const line = $("#java-line");
   line.innerHTML = STATE.java_ok
     ? `${icon("check", 14)}<span>${esc(STATE.java_version || "Java detected")}</span>`
@@ -2612,7 +3381,7 @@ window.__critEvent = function (name, data) {
       break;
     case "installFinished":
       PROGRESS = null; renderSidebar(); renderInstallBox();
-      toast(`${data.instance} is ready`);
+      toast(data.message || `${data.instance} is ready`);
       break;
     case "installError":
       PROGRESS = null; renderSidebar(); renderInstallBox();
@@ -2644,6 +3413,16 @@ window.__critEvent = function (name, data) {
       modalBusy = false;
       if ($("#pack-error")) { $("#pack-error").textContent = data.message || "Install failed."; $("#btn-install-pack").disabled = false; $("#pack-box").classList.remove("show"); }
       toast(data.message || "Modpack install failed.", "error");
+      break;
+    case "updateProgress":
+      if ($("#up-bar")) $("#up-bar").style.width = (data.percent || 0) + "%";
+      break;
+    case "updateInstalling":
+      if ($("#up-bar")) $("#up-bar").style.width = "100%";
+      if ($("#up-text")) $("#up-text").textContent = "Starting the installer. The launcher will close now...";
+      break;
+    case "updateError":
+      updateFailed(data.message);
       break;
     case "importStarted":
       break;
@@ -3225,9 +4004,11 @@ function handleServerEvent(name, data) {
 
 async function bootstrap() {
   const res = await callApi("get_state");
-  if (res.success) { STATE = res.state; applyCompact(!!STATE.settings.sidebar_collapsed, false); applyTheme(STATE.settings.theme || "green", false); }
+  if (res.success) { STATE = res.state; applyCompact(!!STATE.settings.sidebar_collapsed, false); applyTheme(STATE.settings.theme || "green", false); applyStyle(STATE.settings.ui_style || "default", false); }
   renderAll();
   stagger($("#home-cards"));
+  await loadChangelog(true);
+  checkUpdates({ auto: true });
 }
 function probeHomeBg() {
   const img = new Image();
@@ -3241,6 +4022,8 @@ function init() {
   $("#play-icon").innerHTML = icon("play", 17);
   sidebarSelect = new CSelect($("#settings-instance-select"), { placement: "auto", placeholder: "No instances",
     onChange: (v) => callApi("set_active_instance", v) });
+  launchSelect = new CSelect($("#launch-pick"), { placement: "top", minWidth: 250, placeholder: "No instances", emptyText: "No instances yet",
+    onChange: async (v) => { const r = await callApi("set_active_instance", v); if (!r.success) toast(r.error, "error"); } });
   versionSel = new CSelect($("#version-select"), { placement: "auto", placeholder: "Loading versions...",
     onChange: (v) => { NEW.version = v; updateLoaderVersions(++formToken); } });
   loaderVerSel = new CSelect($("#loader-version-select"), { placement: "auto", placeholder: "Loading...",

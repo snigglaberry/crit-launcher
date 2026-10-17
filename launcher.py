@@ -1,3 +1,5 @@
+# v1.5 malware included tung utng sahur
+# for legal reasons the first line is a joke
 import os
 import sys
 import base64
@@ -24,7 +26,7 @@ from pathlib import Path
 
 def _resource_dir() -> Path:
     if getattr(sys, "frozen", False):
-        return Path(sys._MEIPASS)
+        return Path(sys._MEIPASS)                              
     return Path(__file__).resolve().parent
 
 
@@ -88,9 +90,15 @@ MC_CAPE_URL = "https://api.minecraftservices.com/minecraft/profile/capes/active"
 MOJANG_LOOKUP_URL = "https://api.mojang.com/users/profiles/minecraft/"
 SESSION_PROFILE_URL = "https://sessionserver.mojang.com/session/minecraft/profile/"
 
-MC_WEB_LOGIN_URL = "https://www.minecraft.net/en-us/login"
-MC_WEB_PROFILE_URL = "https://www.minecraft.net/en-us/msaprofile"
-MC_WEB_COOKIE_JS = "`; ${document.cookie}`.split('; bearer_token=').pop().split(';').shift()"
+# Microsoft sign-in (stole minecraft official launcher client id)
+MS_CLIENT_ID = "00000000402b5328"
+MS_SCOPE = "service::user.auth.xboxlive.com::MBI_SSL"
+MS_REDIRECT_URI = "https://login.live.com/oauth20_desktop.srf"
+MS_AUTHORIZE_URL = "https://login.live.com/oauth20_authorize.srf"
+MS_TOKEN_URL = "https://login.live.com/oauth20_token.srf"
+XBL_AUTH_URL = "https://user.auth.xboxlive.com/user/authenticate"
+XSTS_AUTH_URL = "https://xsts.auth.xboxlive.com/xsts/authorize"
+MC_XBOX_LOGIN_URL = "https://api.minecraftservices.com/authentication/login_with_xbox"
 
 RESOURCES_BASE_URL = "https://resources.download.minecraft.net"
 LIBRARIES_BASE_URL = "https://libraries.minecraft.net/"
@@ -106,7 +114,7 @@ DEFAULT_JAVA_INFO = {"component": "jre-legacy", "majorVersion": 8}
 ADDON_TYPES = ("mod", "resourcepack", "modpack", "shader")
 
 INSTANCE_ICONS = {"box", "shirt", "flame", "hammer", "square", "circle", "triangle", "star",
-                  "hexagon", "diamond", "heart", "cat", "ghost", "skull", "zap", "gem", "oneclient"}
+                  "hexagon", "diamond", "heart", "cat", "ghost", "skull", "zap", "gem", "critclient", "oneclient"}
 
 _INVALID_NAME_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
@@ -124,10 +132,10 @@ def http_get_json(url: str, timeout: int = 20, retries: int = 2):
             if exc.code in (400, 401, 403, 404):
                 raise
             last = exc
-        except Exception as exc:
+        except Exception as exc:                          
             last = exc
         time.sleep(0.8 * (attempt + 1))
-    raise last
+    raise last                      
 
 
 def http_get_text(url: str, timeout: int = 30) -> str:
@@ -252,7 +260,7 @@ def classpath_sep() -> str:
 def open_in_file_manager(path: Path):
     path.mkdir(parents=True, exist_ok=True)
     if current_os_name() == "windows":
-        os.startfile(str(path))
+        os.startfile(str(path))                              
     elif current_os_name() == "osx":
         subprocess.Popen(["open", str(path)])
     else:
@@ -290,8 +298,8 @@ class JsonStore:
             self._write(data)
 
     def update(self, mutator):
-
-
+        """Atomic read-modify-write. `mutator` edits the data in place (or
+        returns a replacement)."""
         with self._lock:
             data = self._read()
             result = mutator(data)
@@ -310,14 +318,12 @@ settings_store = JsonStore(SETTINGS_FILE, {
     "active_instance": None,
     "memory_mb": 2048,
     "java_path": None,
-    "ms_warning_seen": False,
     "sidebar_collapsed": False,
     "theme": "green",
     "ui_style": "default",
     "server_beta_seen": False,
     "local_skin_warning_seen": [],
     "playtime_seconds": 0,
-    "oneclient_notice_seen": False,
 })
 
 
@@ -385,10 +391,10 @@ def resolve_argument_list(spec_list, features, replacements) -> list:
 
 
 def merge_arguments(parent, child):
-
-
-
-
+    """Fabric/Forge version files only contain the *extra* arguments; they are
+    meant to be appended to the vanilla ones (this is what `inheritsFrom` means).
+    Using the loader's list on its own drops -cp / -Djava.library.path / --username
+    and the game dies instantly, which is what left Fabric instances empty."""
     if not parent and not child:
         return None
     parent = parent or {}
@@ -415,7 +421,7 @@ _JAVA_UI_CACHE = {"at": 0.0, "value": (None, None)}
 
 
 def console_java(path: str) -> str:
-
+    """javaw.exe has no console, so we can't capture its output - prefer java.exe."""
     p = Path(path)
     if p.name.lower() == "javaw.exe":
         sibling = p.with_name("java.exe")
@@ -435,7 +441,7 @@ def _parse_java_major(text: str):
 
 
 def probe_java(path: str):
-
+    """Returns (major_version | None, first_output_line | None). Cached."""
     exe = console_java(path)
     with _JAVA_PROBE_LOCK:
         if exe in _JAVA_PROBE_CACHE:
@@ -458,7 +464,7 @@ def probe_java(path: str):
 
 def java_compatible(major, required: int) -> bool:
     if major is None:
-        return True
+        return True                             
     if required <= 8:
         return major == 8
     return major >= required
@@ -469,7 +475,7 @@ def _java_exe_names():
 
 
 def find_system_javas() -> list:
-
+    """Every java executable we can find on this machine (deduplicated)."""
     found = []
     seen = set()
 
@@ -556,7 +562,7 @@ def managed_java_path(component: str):
 
 
 def install_managed_java(component: str, tracker):
-
+    """Downloads Mojang's own Java runtime (the same one the official launcher uses)."""
     tracker = tracker or ProgressTracker(lambda *_: None)
     tracker.set_task("Looking up Java runtime", force=True)
     plat = mojang_runtime_platform()
@@ -626,9 +632,9 @@ def java_info_from_meta(meta: dict) -> dict:
 
 
 def resolve_java(java_info, allow_download=False, tracker=None):
-
-
-
+    """Picks the Java to use for a given Minecraft version.
+    Order: custom path from Settings -> launcher-managed runtime -> anything installed
+    on the machine -> (optionally) download Mojang's runtime."""
     info = java_info or DEFAULT_JAVA_INFO
     required = int(info.get("majorVersion") or 8)
     component = info.get("component") or "jre-legacy"
@@ -660,7 +666,7 @@ def resolve_java(java_info, allow_download=False, tracker=None):
 
 
 def detect_java_for_ui():
-
+    """(path, first line of `java -version`) for the Settings page. Cached briefly."""
     now = time.time()
     if now - _JAVA_UI_CACHE["at"] < 20 and _JAVA_UI_CACHE["at"] > 0:
         return _JAVA_UI_CACHE["value"]
@@ -731,7 +737,7 @@ class MetaCache:
                     loaders = http_get_json(
                         f"{FABRIC_LOADER_LIST_URL}/{urllib.parse.quote(mc_version)}")
                 except urllib.error.HTTPError:
-                    loaders = []
+                    loaders = []                                              
             else:
                 loaders = http_get_json(FABRIC_LOADER_LIST_URL)
         except Exception:
@@ -786,7 +792,7 @@ class MetaCache:
         all_versions = self._forge_all_versions(force)
         prefix = mc_version + "-"
         matches = [v[len(prefix):] for v in all_versions if v.startswith(prefix)]
-        matches.reverse()
+        matches.reverse()                
         return matches
 
     def get_forge_mc_versions(self, force=False):
@@ -820,7 +826,7 @@ _meta_lock = threading.RLock()
 
 
 def _dir_size(path: Path) -> int:
-
+    """Total bytes under a folder (symlinks are skipped so nothing is counted twice)."""
     total = 0
     stack = [str(path)]
     while stack:
@@ -909,7 +915,7 @@ def instance_config_dir(name: str) -> Path:
 
 
 def ensure_game_layout(name: str, loader: str):
-
+    """Create the usual folders up front so the game folder is never 'empty'."""
     game = instance_game_dir(name)
     folders = ["resourcepacks", "shaderpacks", "saves"]
     if loader in ("fabric", "forge"):
@@ -940,8 +946,8 @@ def _windows_appdata() -> Path:
 
 
 def _launcher_roots(launcher: str) -> list:
-
-
+    """Every plausible install location for a given launcher, per OS. Only
+    existing ones are used - the rest are silently skipped."""
     system = current_os_name()
     home = _home_dir()
     if launcher == "prismlauncher":
@@ -989,14 +995,14 @@ def _read_json_safe(path: Path):
 
 
 def _maven_version(name: str, prefix: str) -> str:
-
+    """'net.fabricmc:fabric-loader:0.15.7' + 'net.fabricmc:fabric-loader:' -> '0.15.7'"""
     return name[len(prefix):] if name.startswith(prefix) else ""
 
 
 def _loader_from_version_json(vjson: dict, mc_version: str):
-
-
-
+    """Reads a standard Mojang-style version.json (used by the vanilla launcher
+    and, as far as can be told without official docs, Fast Client) and works out
+    whether it's a Fabric or Forge profile."""
     for lib in vjson.get("libraries", []):
         lname = lib.get("name", "")
         if lname.startswith("net.fabricmc:fabric-loader:"):
@@ -1016,7 +1022,7 @@ def _loader_from_version_json(vjson: dict, mc_version: str):
 
 
 def _loader_from_mmc_pack(components: list):
-
+    """PrismLauncher/MultiMC's mmc-pack.json 'components' list."""
     mc_version = None
     loader, loader_version = "vanilla", None
     for c in components or []:
@@ -1057,16 +1063,16 @@ def _count_dir(path: Path, suffix=None) -> int:
 
 
 def _prism_game_dir(instance_dir: Path) -> Path:
-
-
-
+    """Prism (and MultiMC) instances keep their game data in a subfolder next to
+    mmc-pack.json - normally named 'minecraft', occasionally '.minecraft' on
+    older setups. Whichever actually exists on disk wins."""
     plain = instance_dir / "minecraft"
     dotted = instance_dir / ".minecraft"
     if plain.is_dir():
         return plain
     if dotted.is_dir():
         return dotted
-    return plain
+    return plain                                                                     
 
 
 def _scan_prismlauncher(root: Path) -> list:
@@ -1108,7 +1114,7 @@ FASTCLIENT_ROOT_SOURCE_ID = "__root__"
 
 
 def _read_first_log_line(logs_dir: Path):
-
+    """First non-blank line of logs/latest.log, or None if it doesn't exist."""
     log_path = logs_dir / "latest.log"
     if not log_path.is_file():
         return None
@@ -1124,10 +1130,10 @@ def _read_first_log_line(logs_dir: Path):
 
 
 def _parse_fastclient_log_line(line: str):
-
-
-
-
+    """Works out (loader, mc_version, loader_version) from a Fast Client
+    logs/latest.log first line. Returns None if the line doesn't match a
+    known Fabric or Forge/NeoForge pattern (including a vanilla log, which
+    has no such line at all)."""
     if not line:
         return None
     m = _FASTCLIENT_FABRIC_LOG_RE.search(line)
@@ -1153,8 +1159,8 @@ def _parse_fastclient_log_line(line: str):
 
 
 def _fastclient_versions(versions_dir: Path) -> dict:
-
-
+    """name -> parsed version.json for every version folder that has one
+    (either <name>.json, or - failing that - any other .json inside it)."""
     versions = {}
     if not versions_dir.is_dir():
         return versions
@@ -1174,10 +1180,10 @@ def _fastclient_versions(versions_dir: Path) -> dict:
 
 
 def _fastclient_profile_version_id(profile_dir: Path):
-
-
-
-
+    """A profile folder's mods/options/resourcepacks are NOT necessarily named
+    after the version they were created with - so look inside the profile
+    folder itself for any json that names its version, the way the vanilla
+    launcher's launcher_profiles.json entries do."""
     for f in profile_dir.iterdir():
         if f.is_file() and f.suffix == ".json":
             data = _read_json_safe(f)
@@ -1190,12 +1196,12 @@ def _fastclient_profile_version_id(profile_dir: Path):
 
 
 def _fastclient_profile_index(root: Path):
-
-
-
-
-
-
+    """Some launchers (mirroring the vanilla launcher's launcher_profiles.json)
+    keep the profile -> version link in a single json file at the root, not
+    inside each profile folder. Returns {profile identifier: version id} built
+    from every root-level json that has that shape, keyed by every name a
+    profile might be found under (its dict key, its "name" field, and its
+    gameDir's folder name)."""
     index = {}
     try:
         entries = list(root.iterdir())
@@ -1262,9 +1268,9 @@ def _scan_fastclient(root: Path) -> list:
             version_id = (profile_index.get(sub.name)
                           or _fastclient_profile_version_id(sub))
             if not version_id and sub.name in versions:
-                version_id = sub.name
+                version_id = sub.name                                                   
             if not version_id and len(versions) == 1:
-                version_id = next(iter(versions))
+                version_id = next(iter(versions))                                                   
 
             vjson = versions.get(version_id)
             if vjson:
@@ -1300,8 +1306,8 @@ _SK_LOG_VERSION_RES = (
 
 
 def _sk_vanilla_version_from_log(logs_dir: Path):
-
-
+    """Vanilla logs have no Fabric/Forge line, so look through the top of the
+    log for anything that names the Minecraft version."""
     log_path = logs_dir / "latest.log"
     try:
         with log_path.open("r", encoding="utf-8", errors="ignore") as f:
@@ -1318,8 +1324,8 @@ def _sk_vanilla_version_from_log(logs_dir: Path):
 
 
 def _sk_game_dir(sub: Path):
-
-
+    """The folder holding logs/mods/saves for an SKLauncher instance, or None
+    when it has no logs folder (those instances aren't listed)."""
     for cand in (sub, sub / ".minecraft", sub / "minecraft"):
         if (cand / "logs" / "latest.log").is_file():
             return cand
@@ -1389,7 +1395,7 @@ def scan_all_launchers() -> list:
                     "launcher": launcher, "label": LAUNCHER_LABELS[launcher],
                     "root": str(root), "instances": instances,
                 })
-            break
+            break                                              
     return sources
 
 
@@ -1408,8 +1414,8 @@ def _find_scanned_instance(launcher: str, source_id: str):
 
 
 def _source_paths(launcher: str, source_id: str, root: Path):
-
-
+    """(options_path, mods_dir, resourcepacks_dir, saves_dir, config_dir,
+    shaderpacks_dir, schematics_dir, screenshots_dir) for a scanned instance."""
     if launcher in ("prismlauncher", "polymc"):
         game_dir = _prism_game_dir(root / "instances" / source_id)
         return (game_dir / "options.txt", game_dir / "mods",
@@ -1429,8 +1435,8 @@ def _source_paths(launcher: str, source_id: str, root: Path):
 
 
 def _copy_tree_contents(src: Path, dst: Path):
-
-
+    """Copies every file/folder inside src into dst (merging, overwriting files
+    that already exist by that name)."""
     if not src.is_dir():
         return 0
     dst.mkdir(parents=True, exist_ok=True)
@@ -1525,8 +1531,8 @@ def maven_to_path(name: str) -> str:
 
 
 def lib_key(name: str) -> str:
-
-
+    """group:artifact[:classifier] - two libraries with the same key are the same
+    library in different versions; the first one listed wins (loader before vanilla)."""
     parts = name.split(":")
     if len(parts) < 3:
         return name
@@ -1554,7 +1560,7 @@ def collect_library_entries(libraries: list, features=None):
 
     for lib in libraries:
         if lib.get("clientreq") is False:
-            continue
+            continue                                     
         if "rules" in lib and not rules_allow(lib["rules"], features):
             continue
 
@@ -1636,9 +1642,9 @@ def ensure_file(entry: dict, dest_root: Path, tracker, retries: int = 3):
 
 
 def download_all(items, tracker, workers: int = 10):
-
-
-
+    """Download (entry, root) pairs in parallel. Files that are already valid are
+    skipped. Entries that have no URL and don't exist (files a Forge processor is
+    going to generate later) are returned instead of raising."""
     todo, missing, seen = [], [], set()
     for entry, root in items:
         dest = root / entry["path"]
@@ -1708,8 +1714,8 @@ def _jar_main_class(jar_path: Path) -> str | None:
 
 
 class ForgeInstallContext:
-
-
+    """Resolves the {TOKEN}, [maven:coord] and 'literal' syntax that Forge's
+    install_profile.json uses for processor arguments and data values."""
 
     def __init__(self, profile: dict, installer_jar: Path, tmp_dir: Path,
                  mc_version: str, client_path: Path):
@@ -2175,7 +2181,7 @@ def _explain_crash(tail: str) -> str:
 
 
 def pick_best_version(versions: list):
-
+    """Modrinth returns newest first. Prefer stable releases over betas/alphas."""
     if not versions:
         return None
     for wanted in ("release", "beta", "alpha"):
@@ -2191,15 +2197,22 @@ def primary_file(version: dict):
 
 
 
-ONECLIENT_PROJECT = "oneclient-modpack"
+# Crit Client: the jars live next to versions.json on the Crit site, e.g.
+#   {"fabric": {"26.2": "crit-client-26.2.jar"}, "forge": {...}}
+CRIT_CLIENT_BASE = "https://raw.githubusercontent.com/snigglaberry/critsite/refs/heads/main/assets/mods/"
+CRIT_CLIENT_VERSIONS_URL = CRIT_CLIENT_BASE + "versions.json"
+# Installed next to Crit Client when Modrinth has a build for the instance's version + loader
+# (required dependencies are pulled in automatically).
+CRIT_CLIENT_MODS = ["sodium", "fabric-api", "entityculling", "lithium",
+                    "immediatelyfast", "zfastnoise", "moreculling"]
 CHANGELOG_REPO = "snigglaberry/crit-launcher"
-
-
-APP_VERSION = "1.4"
+# The version this build is. Bump it on every release; it is compared with the
+# tag of the latest GitHub release to decide whether to offer an update.
+APP_VERSION = "1.5"
 
 
 def _version_tuple(tag) -> tuple:
-
+    """'v1.3.1' -> (1, 3, 1). Anything without digits becomes (0,)."""
     nums = [int(n) for n in re.findall(r"\d+", str(tag or ""))]
     while len(nums) > 1 and nums[-1] == 0:
         nums.pop()
@@ -2215,81 +2228,23 @@ class AuthError(Exception):
 
 
 def ensure_fresh_account(account: dict) -> dict:
-
+    """Microsoft accounts: returns a usable Minecraft token, refreshing it silently when it has expired."""
     if account.get("type") != "microsoft":
         return account
     if account.get("mc_token") and float(account.get("mc_expires", 0)) - time.time() > 60:
         return account
-    raise AuthError("This session has expired. Sign in again or import a new token.")
+    return refresh_ms_account(account)
 
 
 def public_account(a: dict) -> dict:
-
+    """Accounts as the UI sees them - never includes tokens."""
     out = {"name": a.get("name"), "uuid": a.get("uuid"), "type": a.get("type", "offline")}
-    if a.get("type") == "microsoft":
-        out["session"] = True
-        out["expires"] = a.get("mc_expires")
     return out
 
 
 
-def jwt_expiry(token: str):
-    try:
-        payload = token.split(".")[1]
-        payload += "=" * (-len(payload) % 4)
-        return float(json.loads(base64.urlsafe_b64decode(payload.encode("ascii")))["exp"])
-    except Exception:
-        return None
-
-
-def _parse_iso_time(text):
-    if not text:
-        return None
-    try:
-        from datetime import datetime, timezone
-        t = str(text).replace("Z", "+00:00")
-        dt = datetime.fromisoformat(t)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.timestamp()
-    except Exception:
-        return None
-
-
-def official_launcher_accounts_file() -> Path:
-    system = current_os_name()
-    home = Path.home()
-    if system == "windows":
-        base = Path(os.environ.get("APPDATA") or (home / "AppData" / "Roaming")) / ".minecraft"
-    elif system == "osx":
-        base = home / "Library" / "Application Support" / "minecraft"
-    else:
-        base = home / ".minecraft"
-    return base / "launcher_accounts.json"
-
-
-def read_official_sessions() -> list:
-
-    path = official_launcher_accounts_file()
-    if not path.is_file():
-        raise AuthError("Couldn't find the official Minecraft launcher's account file on this PC.")
-    try:
-        data = json.loads(path.read_text(encoding="utf-8-sig"))
-    except Exception:
-        raise AuthError("The official launcher's account file couldn't be read.")
-    found = []
-    for a in (data.get("accounts") or {}).values():
-        token = a.get("accessToken")
-        prof = a.get("minecraftProfile") or {}
-        if not token or not prof.get("id"):
-            continue
-        found.append({"token": token, "name": prof.get("name"), "id": prof["id"],
-                      "expires": _parse_iso_time(a.get("accessTokenExpiresAt")) or jwt_expiry(token)})
-    return found
-
-
 def profile_for_token(token: str):
-
+    """Asks Minecraft who this token belongs to. Returns (name, uuid) or raises AuthError."""
     status, prof = http_get_auth(MC_PROFILE_URL, token)
     if status in (401, 403):
         raise AuthError("That session token isn't valid (it has probably expired).")
@@ -2300,21 +2255,126 @@ def profile_for_token(token: str):
     return prof["name"], str(uuid.UUID(prof["id"]))
 
 
-def save_session_account(name: str, account_uuid: str, token: str, expires) -> dict:
-    account = {"name": name, "uuid": account_uuid, "type": "microsoft", "session_only": True,
-               "mc_token": token, "mc_expires": expires or (time.time() + 3600)}
+_XBOX_ERRORS = {
+    2148916233: "This Microsoft account doesn't have an Xbox profile yet. Sign in once at xbox.com to create one, then try again.",
+    2148916235: "Xbox Live isn't available in your country or region.",
+    2148916236: "This account needs adult verification on the Xbox site before it can sign in.",
+    2148916237: "This account needs adult verification on the Xbox site before it can sign in.",
+    2148916238: "This is a child account. An adult has to add it to a Microsoft family before it can sign in.",
+}
+
+
+def ms_authorize_url() -> str:
+    query = urllib.parse.urlencode({
+        "client_id": MS_CLIENT_ID, "response_type": "code", "redirect_uri": MS_REDIRECT_URI,
+        "scope": MS_SCOPE, "prompt": "select_account"})
+    return f"{MS_AUTHORIZE_URL}?{query}"
+
+
+def ms_token_request(fields: dict) -> dict:
+    """Exchanges an authorization code / refresh token for Microsoft tokens."""
+    body = urllib.parse.urlencode({
+        "client_id": MS_CLIENT_ID, "scope": MS_SCOPE, "redirect_uri": MS_REDIRECT_URI, **fields}).encode("utf-8")
+    status, data = http_send("POST", MS_TOKEN_URL, None, body, "application/x-www-form-urlencoded")
+    if status != 200 or not isinstance(data, dict) or not data.get("access_token"):
+        desc = data.get("error_description") if isinstance(data, dict) else None
+        raise AuthError(f"Microsoft rejected the sign-in{(': ' + str(desc)) if desc else ''} (HTTP {status}).")
+    return data
+
+
+def ms_to_minecraft(ms_access_token: str):
+    """Microsoft token -> Xbox Live -> XSTS -> Minecraft access token. Returns (token, expires_at)."""
+    xbl, last = None, None
+    for prefix in ("", "t=", "d="):                          # the ticket format depends on the app type
+        body = {"Properties": {"AuthMethod": "RPS", "SiteName": "user.auth.xboxlive.com",
+                               "RpsTicket": prefix + ms_access_token},
+                "RelyingParty": "http://auth.xboxlive.com", "TokenType": "JWT"}
+        status, data = http_send("POST", XBL_AUTH_URL, None, json.dumps(body).encode("utf-8"),
+                                 "application/json", headers={"x-xbl-contract-version": "1"})
+        if status == 200 and isinstance(data, dict) and data.get("Token"):
+            xbl = data
+            break
+        last = status
+    if not xbl:
+        raise AuthError(f"Xbox Live sign-in failed (HTTP {last}).")
+    try:
+        uhs = xbl["DisplayClaims"]["xui"][0]["uhs"]
+    except (KeyError, IndexError, TypeError):
+        raise AuthError("Xbox Live gave an unexpected answer.")
+
+    body = {"Properties": {"SandboxId": "RETAIL", "UserTokens": [xbl["Token"]]},
+            "RelyingParty": "rp://api.minecraftservices.com/", "TokenType": "JWT"}
+    status, data = http_send("POST", XSTS_AUTH_URL, None, json.dumps(body).encode("utf-8"),
+                             "application/json", headers={"x-xbl-contract-version": "1"})
+    if status == 401 and isinstance(data, dict):
+        code = data.get("XErr")
+        raise AuthError(_XBOX_ERRORS.get(code, f"Xbox Live refused the sign-in (error {code})."))
+    if status != 200 or not isinstance(data, dict) or not data.get("Token"):
+        raise AuthError(f"Xbox security token request failed (HTTP {status}).")
+    xsts = data["Token"]
+    try:
+        uhs = data["DisplayClaims"]["xui"][0]["uhs"] or uhs
+    except (KeyError, IndexError, TypeError):
+        pass
+
+    body = {"identityToken": f"XBL3.0 x={uhs};{xsts}"}
+    status, data = http_send("POST", MC_XBOX_LOGIN_URL, None, json.dumps(body).encode("utf-8"), "application/json")
+    if status != 200 or not isinstance(data, dict) or not data.get("access_token"):
+        if status == 429:
+            raise AuthError("Too many sign-in attempts. Wait a bit and try again.")
+        raise AuthError(f"Minecraft sign-in failed (HTTP {status}).")
+    return data["access_token"], time.time() + float(data.get("expires_in") or 86400)
+
+
+def save_ms_account(name: str, account_uuid: str, token: str, expires, refresh_token) -> dict:
+    account = {"name": name, "uuid": account_uuid, "type": "microsoft",
+               "mc_token": token, "mc_expires": expires, "refresh_token": refresh_token}
 
     def upsert(accounts):
         for a in accounts:
             if a.get("uuid") == account_uuid:
-                a["name"], a["mc_token"], a["mc_expires"] = name, account["mc_token"], account["mc_expires"]
-                if not a.get("refresh_token"):
-                    a["session_only"] = True
+                a.update(account)
+                a.pop("session_only", None)
                 return
         accounts.append(account)
     accounts_store.update(upsert)
     settings_store.update(lambda st: st.__setitem__("active_account", account_uuid))
     return account
+
+
+def ms_sign_in(tokens: dict) -> dict:
+    """Finishes a sign-in from a Microsoft token response and stores the account."""
+    mc_token, mc_exp = ms_to_minecraft(tokens["access_token"])
+    name, account_uuid = profile_for_token(mc_token)
+    return save_ms_account(name, account_uuid, mc_token, mc_exp, tokens.get("refresh_token"))
+
+
+def refresh_ms_account(account: dict) -> dict:
+    rt = account.get("refresh_token")
+    if not rt:
+        raise AuthError("Your Microsoft session expired. Sign in again from the Accounts page.")
+    try:
+        tokens = ms_token_request({"grant_type": "refresh_token", "refresh_token": rt})
+    except AuthError:
+        raise AuthError("Your Microsoft session expired. Sign in again from the Accounts page.")
+    except Exception:
+        log_exception("ms refresh")
+        raise AuthError("Couldn't reach Microsoft to refresh your session. Check your connection.")
+    try:
+        mc_token, mc_exp = ms_to_minecraft(tokens["access_token"])
+    except AuthError:
+        raise
+    except Exception:
+        log_exception("ms refresh chain")
+        raise AuthError("Couldn't reach Minecraft to refresh your session. Check your connection.")
+    new_rt = tokens.get("refresh_token") or rt
+
+    def upd(accounts):
+        for a in accounts:
+            if a.get("uuid") == account.get("uuid"):
+                a["mc_token"], a["mc_expires"], a["refresh_token"] = mc_token, mc_exp, new_rt
+    accounts_store.update(upd)
+    return dict(account, mc_token=mc_token, mc_expires=mc_exp, refresh_token=new_rt)
 
 
 def find_account(accounts: list, key):
@@ -2328,13 +2388,15 @@ def find_account(accounts: list, key):
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 
 
-def http_send(method: str, url: str, token=None, data=None, content_type=None, timeout: int = 30):
-
+def http_send(method: str, url: str, token=None, data=None, content_type=None, timeout: int = 30, headers=None):
+    """Authenticated request that never raises on HTTP errors. Returns (status, parsed_json)."""
     hdrs = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     if token:
         hdrs["Authorization"] = f"Bearer {token}"
     if content_type:
         hdrs["Content-Type"] = content_type
+    if headers:
+        hdrs.update(headers)
     req = urllib.request.Request(url, data=data, headers=hdrs, method=method)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -2344,7 +2406,7 @@ def http_send(method: str, url: str, token=None, data=None, content_type=None, t
 
 
 def decode_png_uri(uri: str) -> bytes:
-
+    """Validates a data: URI holding a Minecraft skin (64x64 or 64x32 PNG)."""
     m = re.match(r"^data:image/png;base64,([A-Za-z0-9+/=\s]+)$", uri or "")
     if not m:
         raise ValueError("That isn't a PNG image.")
@@ -2371,7 +2433,7 @@ def _texture_host_ok(host: str) -> bool:
 
 
 def fetch_texture_uri(url):
-
+    """Downloads a skin/cape texture (only from minecraft.net hosts) as a data: URI."""
     if not url:
         return None
     if url.startswith("http://textures.minecraft.net"):
@@ -2408,8 +2470,8 @@ def _skin_error(status: int) -> str:
 
 
 def _fetch_named_skin(name: str):
-
-
+    """Looks up a Minecraft username through Mojang's public API and returns its
+    current skin as a data: URI, or None if the player or skin doesn't exist."""
     try:
         found = http_get_json(MOJANG_LOOKUP_URL + urllib.parse.quote(name), retries=1)
     except Exception:
@@ -2453,7 +2515,7 @@ def list_saved_skins() -> list:
     return out
 
 
-
+# ---- Local skins for offline accounts (CustomSkinLoader) ----
 CSL_PROJECT = "customskinloader"
 CAPE_TEXTURE_URL = "https://textures.minecraft.net/texture/"
 MOJANG_CAPES = [
@@ -2497,10 +2559,10 @@ _CAPE_BY_ID = {c["id"]: c for c in MOJANG_CAPES}
 def _cape_url(cape: dict) -> str:
     return CAPE_TEXTURE_URL + cape["hash"]
 def _csl_find_config(instance_name: str):
-
-
-
-
+    """The CustomSkinLoader.json the mod creates the first time the game runs with it, or
+    None while it doesn't exist (the game hasn't run yet). It normally sits at
+    <game folder>/CustomSkinLoader/CustomSkinLoader.json. A CustomSkinLoader folder a
+    couple of levels down (for example inside config/) is accepted too, in any letter case."""
     game = instance_game_dir(instance_name)
     primary = game / "CustomSkinLoader" / "CustomSkinLoader.json"
     if primary.is_file():
@@ -2530,7 +2592,7 @@ def _csl_config_path(instance_name: str) -> Path:
 
 
 def _csl_local_dir(instance_name: str) -> Path:
-
+    """LocalSkin sits next to CustomSkinLoader.json, because the config's paths are relative to it."""
     return _csl_config_path(instance_name).parent / "LocalSkin"
 
 
@@ -2540,9 +2602,9 @@ CSL_RUN_ONCE_MSG = "You must run the game at least once to use this feature."
 
 
 def _csl_write_config(instance_name: str):
-
-
-
+    """Writes CustomSkinLoader.json with Crit Launcher's settings. The mod writes its own
+    version and buildNumber into that file the first time the game runs, so those two
+    values are read back from the existing file and kept as they are."""
     path = _csl_config_path(instance_name)
     version, build = CSL_CONFIG_VERSION, CSL_CONFIG_BUILD
     try:
@@ -2598,7 +2660,7 @@ def _write_bytes_atomic(path: Path, data: bytes):
     os.replace(tmp, path)
 
 
-
+# ---- Critical Skin API catalog (github.com/snigglaberry/critical-skin-api) ----
 CATALOG_REPO = "snigglaberry/critical-skin-api"
 CATALOG_API = f"https://api.github.com/repos/{CATALOG_REPO}/contents/skin"
 CATALOG_RAW_PREFIX = f"/{CATALOG_REPO}/"
@@ -2643,7 +2705,7 @@ def _catalog_raw_url(letter: str, fname: str) -> str:
 
 
 def _catalog_tree():
-
+    """Every skin in one request via the git tree. None when it can't be used."""
     try:
         data = http_get_json(f"https://api.github.com/repos/{CATALOG_REPO}/git/trees/main?recursive=1",
                              timeout=30, retries=1)
@@ -2665,7 +2727,7 @@ def _catalog_tree():
 
 
 def _catalog_walk():
-
+    """Fallback: list every letter folder through the contents API."""
     letters = [i["name"] for i in _catalog_listing() if i.get("type") == "dir" and i.get("name")]
 
     def one(letter):
@@ -2718,7 +2780,7 @@ def _clean_text(value, limit: int = 240):
 
 
 def _flatten_component(c) -> str:
-
+    """Resource pack descriptions can be plain text or JSON text components."""
     if c is None:
         return ""
     if isinstance(c, str):
@@ -2748,7 +2810,7 @@ def _authors_text(authors):
 def _toml_fields(text: str) -> dict:
     data = None
     try:
-        import tomllib
+        import tomllib                
         data = tomllib.loads(text)
     except Exception:
         data = None
@@ -2782,7 +2844,7 @@ def _manifest_version(zf: zipfile.ZipFile):
 
 
 def read_mod_jar(path: Path) -> dict:
-
+    """Name / version / description / icon path for a Fabric, Quilt, Forge or NeoForge mod jar."""
     info = {"name": None, "version": None, "description": None, "authors": None,
             "loader": None, "_icon": None}
     try:
@@ -2916,7 +2978,7 @@ def list_instance_content(instance_name: str, kind: str) -> list:
 
 
 def read_content_icon(instance_name: str, kind: str, filename: str):
-
+    """Returns a data: URI for the icon inside a mod jar / resource pack, or None."""
     if kind == "shaderpacks":
         return None
     folder = _content_folder(instance_name, kind)
@@ -2955,7 +3017,7 @@ SERVERS_DIR.mkdir(parents=True, exist_ok=True)
 SERVER_META_FILE = "crit_server.json"
 SERVER_SOFTWARE = ("vanilla", "paper", "fabric")
 PAPER_API = "https://fill.papermc.io/v3/projects/paper"
-PAPER_USER_AGENT = "CritLauncher/1.3 (https://github.com/snigglaberry/crit-launcher)"
+PAPER_USER_AGENT = "CritLauncher/1.5 (https://github.com/snigglaberry/crit-launcher)"
 FABRIC_INSTALLER_LIST_URL = "https://meta.fabricmc.net/v2/versions/installer"
 EULA_URL = "https://aka.ms/MinecraftEULA"
 PLUGIN_LOADERS = ["paper", "spigot", "bukkit"]
@@ -3180,7 +3242,7 @@ def read_plugin_jar(path: Path) -> dict:
 
 
 class ProcSampler:
-
+    """CPU% (of the whole machine) and resident memory of a process, no hard dependencies."""
 
     def __init__(self, proc):
         self.proc = proc
@@ -3486,7 +3548,7 @@ class ServerMixin:
             return False
 
     def accept_eula(self, name):
-
+        """Writes eula=true into eula.txt and boots the server again."""
         try:
             meta = read_server_meta(name)
             if not meta:
@@ -3620,7 +3682,7 @@ class ServerMixin:
             return False
 
     def _srv_ask(self, rt, command, pattern, timeout=3.0):
-
+        """Sends a command and captures (and hides) the matching response line."""
         w = {"rx": re.compile(pattern), "event": threading.Event(), "match": None}
         with rt.lock:
             rt.waiters.append(w)
@@ -3972,7 +4034,7 @@ class ServerMixin:
             return {"success": False, "error": str(exc) or "Couldn't delete that file."}
 
     def search_server_mods(self, name, query="", offset=0):
-
+        """Modrinth search limited to what this server can actually run."""
         try:
             meta = read_server_meta(name)
             if not meta:
@@ -4147,9 +4209,10 @@ class API(ServerMixin):
                 "loader_version": meta.get("loader_version"),
                 "installed": is_installed(meta),
                 "playtime": int(meta.get("playtime", 0)),
-                "icon": meta.get("icon") if meta.get("icon") in INSTANCE_ICONS else None,
+                "icon": ("critclient" if meta.get("icon") == "oneclient" else meta.get("icon"))
+                        if (meta.get("icon") in INSTANCE_ICONS) else None,
                 "created": meta.get("created"),
-                "oneclient": bool(meta.get("oneclient")),
+                "critclient": bool(meta.get("critclient") or meta.get("oneclient")),
             })
         active_instance_name = settings.get("active_instance")
         active_instance = next(
@@ -4173,14 +4236,12 @@ class API(ServerMixin):
             "settings": {
                 "memory_mb": int(settings.get("memory_mb", 2048)),
                 "java_path": settings.get("java_path"),
-                "ms_warning_seen": bool(settings.get("ms_warning_seen", False)),
                 "sidebar_collapsed": bool(settings.get("sidebar_collapsed", False)),
                 "theme": settings.get("theme", "green") if settings.get("theme") in THEMES else "green",
                 "ui_style": settings.get("ui_style", "default") if settings.get("ui_style") in UI_STYLES else "default",
                 "server_beta_seen": bool(settings.get("server_beta_seen", False)),
                 "local_skin_warning_seen": [x for x in (settings.get("local_skin_warning_seen") or [])
                                             if isinstance(x, str)],
-                "oneclient_notice_seen": bool(settings.get("oneclient_notice_seen", False)),
             },
             "java_ok": java_path is not None,
             "java_version": java_line,
@@ -4245,7 +4306,7 @@ class API(ServerMixin):
 
 
     def add_account(self, username):
-
+        """Adds an offline account."""
         try:
             username = (username or "").strip()
             if not username or len(username) > 16 or not re.match(r"^[A-Za-z0-9_]+$", username):
@@ -4303,8 +4364,8 @@ class API(ServerMixin):
 
 
     def start_minecraft_web_login(self):
-
-
+        """Opens Microsoft's sign-in page in a small window. When it redirects back with an
+        authorization code, the window closes and the code is turned into a Minecraft session."""
         try:
             import webview
         except ImportError:
@@ -4322,8 +4383,8 @@ class API(ServerMixin):
 
             state = {"cancel": False, "closed": False}
             win = webview.create_window(
-                "Sign in to Minecraft", MC_WEB_LOGIN_URL, width=960, height=760,
-                min_size=(720, 560), resizable=True, background_color="#0b0c0e")
+                "Sign in with Microsoft", ms_authorize_url(), width=520, height=720,
+                min_size=(420, 560), resizable=True, background_color="#0b0c0e")
             state["window"] = win
             try:
                 win.events.closed += lambda *a: state.__setitem__("closed", True)
@@ -4351,12 +4412,11 @@ class API(ServerMixin):
 
     def _web_login_poll(self, state):
         win = state["window"]
-        reached_at = None
         try:
             deadline = time.time() + 900
-            token = ""
+            code = None
             while time.time() < deadline:
-                time.sleep(0.8)
+                time.sleep(0.4)
                 if state["cancel"]:
                     return
                 if state["closed"]:
@@ -4366,32 +4426,28 @@ class API(ServerMixin):
                     url = win.get_current_url() or ""
                 except Exception:
                     continue
-                if not url.startswith(MC_WEB_PROFILE_URL):
-                    reached_at = None
+                if not url.startswith(MS_REDIRECT_URI):
                     continue
-                if reached_at is None:
-                    reached_at = time.time()
-                    self.emit("mcLoginStatus", {"status": "Reading your session..."})
-                try:
-                    token = str(win.evaluate_js(MC_WEB_COOKIE_JS) or "").strip()
-                except Exception:
-                    token = ""
-                if token:
+                query = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+                if query.get("code"):
+                    code = query["code"][0]
                     break
-                if time.time() - reached_at > 20:
-                    raise AuthError("You're signed in, but the session cookie wasn't found. "
-                                    "minecraft.net may have changed how it works.")
-            if not token:
+                if query.get("error"):
+                    desc = (query.get("error_description") or query["error"])[0]
+                    raise AuthError(f"Microsoft sign-in failed: {desc}")
+            if not code:
                 raise AuthError("Sign-in took too long. Try again.")
 
-            name, account_uuid = profile_for_token(token)
-            save_session_account(name, account_uuid, token, jwt_expiry(token))
+            state["cancel"] = True                              # we're done with the window
             try:
                 win.destroy()
             except Exception:
                 pass
+            self.emit("mcLoginStatus", {"status": "Signing in to Xbox Live and Minecraft..."})
+            tokens = ms_token_request({"grant_type": "authorization_code", "code": code})
+            account = ms_sign_in(tokens)
             self.push_state()
-            self.emit("mcLoginFinished", {"name": name})
+            self.emit("mcLoginFinished", {"name": account["name"]})
         except AuthError as exc:
             self.emit("mcLoginError", {"message": str(exc)})
             try:
@@ -4401,63 +4457,14 @@ class API(ServerMixin):
         except Exception as exc:
             log_exception("_web_login_poll")
             self.emit("mcLoginError", {"message": f"Sign-in failed: {exc}"})
+            try:
+                win.destroy()
+            except Exception:
+                pass
         finally:
             with self._proc_lock:
                 if self._web_login is state:
                     self._web_login = None
-
-    def import_official_session(self):
-
-        try:
-            sessions = read_official_sessions()
-            if not sessions:
-                return {"success": False, "error": "The official launcher didn't leave a readable session. "
-                        "Newer versions may store it encrypted. You can paste a token instead."}
-            now = time.time()
-            imported, expired = [], 0
-            for sess in sessions:
-                if sess["expires"] and sess["expires"] < now + 60:
-                    expired += 1
-                    continue
-                try:
-                    name, account_uuid = profile_for_token(sess["token"])
-                except AuthError:
-                    expired += 1
-                    continue
-                except Exception:
-                    name, account_uuid = sess["name"], str(uuid.UUID(sess["id"]))
-                save_session_account(name, account_uuid, sess["token"], sess["expires"])
-                imported.append(name)
-            if not imported:
-                msg = ("The official launcher's session has expired. Open the official launcher "
-                       "so it refreshes, then import again.") if expired else "No usable session found."
-                return {"success": False, "error": msg}
-            self.push_state()
-            return {"success": True, "imported": imported}
-        except AuthError as exc:
-            return {"success": False, "error": str(exc)}
-        except Exception as exc:
-            log_exception("import_official_session")
-            return {"success": False, "error": f"Import failed: {exc}"}
-
-    def add_session_token(self, token):
-
-        try:
-            token = (token or "").strip().strip('"')
-            if token.lower().startswith("bearer "):
-                token = token[7:].strip()
-            if len(token) < 40 or " " in token:
-                return {"success": False, "error": "That doesn't look like a Minecraft access token."}
-            name, account_uuid = profile_for_token(token)
-            account = save_session_account(name, account_uuid, token, jwt_expiry(token))
-            self.push_state()
-            return {"success": True, "account": public_account(account)}
-        except AuthError as exc:
-            return {"success": False, "error": str(exc)}
-        except Exception as exc:
-            log_exception("add_session_token")
-            return {"success": False, "error": f"Couldn't add the token: {exc}"}
-
 
     def _skin_account(self):
         accounts = accounts_store.read()
@@ -4516,7 +4523,7 @@ class API(ServerMixin):
             return {"success": False, "error": f"Couldn't reset the skin: {exc}"}
 
     def set_cape(self, cape_id=None):
-
+        """Equips a cape, or hides the current one when cape_id is empty."""
         try:
             acc = self._skin_account()
             if cape_id:
@@ -4533,7 +4540,7 @@ class API(ServerMixin):
             log_exception("set_cape")
             return {"success": False, "error": f"Couldn't change the cape: {exc}"}
 
-
+    # ---------------- local skins for offline accounts (CustomSkinLoader) ----------------
     def _local_context(self, instance_name):
         accounts = accounts_store.read()
         acc = find_account(accounts, settings_store.read().get("active_account")) or (accounts[0] if accounts else None)
@@ -4550,8 +4557,8 @@ class API(ServerMixin):
         return username, meta
 
     def _csl_ensure(self, instance_name, meta) -> bool:
-
-
+        """Makes sure CustomSkinLoader is in the instance's mods folder, downloading it if needed.
+        Returns True when it had to be downloaded. Raises ValueError when it can't be."""
         if _csl_installed(instance_name):
             return False
         loader, mc = meta.get("loader"), meta.get("version")
@@ -4587,7 +4594,7 @@ class API(ServerMixin):
         return True
 
     def local_skin_targets(self):
-
+        """Instances that can use local skins (everything except vanilla)."""
         try:
             out = []
             for inst in list_instances():
@@ -4612,8 +4619,8 @@ class API(ServerMixin):
         return username
 
     def local_skin_plan(self):
-
-
+        """Which Fabric/Forge instances already have CustomSkinLoader, and which could
+        get it (CustomSkinLoader has a build for their Minecraft version) but don't."""
         try:
             installed, installable, total = [], [], 0
             support = {}
@@ -4631,7 +4638,7 @@ class API(ServerMixin):
                     try:
                         support[key] = bool(self._find_version(CSL_PROJECT, loader, inst.get("version")))
                     except Exception:
-                        support[key] = True
+                        support[key] = True            # can't tell offline; the install will report it
                 if support[key]:
                     installable.append({"name": name, "version": inst.get("version"), "loader": loader})
             return {"success": True, "total": total, "installed": installed, "installable": installable}
@@ -4640,7 +4647,7 @@ class API(ServerMixin):
             return {"success": False, "error": "Failed to list instances."}
 
     def local_skin_state(self):
-
+        """What the preview shows: the skin and cape found in the instances that have the mod."""
         try:
             username = self._offline_username()
             skin, cape = None, None
@@ -4680,10 +4687,10 @@ class API(ServerMixin):
             return {"success": False, "error": f"Couldn't install CustomSkinLoader: {exc}"}
 
     def _local_bulk(self, install, write, write_config=True):
-
-
-
-
+        """Runs `write(base, username)` for every Fabric/Forge instance that has CustomSkinLoader,
+        plus the ones listed in `install` (CustomSkinLoader is downloaded there first).
+        When write_config is set, an instance whose CustomSkinLoader.json doesn't exist yet
+        (the game has never run with the mod) is skipped with a message instead."""
         wanted = {n for n in (install or []) if isinstance(n, str)}
         results = []
         for inst in list_instances():
@@ -4719,8 +4726,8 @@ class API(ServerMixin):
         return {"success": any(r["ok"] for r in results), "results": results}
 
     def local_set_skin(self, image, install=None):
-
-
+        """Applies the skin to every instance that has CustomSkinLoader (and the ones in
+        `install`, which get the mod first)."""
         try:
             png = decode_png_uri(image)
 
@@ -4748,7 +4755,7 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't load that cape."}
 
     def local_set_cape(self, cape_id=None, install=None):
-
+        """Equips a Mojang cape (or removes it) on every instance that has CustomSkinLoader."""
         try:
             cape, data = None, None
             if cape_id:
@@ -4780,7 +4787,7 @@ class API(ServerMixin):
             return {"success": False, "error": f"Couldn't set the cape: {exc}"}
 
     def local_reset(self):
-
+        """Removes the local skin and cape from every instance that has CustomSkinLoader."""
         try:
             def write(base, username):
                 (base / "skins" / f"{username}.png").unlink(missing_ok=True)
@@ -4792,7 +4799,7 @@ class API(ServerMixin):
             return {"success": False, "error": f"Couldn't reset the local skin: {exc}"}
 
     def lookup_player_skin(self, name):
-
+        """Fetches any player's current skin through Mojang's public API."""
         try:
             name = (name or "").strip()
             if not re.match(r"^[A-Za-z0-9_]{1,16}$", name):
@@ -4831,7 +4838,7 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't save the skin."}
 
     def catalog_all(self, force=False):
-
+        """Every skin in the online catalog, sorted by name."""
         try:
             def load():
                 skins = _catalog_tree()
@@ -4845,7 +4852,7 @@ class API(ServerMixin):
             return {"success": False, "error": _catalog_error(exc)}
 
     def catalog_fetch_skin(self, url):
-
+        """Downloads one catalog skin and returns it as a validated PNG data: URI."""
         try:
             if not _catalog_url_ok(url):
                 return {"success": False, "error": "That isn't a catalog skin."}
@@ -4918,25 +4925,39 @@ class API(ServerMixin):
         ensure_game_layout(name, loader)
         return meta
 
-    def get_oneclient_info(self):
+    def _critclient_versions(self) -> dict:
+        """{"fabric": {mc_version: jar_name}, "forge": {...}} from Crit's versions.json."""
+        data = http_get_json(CRIT_CLIENT_VERSIONS_URL, timeout=15, retries=1)
+        out = {}
+        if not isinstance(data, dict):
+            return out
+        for loader in ("fabric", "forge"):
+            entries = data.get(loader)
+            if not isinstance(entries, dict):
+                continue
+            clean = {}
+            for mc, jar in entries.items():
+                if (isinstance(mc, str) and isinstance(jar, str) and jar.lower().endswith(".jar")
+                        and Path(jar).name == jar and "/" not in jar and "\\" not in jar):
+                    clean[mc] = jar
+            if clean:
+                out[loader] = clean
+        return out
 
+    def get_critclient_info(self):
+        """Which Minecraft versions Crit Client exists for, per loader."""
         try:
-            params = {"loaders": json.dumps(["fabric"])}
-            versions = http_get_json(
-                f"{MODRINTH_API}/project/{ONECLIENT_PROJECT}/version?" + urllib.parse.urlencode(params))
-            supported = set()
-            for v in versions:
-                supported.update(v.get("game_versions") or [])
-            if not supported:
-                return {"success": False, "error": "OneClient has no downloadable versions right now."}
-            return {"success": True, "versions": sorted(supported)}
+            versions = self._critclient_versions()
+            if not versions:
+                return {"success": False, "error": "Crit Client has no versions available right now."}
+            return {"success": True, "versions": versions}
         except Exception:
-            log_exception("get_oneclient_info")
-            return {"success": False, "error": "Couldn't reach Modrinth to check OneClient's supported versions."}
+            log_exception("get_critclient_info")
+            return {"success": False, "error": "Couldn't reach the Crit Client server to check supported versions."}
 
-    def create_instance(self, version, loader, loader_version, instance_name, oneclient=False):
-
-
+    def create_instance(self, version, loader, loader_version, instance_name, critclient=False):
+        """Creates the instance record. Nothing is downloaded until the instance is
+        first launched, except Crit Client and its mods when that's requested."""
         try:
             name = sanitize_instance_name(instance_name)
         except ValueError as exc:
@@ -4949,25 +4970,26 @@ class API(ServerMixin):
         if loader in ("fabric", "forge") and not loader_version:
             return {"success": False, "error": f"Select a {loader.capitalize()} version."}
 
-        pack_version = None
-        if oneclient:
-            if loader != "fabric":
-                return {"success": False, "error": "OneClient only works with Fabric."}
+        jar_name = None
+        if critclient:
+            if loader not in ("fabric", "forge"):
+                return {"success": False, "error": "Crit Client needs Fabric or Forge."}
             try:
-                pack_version = self._find_version(ONECLIENT_PROJECT, "fabric", version)
+                jar_name = (self._critclient_versions().get(loader) or {}).get(version)
             except Exception:
-                log_exception("oneclient lookup")
-                return {"success": False, "error": "Couldn't reach Modrinth to get OneClient."}
-            if not pack_version:
-                return {"success": False, "error": f"OneClient doesn't support Minecraft {version}."}
+                log_exception("critclient lookup")
+                return {"success": False, "error": "Couldn't reach the Crit Client server."}
+            if not jar_name:
+                return {"success": False,
+                        "error": f"Crit Client isn't available for {loader.capitalize()} {version}."}
 
         try:
             self._make_instance(name, version, loader, loader_version)
-            if pack_version:
-                update_instance_meta(name, lambda m: m.__setitem__("oneclient", True))
+            if jar_name:
+                update_instance_meta(name, lambda m: m.__setitem__("critclient", True))
                 with self._proc_lock:
                     self._installing.add(name)
-                threading.Thread(target=self._oneclient_worker, args=(name, pack_version),
+                threading.Thread(target=self._critclient_worker, args=(name, version, loader, jar_name),
                                  daemon=True).start()
             self.push_state()
             return {"success": True}
@@ -4984,7 +5006,7 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't scan for other launchers."}
 
     def get_import_targets(self):
-
+        """Existing instances that could be used as a copy-into destination."""
         try:
             return {"success": True, "instances": [
                 {"name": i["name"], "version": i["version"], "loader": i.get("loader", "vanilla"),
@@ -4995,9 +5017,9 @@ class API(ServerMixin):
 
     def import_launcher_instance(self, launcher, source_id, dest_name, existing, copy_options, copy_mods, copy_resourcepacks, copy_saves=False, copy_config=False,
                                 copy_shaderpacks=False, copy_schematics=False, copy_screenshots=False):
-
-
-
+        """Copies options/mods/resourcepacks/saves/config/shaderpacks/schematics/screenshots from another launcher's
+        instance into a new or existing Crit Launcher instance. Never downloads the
+        version itself - the normal installer does that the next time it's played."""
         try:
             inst, root = _find_scanned_instance(launcher, source_id)
             if not inst:
@@ -5167,7 +5189,7 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't rename the instance."}
 
     def get_disk_usage(self, kind):
-
+        """{name: bytes} for every instance or server folder."""
         try:
             root = INSTANCES_DIR if kind == "instances" else SERVERS_DIR
             out = {}
@@ -5198,8 +5220,8 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't read the screenshots folder."}
 
     def get_screenshot_image(self, instance_name, filename):
-
-
+        """Returns one screenshot as a data: URI. The page can't load file:// URLs,
+        so the gallery asks for each image through here as it scrolls into view."""
         try:
             folder = instance_game_dir(instance_name) / "screenshots"
             path = folder / Path(filename).name
@@ -5216,7 +5238,7 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't read that screenshot."}
 
     def get_changelog(self, force=False):
-
+        """Changelog of the latest GitHub release: the changelog.txt asset, or the release notes."""
         try:
             now = time.time()
             if not force and _changelog_mem["value"] and now - _changelog_mem["at"] < 600:
@@ -5262,7 +5284,7 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't load the changelog. Check your connection."}
 
     def check_for_updates(self, force=False):
-
+        """Compares APP_VERSION with the latest GitHub release."""
         try:
             res = self.get_changelog(bool(force))
             if not res.get("success"):
@@ -5277,7 +5299,7 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't check for updates."}
 
     def mute_updates(self):
-
+        """'Don't remind me': stays quiet until the launcher is updated (APP_VERSION changes)."""
         try:
             settings_store.update(lambda st: st.__setitem__("update_muted_at", APP_VERSION))
             return {"success": True}
@@ -5319,10 +5341,10 @@ class API(ServerMixin):
             self.emit("updateError", {"message": "Couldn't download the update. Check your connection and try again."})
 
     def open_url(self, url):
-
+        """Opens an https link in the user's default browser (used by the Discord button)."""
         try:
             import webbrowser
-            if not isinstance(url, str) or not url.startswith("https://"):
+            if not isinstance(url, str) or not url.startswith(("https://", "http://", "mailto:")):
                 return {"success": False}
             webbrowser.open(url)
             return {"success": True}
@@ -5331,7 +5353,7 @@ class API(ServerMixin):
             return {"success": False}
 
     def open_instance_folder(self, instance_name):
-
+        """Opens <instance>/game - the folder with saves, resourcepacks, mods, options.txt..."""
         try:
             if not read_instance_meta(instance_name):
                 return {"success": False, "error": "Instance not found."}
@@ -5528,8 +5550,6 @@ class API(ServerMixin):
                         pass
                 if "java_path" in patch:
                     settings["java_path"] = (patch["java_path"] or "").strip() or None
-                if "ms_warning_seen" in patch:
-                    settings["ms_warning_seen"] = bool(patch["ms_warning_seen"])
                 if "sidebar_collapsed" in patch:
                     settings["sidebar_collapsed"] = bool(patch["sidebar_collapsed"])
                 if patch.get("theme") in THEMES:
@@ -5538,8 +5558,6 @@ class API(ServerMixin):
                     settings["ui_style"] = patch["ui_style"]
                 if "server_beta_seen" in patch:
                     settings["server_beta_seen"] = bool(patch["server_beta_seen"])
-                if "oneclient_notice_seen" in patch:
-                    settings["oneclient_notice_seen"] = bool(patch["oneclient_notice_seen"])
                 if isinstance(patch.get("local_skin_warning_seen"), list):
                     settings["local_skin_warning_seen"] = [str(x) for x in patch["local_skin_warning_seen"]][:200]
             settings = settings_store.update(_apply)
@@ -5578,7 +5596,7 @@ class API(ServerMixin):
             return {"success": False, "error": "Failed to load addon info."}
 
     def get_addon_targets(self, project_type="mod"):
-
+        """Instances an addon of this type can be installed into."""
         try:
             result = []
             for inst in list_instances():
@@ -5647,8 +5665,8 @@ class API(ServerMixin):
                 log_exception(f"dependency {pid} failed")
 
     def get_addon_dependencies(self, project_id, instance_name=None):
-
-
+        """Required dependencies for a mod, resolved for the given instance's
+        Minecraft version/loader when available."""
         try:
             meta = read_instance_meta(instance_name) if instance_name else None
             mc_version = meta["version"] if meta else None
@@ -5722,69 +5740,56 @@ class API(ServerMixin):
             log_exception("install_addon")
             return {"success": False, "error": f"Failed to install: {exc}"}
 
-    def _oneclient_worker(self, name, version):
-
-        pack_path = None
+    def _critclient_worker(self, name, mc_version, loader, jar_name):
+        """Downloads Crit Client's jar, then every supported performance mod (plus required
+        dependencies) that Modrinth has for this Minecraft version and loader."""
         try:
-            self.emit("installStarted", {"instance": name, "title": f"Installing OneClient into {name}..."})
+            self.emit("installStarted", {"instance": name, "title": f"Installing Crit Client into {name}..."})
             tracker = ProgressTracker(self.emit)
-            tracker.set_task("Downloading OneClient", force=True)
-            files = version.get("files", [])
-            pack_file = (next((f for f in files if f.get("filename", "").endswith(".mrpack")), None)
-                         or primary_file(version))
-            if not pack_file:
-                raise RuntimeError("OneClient has no downloadable file for this version.")
-            pack_path = TMP_DIR / f"oneclient-{uuid.uuid4().hex[:8]}.mrpack"
-            tracker.reset(pack_file.get("size") or 1_000_000)
-            http_download(pack_file["url"], pack_path, pack_file.get("size"),
-                          (pack_file.get("hashes") or {}).get("sha1"), tracker.add)
+            mods_dir = instance_mods_dir(name)
+            mods_dir.mkdir(parents=True, exist_ok=True)
 
-            game_dir = instance_game_dir(name)
-            with zipfile.ZipFile(pack_path) as zf:
-                index = json.loads(zf.read("modrinth.index.json").decode("utf-8"))
-                deps = index.get("dependencies", {})
-                items = []
-                for f in index.get("files", []):
-                    if (f.get("env") or {}).get("client") == "unsupported":
-                        continue
-                    rel = f.get("path", "")
-                    urls = f.get("downloads") or []
-                    if not rel or not urls or not is_within(game_dir, game_dir / rel):
-                        continue
-                    items.append(({"path": rel, "url": urls[0], "size": f.get("fileSize"),
-                                   "sha1": (f.get("hashes") or {}).get("sha1")}, game_dir))
-                tracker.reset(sum(entry_weight(e) for e, _ in items) + 1)
-                tracker.set_task("Downloading OneClient mods", force=True)
-                download_all(items, tracker, workers=8)
+            tracker.reset(1_000_000)
+            tracker.set_task("Downloading Crit Client", force=True)
+            jar_name = Path(jar_name).name
+            http_download(CRIT_CLIENT_BASE + urllib.parse.quote(jar_name), mods_dir / jar_name,
+                          progress_cb=tracker.add)
 
-                tracker.set_task("Applying overrides", force=True)
-                for member in zf.namelist():
-                    for prefix in ("overrides/", "client-overrides/"):
-                        if member.startswith(prefix):
-                            rel = member[len(prefix):]
-                            dest = game_dir / rel
-                            if rel and is_within(game_dir, dest) and not member.endswith("/"):
-                                dest.parent.mkdir(parents=True, exist_ok=True)
-                                dest.write_bytes(zf.read(member))
-                            break
-
-            def _sync(m):
-                if deps.get("fabric-loader"):
-                    m["loader_version"] = deps["fabric-loader"]
-                if deps.get("minecraft"):
-                    m["version"] = deps["minecraft"]
-            update_instance_meta(name, _sync)
-            self.emit("installFinished", {"instance": name, "message": f"OneClient installed into {name}"})
-        except Exception as exc:
-            log_exception("oneclient install failed")
-            shutil.rmtree(instance_dir(name), ignore_errors=True)
-            self.emit("installError", {"message": f"OneClient install failed: {exc}"})
-        finally:
-            if pack_path:
+            tracker.set_task("Checking which mods are available", force=True)
+            picks = []
+            for slug in CRIT_CLIENT_MODS:
                 try:
-                    Path(pack_path).unlink(missing_ok=True)
-                except OSError:
-                    pass
+                    version = self._find_version(slug, loader, mc_version)
+                except Exception:
+                    log_exception(f"crit client mod lookup: {slug}")
+                    version = None
+                if version:
+                    picks.append((slug, version))
+                else:
+                    logging.info("Crit Client: %s has no %s build for %s, skipping", slug, loader, mc_version)
+
+            tracker.reset(len(picks) + 1, unit="steps")
+            visited, files = set(), []
+            for slug, version in picks:
+                tracker.set_task(f"Downloading {slug}", force=True)
+                pid = version.get("project_id")
+                if pid in visited:
+                    tracker.add(1)
+                    continue
+                visited.add(pid)
+                try:
+                    self._install_mod_with_deps(version, mods_dir, loader, mc_version, visited, files)
+                except Exception:
+                    log_exception(f"crit client mod install failed: {slug}")
+                tracker.add(1)
+            tracker.add(1)
+
+            self.emit("installFinished", {"instance": name, "message": f"Crit Client installed into {name}"})
+        except Exception as exc:
+            log_exception("crit client install failed")
+            shutil.rmtree(instance_dir(name), ignore_errors=True)
+            self.emit("installError", {"message": f"Crit Client install failed: {exc}"})
+        finally:
             with self._proc_lock:
                 self._installing.discard(name)
             self.push_state()
@@ -5893,7 +5898,7 @@ class API(ServerMixin):
 
 
 def main():
-    import webview
+    import webview                                               
 
     api = API()
     index_path = RESOURCE_DIR / "index.html"

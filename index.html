@@ -287,7 +287,7 @@ h1 { font-size: 22px; font-weight: 680; margin-bottom: 4px; }
 }
 .launch-split {
   display: flex; align-items: stretch;
-  width: min(330px, 100%); height: 58px;
+  width: min(360px, 100%); height: 64px;
   border-radius: 14px; overflow: hidden;
   box-shadow: 0 10px 28px -14px rgba(var(--accent-rgb), 0.65), inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   transition: transform 0.2s var(--ease), box-shadow 0.25s;
@@ -298,7 +298,8 @@ h1 { font-size: 22px; font-weight: 680; margin-bottom: 4px; }
   background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 65%); }
 .launch-split .btn.launch-main:hover:not([disabled]) { background-color: var(--accent-hover); }
 .launch-split .btn.launch-main:active { transform: none; filter: brightness(0.94); }
-.launch-main .ico svg { width: 24px; height: 24px; }
+.launch-main .ico { background: none; }
+.launch-main .ico svg { width: 40px; height: 40px; }
 .home-launch-text { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; overflow: hidden; line-height: 1.15; }
 .home-launch-text .main { font-size: 18px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
 .home-launch-text .ls { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; opacity: 0.75; }
@@ -306,11 +307,11 @@ h1 { font-size: 22px; font-weight: 680; margin-bottom: 4px; }
 #launch-pick { flex: 1 1 0; min-width: 0; border-left: 1px solid rgba(0, 0, 0, 0.22); }
 #launch-pick .cselect-btn { height: 100%; padding: 0 8px; justify-content: center; gap: 4px; border: 0; border-radius: 0; box-shadow: none; background: var(--accent); background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 65%); color: var(--accent-ink); transition: background-color 0.18s; }
 #launch-pick .cselect-btn:hover, #launch-pick.open .cselect-btn { background-color: var(--accent-hover); border-color: transparent; box-shadow: none; }
-#launch-pick .cselect-value { padding: 4px; border-radius: 7px; background: rgba(0, 0, 0, 0.14); }
+#launch-pick .cselect-value { padding: 0; border-radius: 0; background: none; }
 #launch-pick .cselect-value span { display: none; }
-#launch-pick .cselect-value svg { width: 18px; height: 18px; }
+#launch-pick .cselect-value svg { width: 30px; height: 30px; }
 #launch-pick .cselect-caret { color: inherit; opacity: 0.85; transform: rotate(180deg); }
-#launch-pick .cselect-caret svg { width: 13px; height: 13px; }
+#launch-pick .cselect-caret svg { width: 20px; height: 20px; }
 #launch-pick.open .cselect-caret { transform: none; }
 .home-dock { flex-shrink: 0; display: flex; justify-content: center; padding-top: 18px; }
 .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
@@ -471,7 +472,9 @@ input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .cselect-opt.active { background: var(--panel-3); }
 .cselect-opt.disabled { opacity: 0.3; cursor: not-allowed; }
 .cselect-opt.disabled.active { background: transparent; }
-.loader-toggle.oc button[data-loader="vanilla"], .loader-toggle.oc button[data-loader="forge"] { opacity: 0.3; pointer-events: none; cursor: not-allowed; }
+.loader-toggle button:disabled { opacity: 0.3; pointer-events: none; cursor: not-allowed; }
+.loader-toggle.locked { pointer-events: none; }
+.loader-toggle button.on:disabled { opacity: 1; }
 .nic { max-width: 640px; padding: 22px; }
 .nic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 14px; }
 .nic-grid .full { grid-column: 1 / -1; }
@@ -857,6 +860,32 @@ canvas { image-rendering: pixelated; }
 .cl-body p { margin: 4px 0; }
 .cl-body ul { margin: 4px 0 4px 2px; padding-left: 18px; }
 .cl-body li { margin: 3px 0; }
+.cl-body ol { margin: 4px 0 4px 2px; padding-left: 22px; }
+.cl-body h1, .cl-body h2, .cl-body h4, .cl-body h5, .cl-body h6 { color: var(--text); font-weight: 650; margin: 18px 0 6px; }
+.cl-body h1 { font-size: 19px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.cl-body h2 { font-size: 16px; padding-bottom: 5px; border-bottom: 1px solid var(--border-soft); }
+.cl-body h4 { font-size: 13.5px; } .cl-body h5, .cl-body h6 { font-size: 12.5px; color: var(--dim); }
+.cl-body a { color: var(--accent); text-decoration: none; cursor: pointer; }
+.cl-body a:hover { text-decoration: underline; }
+.cl-body code { font-family: Consolas, "Cascadia Mono", "SF Mono", monospace; font-size: 12.5px; background: rgba(255, 255, 255, 0.08); padding: 1px 5px; border-radius: 5px; }
+.cl-body pre { background: #07080a; border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 8px 0; }
+.cl-body pre code { background: none; padding: 0; white-space: pre; }
+.cl-body blockquote { border-left: 3px solid var(--border); padding: 2px 0 2px 12px; color: var(--dim); margin: 8px 0; }
+.cl-body hr { border: 0; border-top: 1px solid var(--border); margin: 14px 0; }
+.cl-body img { max-width: 100%; border-radius: 8px; margin: 6px 0; }
+.cl-body del { color: var(--dim); }
+.cl-body .md-table { overflow-x: auto; margin: 8px 0; }
+.cl-body table { border-collapse: collapse; }
+.cl-body th, .cl-body td { border: 1px solid var(--border); padding: 6px 10px; }
+.cl-body th { background: rgba(255, 255, 255, 0.05); font-weight: 650; }
+.cl-body input[type=checkbox] { margin-right: 6px; accent-color: var(--accent); vertical-align: middle; }
+.cl-body li:has(> input[type=checkbox]) { list-style: none; margin-left: -18px; }
+.md-alert { border-left: 3px solid var(--accent); background: rgba(255, 255, 255, 0.04); padding: 8px 12px; border-radius: 0 10px 10px 0; margin: 8px 0; }
+.md-alert-t { font-weight: 650; margin-bottom: 2px; color: var(--accent); }
+.md-alert.warning { border-color: var(--warn); } .md-alert.warning .md-alert-t { color: var(--warn); }
+.md-alert.caution { border-color: var(--danger); } .md-alert.caution .md-alert-t { color: var(--danger); }
+.md-alert.tip { border-color: #4ade80; } .md-alert.tip .md-alert-t { color: #4ade80; }
+.md-alert.important { border-color: #a78bfa; } .md-alert.important .md-alert-t { color: #a78bfa; }
 .cl-center { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--dim); text-align: center; padding-right: 16px; }
 @media (max-width: 900px) { .home-grid { grid-template-columns: 1fr; grid-template-rows: none; flex: none; } #page-home.active { height: auto; min-height: calc(100vh - 118px); } .home-news { min-height: 320px; } }
 
@@ -981,10 +1010,10 @@ canvas { image-rendering: pixelated; }
             <div class="card form-card nic">
               <div class="nic-grid">
                 <div class="field full"><label for="new-name">Name</label><input class="input" id="new-name" maxlength="64" placeholder="My instance" autocomplete="off" /></div>
-                <div class="field full"><button type="button" class="nic-oc" id="oneclient-row" role="switch" aria-checked="false">
-                  <span class="nic-oc-ico"><svg viewBox="15 8.3627 25.1097 25.1097" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M25.4731 9H23.7907C21.8599 9 20.0759 10.029 19.1105 11.6993L15.3429 18.2182C15.2139 18.4415 15.1021 18.6716 15.0076 18.9069L20.3602 17.9218C22.5216 17.5241 24.2127 15.8347 24.6109 13.6755L25.4731 9Z" fill="#1878F1"></path><path d="M15 22.9092C15.0961 23.1511 15.2104 23.3876 15.3429 23.6169L19.1105 30.1358C20.0759 31.8062 21.8599 32.8351 23.7907 32.8351H25.4764L24.6109 28.142C24.2127 25.9828 22.5216 24.2934 20.3602 23.8957L15 22.9092Z" fill="#1878F1"></path><path d="M29.7254 32.8351H31.3258C33.2566 32.8351 35.0406 31.8062 36.006 30.1358L39.7736 23.6169C39.903 23.393 40.015 23.1621 40.1097 22.9262L34.8415 23.8957C32.6802 24.2934 30.9891 25.9828 30.5909 28.142L29.7254 32.8351Z" fill="#1878F1"></path><path d="M40.102 18.8899C40.009 18.6606 39.8995 18.4361 39.7736 18.2182L36.006 11.6993C35.0406 10.029 33.2566 9 31.3258 9H29.7287L30.5909 13.6755C30.9891 15.8346 32.6802 17.5241 34.8415 17.9218L40.102 18.8899Z" fill="#1878F1"></path><path d="M27.5482 9.46769C27.5553 9.40501 27.6465 9.40501 27.6535 9.46769L28.0703 13.1697C28.495 16.9427 31.4713 19.9231 35.2472 20.3564L39.6024 20.8562C39.6649 20.8633 39.6649 20.9541 39.6024 20.9613L35.2472 21.4611C31.4713 21.8944 28.495 24.8748 28.0703 28.6478L27.6535 32.3498C27.6465 32.4125 27.5553 32.4125 27.5482 32.3498L27.1321 28.6537C26.7071 24.8779 23.727 21.8964 19.948 21.4661L15.5148 20.9613C15.4522 20.9542 15.4522 20.8633 15.5148 20.8562L19.948 20.3514C23.727 19.9211 26.7071 16.9396 27.1321 13.1638L27.5482 9.46769Z" fill="#5187F1"></path></svg></span>
-                  <span class="nic-oc-text"><span class="n">Use OneClient</span><span class="d">Optimized Fabric client by Polyfrost</span></span>
-                  <span class="switch" id="oneclient-switch"></span></button></div>
+                <div class="field full"><button type="button" class="nic-oc" id="critclient-row" role="switch" aria-checked="false">
+                  <span class="nic-oc-ico"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9" shape-rendering="crispEdges"><path style="fill:var(--brand)" d="M4 0h1v9H4zM0 4h9v1H0zM3 3h3v3H3z"/><path style="fill:var(--brand-light)" d="M3 3h1v1H3zM5 3h1v1H5zM3 5h1v1H3zM5 5h1v1H5zM4 4h1v1H4z"/></svg></span>
+                  <span class="nic-oc-text"><span class="n">Use Crit Client</span><span class="d">Optimized client by Crit Launcher</span></span>
+                  <span class="switch" id="critclient-switch"></span></button></div>
                 <div class="field full"><label>Loader</label>
                   <div class="loader-toggle" id="loader-toggle">
                     <div class="loader-pill"></div>
@@ -1078,7 +1107,7 @@ canvas { image-rendering: pixelated; }
           <div class="theme-swatches" id="theme-swatches"><button class="theme-swatch" data-theme="green" style="background:#4ade80" data-tip="Green" aria-label="Green theme"></button><button class="theme-swatch" data-theme="blue" style="background:#60a5fa" data-tip="Blue" aria-label="Blue theme"></button><button class="theme-swatch" data-theme="purple" style="background:#a78bfa" data-tip="Purple" aria-label="Purple theme"></button><button class="theme-swatch" data-theme="red" style="background:#f05252" data-tip="Red" aria-label="Red theme"></button><button class="theme-swatch" data-theme="orange" style="background:#fb923c" data-tip="Orange" aria-label="Orange theme"></button><button class="theme-swatch" data-theme="pink" style="background:#f472b6" data-tip="Pink" aria-label="Pink theme"></button></div>
         </div>
         <div class="card setting-card">
-          <div class="setting-row"><div><div class="t" id="ver-line">v1.3 thanks for using crit</div></div>
+          <div class="setting-row"><div><div class="t" id="ver-line">v1.5 thanks for using crit</div></div>
               <div class="socials">
                 <button class="social-btn" id="btn-discord" data-url="https://discord.gg/SyxeBQvvwY" data-tip="Join our Discord" aria-label="Join our Discord">
                   <svg viewBox="0 0 512 512" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="m386 137c-24-11-49.5-19-76.3-23.7c-.5 0-1 0-1.2.6c-3.3 5.9-7 13.5-9.5 19.5c-29-4.3-57.5-4.3-85.7 0c-2.6-6.2-6.3-13.7-10-19.5c-.3-.4-.7-.7-1.2-.6c-23 4.6-52.4 13-76 23.7c-.2 0-.4.2-.5.4c-49 73-62 143-55 213c0 .3.2.7.5 1c32 23.6 63 38 93.6 47.3c.5 0 1 0 1.3-.4c7.2-9.8 13.6-20.2 19.2-31.2c.3-.6 0-1.4-.7-1.6c-10-4-20-8.6-29.3-14c-.7-.4-.8-1.5 0-2c2-1.5 4-3 5.8-4.5c.3-.3.8-.3 1.2-.2c61.4 28 128 28 188 0c.4-.2.9-.1 1.2.1c1.9 1.6 3.8 3.1 5.8 4.6c.7.5.6 1.6 0 2c-9.3 5.5-19 10-29.3 14c-.7.3-1 1-.6 1.7c5.6 11 12.1 21.3 19 31c.3.4.8.6 1.3.4c30.6-9.5 61.7-23.8 93.8-47.3c.3-.2.5-.5.5-1c7.8-80.9-13.1-151-55.4-213c0-.2-.3-.4-.5-.4Zm-192 171c-19 0-34-17-34-38c0-21 15-38 34-38c19 0 34 17 34 38c0 21-15 38-34 38zm125 0c-19 0-34-17-34-38c0-21 15-38 34-38c19 0 34 17 34 38c0 21-15 38-34 38z" fill="currentColor"/></svg>
@@ -1165,8 +1194,12 @@ const ICONS = {
   "check-circle": '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>',
 };
 const FILLED = new Set(["play", "square"]);
+function msLogo(size = 16) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 23 23" aria-hidden="true" style="flex-shrink:0"><path fill="#f25022" d="M1 1h10v10H1z"/><path fill="#7fba00" d="M12 1h10v10H12z"/><path fill="#00a4ef" d="M1 12h10v10H1z"/><path fill="#ffb900" d="M12 12h10v10H12z"/></svg>`;
+}
 function icon(name, size = 16) {
-  if (name === "oneclient") return ocSvg(size);
+  if (name === "microsoft") return msLogo(size);
+  if (name === "critclient" || name === "oneclient") return brandSvg(size);
   const body = ICONS[name] || "";
   const fill = FILLED.has(name) ? "currentColor" : "none";
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
@@ -1218,10 +1251,10 @@ const ICON_PRESETS = [
   { key: "triangle", label: "Triangle" }, { key: "star", label: "Star" }, { key: "hexagon", label: "Hexagon" },
   { key: "diamond", label: "Diamond" }, { key: "heart", label: "Heart" }, { key: "cat", label: "Cat" },
   { key: "ghost", label: "Ghost" }, { key: "skull", label: "Skull" }, { key: "zap", label: "Lightning" },
-  { key: "gem", label: "Gem" }, { key: "oneclient", label: "OneClient" },
+  { key: "gem", label: "Gem" }, { key: "critclient", label: "Crit Client" },
 ];
 function loaderDefaultIcon(loader) { return loader === "fabric" ? "shirt" : loader === "forge" ? "flame" : "box"; }
-function instanceIconKey(i) { return i.icon || (i.oneclient ? "oneclient" : loaderDefaultIcon(i.loader)); }
+function instanceIconKey(i) { return i.icon === "oneclient" ? "critclient" : (i.icon || (i.critclient ? "critclient" : loaderDefaultIcon(i.loader))); }
 function loaderLabel(i) {
   if (i.loader === "fabric") return `Fabric ${i.loader_version || ""}`.trim();
   if (i.loader === "forge") return `Forge ${i.loader_version || ""}`.trim();
@@ -1547,14 +1580,11 @@ function renderTopbar() {
   }
   $("#top-account-name").textContent = acc ? acc.name : "No account";
 }
-function ocIcon(size) {
-  const el = $(".nic-oc-ico");
-  return el ? `<span class="oc-badge" data-tip="OneClient install">${el.innerHTML.replace("<svg ", `<svg width="${size}" height="${size}" `)}</span>` : "";
+const BRAND_PATHS = '<path style="fill:var(--brand)" d="M4 0h1v9H4zM0 4h9v1H0zM3 3h3v3H3z"/><path style="fill:var(--brand-light)" d="M3 3h1v1H3zM5 3h1v1H5zM3 5h1v1H3zM5 5h1v1H5zM4 4h1v1H4z"/>';
+function brandSvg(size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 9 9" shape-rendering="crispEdges" style="flex-shrink:0" aria-hidden="true">${BRAND_PATHS}</svg>`;
 }
-function ocSvg(size) {
-  const el = $(".nic-oc-ico svg");
-  return el ? el.outerHTML.replace("<svg ", `<svg width="${size}" height="${size}" style="flex-shrink:0" `) : "";
-}
+function ccIcon(size) { return `<span class="oc-badge" data-tip="Crit Client install">${brandSvg(size)}</span>`; }
 function renderHome() {
   const inst = STATE.active_instance;
   const total = (STATE.playtime_total || 0) + Object.values(STATE.sessions || {}).reduce((a, t) => a + Math.max(0, Date.now() / 1000 - t), 0);
@@ -1567,14 +1597,14 @@ function renderHome() {
       <div class="hw-value">${fmtDuration(total)}</div><div class="hw-sub">${n} instance${n === 1 ? "" : "s"} running now</div></div>
     <div class="glass"><div class="hw-label">${icon("box", 15)}Main instance</div>
       ${inst ? `<div class="hw-inst"><span class="instance-icon" style="cursor:default">${icon(instanceIconKey(inst), 20)}</span>
-        <div style="min-width:0"><div class="hw-name"><span class="n">${esc(inst.name)}</span>${inst.oneclient ? ocIcon(16) : ""}</div>
+        <div style="min-width:0"><div class="hw-name"><span class="n">${esc(inst.name)}</span>${inst.critclient ? ccIcon(16) : ""}</div>
           <div class="hw-sub">${esc(inst.version)} · ${esc(loaderLabel(inst))} · ${status}</div></div></div>`
         : `<div class="hw-sub" style="margin-top:10px">No instance yet. Create one on the Instances page.</div>`}</div>`;
   const btn = $("#btn-home-play");
   let hname = "play", htext = "Launch";
   if (installing) { hname = "loader"; htext = "Installing..."; }
   else if (running) { hname = "check"; htext = "Running"; }
-  $("#home-play-icon").innerHTML = icon(hname, 34);
+  $("#home-play-icon").innerHTML = icon(hname, 40);
   $("#home-play-icon").classList.toggle("spin", installing);
   $("#home-play-label").textContent = htext;
   btn.disabled = !inst || running || installing;
@@ -1645,18 +1675,124 @@ $("#btn-check-updates").addEventListener("click", async () => {
 });
 $("#btn-update-now").addEventListener("click", runUpdate);
 const CHANGELOG = { data: null, loading: false, error: null };
-function changelogHtml(text) {
-  let out = "", list = false;
-  const close = () => { if (list) { out += "</ul>"; list = false; } };
-  for (const raw of String(text).replace(/\r/g, "").split("\n")) {
-    const l = raw.trim(); let m;
-    if (!l) { close(); continue; }
-    if ((m = l.match(/^#{1,6}\s+(.*)$/))) { close(); out += `<h3>${esc(m[1])}</h3>`; }
-    else if ((m = l.match(/^[-*\u2022]\s+(.*)$/))) { if (!list) { out += "<ul>"; list = true; } out += `<li>${esc(m[1])}</li>`; }
-    else { close(); out += `<p>${esc(l)}</p>`; }
-  }
-  close(); return out;
+const MD_REPO = "snigglaberry/crit-launcher";
+const MD_EMOJI = { tada: "\u{1F389}", sparkles: "✨", bug: "\u{1F41B}", fire: "\u{1F525}", rocket: "\u{1F680}", warning: "⚠️", zap: "⚡",
+  memo: "\u{1F4DD}", wrench: "\u{1F527}", art: "\u{1F3A8}", lock: "\u{1F512}", heart: "❤️", white_check_mark: "✅", x: "❌", star: "⭐",
+  "+1": "\u{1F44D}", "-1": "\u{1F44E}", construction: "\u{1F6A7}", package: "\u{1F4E6}", hammer: "\u{1F528}", boom: "\u{1F4A5}", art_: "\u{1F3A8}" };
+function mdUrl(u) { u = String(u || "").trim().replace(/^<|>$/g, ""); return /^(https?:\/\/|mailto:)/i.test(u) ? u : null; }
+function mdInline(src) {
+  const store = [];
+  const hold = (h) => "\u0000" + (store.push(h) - 1) + "\u0000";
+  const finish = (t, inner) => {
+    t = esc(t)
+      .replace(/\*\*\*([^*\n]+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+      .replace(/\*\*([^*\n]+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^\w])__([^_\n]+?)__(?!\w)/g, "$1<strong>$2</strong>")
+      .replace(/\*([^*\s][^*\n]*?)\*/g, "<em>$1</em>")
+      .replace(/(^|[^\w])_([^_\s][^_\n]*?)_(?!\w)/g, "$1<em>$2</em>")
+      .replace(/~~([^~\n]+?)~~/g, "<del>$1</del>");
+    if (!inner) {
+      t = t.replace(/(^|[^\w\/@.])@([A-Za-z0-9][A-Za-z0-9-]{0,38})(?![\w@-])/g, (m, p, u) => `${p}<a href="https://github.com/${u}">@${u}</a>`)
+        .replace(/(^|[^\w&\/#])#(\d{1,6})\b/g, (m, p, n) => `${p}<a href="https://github.com/${MD_REPO}/issues/${n}">#${n}</a>`);
+    }
+    return t.replace(/:([a-z0-9_+-]+):/g, (m, k) => MD_EMOJI[k] || m).replace(/\n/g, "<br>");
+  };
+  let s = String(src).replace(/\u0000/g, "");
+  s = s.replace(/(`+)([\s\S]*?[^`])\1(?!`)/g, (m, f, c) => hold(`<code>${esc(c.trim())}</code>`));
+  s = s.replace(/!\[([^\]]*)\]\(\s*(<[^>]+>|[^\s)]+)(?:\s+"[^"]*")?\s*\)/g, (m, alt, url) => {
+    const u = mdUrl(url); return u ? hold(`<img src="${esc(u)}" alt="${esc(alt)}" loading="lazy">`) : m;
+  });
+  s = s.replace(/\[([^\]]+)\]\(\s*(<[^>]+>|[^\s)]+)(?:\s+"[^"]*")?\s*\)/g, (m, text, url) => {
+    const u = mdUrl(url); return u ? hold(`<a href="${esc(u)}">${finish(text, true)}</a>`) : text;
+  });
+  s = s.replace(/<((?:https?:\/\/|mailto:)[^\s<>]+)>/g, (m, u) => hold(`<a href="${esc(u)}">${esc(u)}</a>`));
+  s = s.replace(/(^|[\s(])(https?:\/\/[^\s<>"]*[^\s<>".,;:!?)\]])/g, (m, p, u) => p + hold(`<a href="${esc(u)}">${esc(u)}</a>`));
+  s = finish(s, false);
+  let guard = 0;
+  while (/\u0000\d+\u0000/.test(s) && guard++ < 6) s = s.replace(/\u0000(\d+)\u0000/g, (m, n) => store[+n]);
+  return s;
 }
+function mdBlocks(text) {
+  const L = String(text).replace(/\r/g, "").replace(/\t/g, "    ").split("\n");
+  const listRe = /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/;
+  const isHr = (l) => /^ {0,3}([-*_])( *\1){2,} *$/.test(l);
+  const isSep = (l) => l.includes("|") && l.includes("-") && /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/.test(l);
+  const startsBlock = (l) => /^ {0,3}#{1,6}\s/.test(l) || /^\s*(```|~~~)/.test(l) || isHr(l) || /^\s*>/.test(l) || listRe.test(l);
+  const cells = (r) => r.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+  const renderLevel = (items, start, indent) => {
+    let i = start, out = items[start].ordered ? "<ol>" : "<ul>";
+    const tag = items[start].ordered ? "ol" : "ul";
+    while (i < items.length && items[i].indent >= indent) {
+      const it = items[i++];
+      const tm = it.text.match(/^\[([ xX])\]\s+([\s\S]*)$/);
+      const body = tm ? `<input type="checkbox" disabled${tm[1] === " " ? "" : " checked"}>${mdInline(tm[2])}` : mdInline(it.text);
+      let nested = "";
+      while (i < items.length && items[i].indent > it.indent) { const r = renderLevel(items, i, items[i].indent); nested += r[0]; i = r[1]; }
+      out += `<li>${body}${nested}</li>`;
+    }
+    return [out + `</${tag}>`, i];
+  };
+  let out = "", i = 0;
+  while (i < L.length) {
+    const line = L[i];
+    if (!line.trim()) { i++; continue; }
+    let m;
+    if ((m = line.match(/^\s*(```+|~~~+)/))) {
+      const fence = m[1][0], close = new RegExp("^\\s*\\" + fence + "{3,}\\s*$"), code = [];
+      i++;
+      while (i < L.length && !close.test(L[i])) code.push(L[i++]);
+      i++;
+      out += `<pre><code>${esc(code.join("\n"))}</code></pre>`; continue;
+    }
+    if ((m = line.match(/^ {0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$/))) { out += `<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`; i++; continue; }
+    if (isHr(line)) { out += "<hr>"; i++; continue; }
+    if (line.includes("|") && i + 1 < L.length && isSep(L[i + 1])) {
+      const head = cells(line);
+      const aligns = cells(L[i + 1]).map((c) => (/^:-+:$/.test(c) ? "center" : /-:$/.test(c) ? "right" : /^:-/.test(c) ? "left" : ""));
+      i += 2;
+      const rows = [];
+      while (i < L.length && L[i].trim() && L[i].includes("|")) rows.push(cells(L[i++]));
+      const td = (t, c, n) => `<${t}${aligns[n] ? ` style="text-align:${aligns[n]}"` : ""}>${mdInline(c || "")}</${t}>`;
+      out += `<div class="md-table"><table><thead><tr>${head.map((c, n) => td("th", c, n)).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${head.map((_, n) => td("td", r[n], n)).join("")}</tr>`).join("")}</tbody></table></div>`;
+      continue;
+    }
+    if (/^\s*>/.test(line)) {
+      const q = [];
+      while (i < L.length && /^\s*>/.test(L[i])) q.push(L[i++].replace(/^\s*> ?/, ""));
+      const am = q[0] && q[0].match(/^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*$/i);
+      if (am) { q.shift(); const k = am[1].toLowerCase(); out += `<div class="md-alert ${k}"><div class="md-alert-t">${k[0].toUpperCase() + k.slice(1)}</div>${mdBlocks(q.join("\n"))}</div>`; }
+      else out += `<blockquote>${mdBlocks(q.join("\n"))}</blockquote>`;
+      continue;
+    }
+    if (listRe.test(line)) {
+      const items = [];
+      while (i < L.length) {
+        const lm = L[i].match(listRe);
+        if (lm) { items.push({ indent: lm[1].length, ordered: /\d/.test(lm[2]), text: lm[3] }); i++; }
+        else if (!L[i].trim() && i + 1 < L.length && listRe.test(L[i + 1])) i++;
+        else if (L[i].trim() && /^\s{2,}\S/.test(L[i]) && items.length && !startsBlock(L[i])) { items[items.length - 1].text += "\n" + L[i].trim(); i++; }
+        else break;
+      }
+      let k = 0;
+      while (k < items.length) { const r = renderLevel(items, k, items[k].indent); out += r[0]; k = r[1]; }
+      continue;
+    }
+    const para = [line];
+    i++;
+    while (i < L.length && L[i].trim() && !startsBlock(L[i]) && !(L[i].includes("|") && i + 1 < L.length && isSep(L[i + 1]))) para.push(L[i++]);
+    out += `<p>${mdInline(para.join("\n"))}</p>`;
+  }
+  return out;
+}
+function changelogHtml(text) { return mdBlocks(text); }
+$("#home-changelog").addEventListener("click", (e) => {
+  const a = e.target.closest("a[href]");
+  if (!a) return;
+  e.preventDefault();
+  const url = a.getAttribute("href");
+  if (window.pywebview && window.pywebview.api && window.pywebview.api.open_url) window.pywebview.api.open_url(url);
+  else window.open(url, "_blank");
+});
 function renderChangelog() {
   const el = $("#home-changelog"); if (!el) return;
   const c = CHANGELOG;
@@ -1706,7 +1842,7 @@ function renderInstances() {
       : `<button class="btn small primary" data-action="launch" data-name="${esc(i.name)}" ${installing ? "disabled" : ""}>${icon(installing ? "loader" : i.installed ? "play" : "download", 13)}${i.installed ? "Launch" : "Install &amp; play"}</button>`;
     return `<div class="instance-row${i.name === activeName ? " active" : ""}">
       <div class="ir-left"><button class="instance-icon" data-action="icon" data-name="${esc(i.name)}" data-tip="Change icon" aria-label="Change icon">${icon(instanceIconKey(i), 20)}</button>
-        <div style="min-width:0"><div style="display:flex;align-items:center;gap:7px;min-width:0"><div class="instance-name" data-rename="${esc(i.name)}" data-tip="Double-click to rename">${esc(i.name)}</div>${i.oneclient ? ocIcon(16) : ""}</div>
+        <div style="min-width:0"><div style="display:flex;align-items:center;gap:7px;min-width:0"><div class="instance-name" data-rename="${esc(i.name)}" data-tip="Double-click to rename">${esc(i.name)}</div>${i.critclient ? ccIcon(16) : ""}</div>
           <div class="instance-meta"><span>${esc(i.version)} · ${esc(loaderLabel(i))}</span>${status.startsWith("<") ? `<span style="display:inline-flex;align-items:center;gap:6px">${status}</span>` : ""}${played}</div></div></div>
       <div class="btn-row">${main}
         <button class="btn small icon-only${i.name === activeName ? " is-main" : ""}" data-action="main" data-name="${esc(i.name)}" ${i.name === activeName ? "disabled" : ""} data-tip="${i.name === activeName ? "Main installation" : "Set as main installation"}" aria-label="${i.name === activeName ? "Main installation" : "Set as main installation"}">${icon("star", 15)}</button>
@@ -1762,8 +1898,8 @@ function renderInstallBox() {
   $("#ib-detail").textContent = `${PROGRESS.current || ""}${detail ? " · " + detail : ""}`;
   $("#ib-bar").style.width = PROGRESS.percent + "%";
 }
-const NEW = { loader: "vanilla", version: null, loaderVersion: null, oneclient: false };
-let ONECLIENT = { versions: null };
+const NEW = { loader: "vanilla", version: null, loaderVersion: null, critclient: false };
+const CRITCLIENT = { map: null };
 let VERSIONS = [];
 let versionSel, loaderVerSel;
 let formToken = 0;
@@ -1773,7 +1909,7 @@ function showAddView() {
   const v = $("#instances-add-view"); v.style.display = ""; v.classList.remove("row-show"); void v.offsetWidth; v.classList.add("row-show");
   $("#new-error").textContent = "";
   if (!VERSIONS.length) loadVersions();
-  loadOneClientInfo(true);
+  loadCritClientInfo(true);
 }
 $("#btn-add-instance").addEventListener("click", showAddView);
 $("#btn-back").addEventListener("click", () => { showInstanceList(); stagger($("#instance-list")); });
@@ -1784,20 +1920,43 @@ async function loadVersions() {
   NEW.version = res.latest_release || (VERSIONS[0] && VERSIONS[0].id);
   await updateVersionList();
 }
+function ccLoadersFor(v) {
+  const m = CRITCLIENT.map;
+  return m ? ["fabric", "forge"].filter((l) => m[l] && m[l][v]) : [];
+}
+function pickCcLoader() {
+  const avail = ccLoadersFor(NEW.version);
+  if (avail.length && !avail.includes(NEW.loader)) NEW.loader = avail[0];
+}
+function syncLoaderToggle() {
+  const tg = $("#loader-toggle"), bs = $$("#loader-toggle button");
+  const cc = NEW.critclient && CRITCLIENT.map;
+  const avail = cc ? ccLoadersFor(NEW.version) : null;
+  bs.forEach((b) => {
+    b.classList.toggle("on", b.dataset.loader === NEW.loader);
+    b.disabled = !!cc && !avail.includes(b.dataset.loader);
+  });
+  tg.classList.toggle("locked", !!cc && avail.length <= 1);
+  tg.style.setProperty("--idx", Math.max(0, bs.findIndex((x) => x.dataset.loader === NEW.loader)));
+}
 async function updateVersionList() {
   const token = ++formToken;
+  const cc = !!(NEW.critclient && CRITCLIENT.map);
   let allowed = null;
   versionSel.setDisabled(true);
-  if (NEW.loader === "fabric") { const r = await callApi("get_fabric_game_versions"); if (r.success) allowed = new Set(r.versions); }
-  else if (NEW.loader === "forge") { const r = await callApi("get_forge_mc_versions"); if (r.success) allowed = new Set(r.versions); }
+  if (!cc) {
+    if (NEW.loader === "fabric") { const r = await callApi("get_fabric_game_versions"); if (r.success) allowed = new Set(r.versions); }
+    else if (NEW.loader === "forge") { const r = await callApi("get_forge_mc_versions"); if (r.success) allowed = new Set(r.versions); }
+  }
   if (token !== formToken) return;
-  const list = VERSIONS.filter((v) => !allowed || allowed.has(v.id));
-  const oc = NEW.oneclient && ONECLIENT.versions;
-  const okV = (id) => !oc || ONECLIENT.versions.has(id);
+  const list = VERSIONS.filter((v) => cc ? ccLoadersFor(v.id).length > 0 : (!allowed || allowed.has(v.id)));
   let want = NEW.version;
-  if (!okV(want)) { const f = list.find((v) => okV(v.id)); if (f) want = f.id; }
-  versionSel.setOptions(list.map((v) => ({ value: v.id, label: v.id, disabled: !okV(v.id), tag: okV(v.id) ? "" : "not supported" })), want);
+  if (!list.some((v) => v.id === want)) want = list[0] ? list[0].id : null;
+  versionSel.opts.placeholder = cc ? "No Crit Client versions" : "No versions";
+  versionSel.setOptions(list.map((v) => ({ value: v.id, label: v.id })), want);
   NEW.version = versionSel.getValue();
+  if (cc) pickCcLoader();
+  syncLoaderToggle();
   versionSel.setDisabled(false);
   await updateLoaderVersions(token);
 }
@@ -1826,16 +1985,14 @@ async function updateLoaderVersions(token = formToken) {
   if (token !== formToken) return;
   loaderVerSel.opts.placeholder = "No builds for this version";
   loaderVerSel.setOptions(options, pick);
-  loaderVerSel.setDisabled(!options.length);
+  loaderVerSel.setDisabled(!options.length || !!NEW.critclient);
   NEW.loaderVersion = loaderVerSel.getValue();
 }
 $("#loader-toggle").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-loader]");
-  if (!b || b.dataset.loader === NEW.loader || NEW.oneclient) return;
+  if (!b || b.disabled || b.dataset.loader === NEW.loader) return;
   NEW.loader = b.dataset.loader;
-  const buttons = $$("#loader-toggle button");
-  buttons.forEach((x) => x.classList.toggle("on", x === b));
-  $("#loader-toggle").style.setProperty("--idx", buttons.indexOf(b));
+  syncLoaderToggle();
   updateVersionList();
 });
 $("#btn-create").addEventListener("click", async () => {
@@ -1844,61 +2001,33 @@ $("#btn-create").addEventListener("click", async () => {
   err.textContent = "";
   if (!name) { err.textContent = "Give the instance a name."; return; }
   if (NEW.loader !== "vanilla" && !NEW.loaderVersion) { err.textContent = `No ${NEW.loader} build available for ${NEW.version}.`; return; }
-  const r = await callApi("create_instance", NEW.version, NEW.loader, NEW.loaderVersion, name, NEW.oneclient);
+  const r = await callApi("create_instance", NEW.version, NEW.loader, NEW.loaderVersion, name, NEW.critclient);
   if (!r.success) { err.textContent = r.error || "Couldn't create the instance."; return; }
   $("#new-name").value = "";
-  const wasOc = NEW.oneclient;
-  toast(wasOc ? `Creating ${name} with OneClient...` : `Created ${name}`);
-  if (wasOc) setOneClient(false);
+  const wasCc = NEW.critclient;
+  toast(wasCc ? `Creating ${name} with Crit Client...` : `Created ${name}`);
+  if (wasCc) setCritClient(false);
   showInstanceList(); stagger($("#instance-list"));
 });
-function setOneClient(on) {
-  NEW.oneclient = on;
-  const row = $("#oneclient-row");
+function setCritClient(on) {
+  NEW.critclient = on;
+  const row = $("#critclient-row");
   row.classList.toggle("on", on);
   row.setAttribute("aria-checked", on);
-  $("#oneclient-switch").classList.toggle("on", on);
-  const tg = $("#loader-toggle");
-  tg.classList.toggle("oc", on);
-  if (on) {
-    NEW.loader = "fabric";
-    const bs = $$("#loader-toggle button");
-    bs.forEach((x) => x.classList.toggle("on", x.dataset.loader === "fabric"));
-    tg.style.setProperty("--idx", bs.findIndex((x) => x.dataset.loader === "fabric"));
-  }
+  $("#critclient-switch").classList.toggle("on", on);
   updateVersionList();
 }
-async function loadOneClientInfo(quiet) {
-  if (ONECLIENT.versions) return true;
-  const r = await callApi("get_oneclient_info");
-  if (!r.success) { if (!quiet) toast(r.error, "error"); return false; }
-  ONECLIENT.versions = new Set(r.versions);
+async function loadCritClientInfo(quiet) {
+  const r = await callApi("get_critclient_info");
+  if (!r.success) { CRITCLIENT.map = null; if (!quiet) toast(r.error, "error"); return false; }
+  CRITCLIENT.map = r.versions;
   return true;
 }
-function showOneClientNotice() {
-  if (STATE.settings.oneclient_notice_seen) return;
-  STATE.settings.oneclient_notice_seen = true;
-  callApi("save_settings", { oneclient_notice_seen: true });
-  modalHit = null; addStep++;
-  $("#modal-body").innerHTML = `
-    <div class="m-head"><div class="ac-icon" style="padding:10px">${$(".nic-oc-ico").innerHTML}</div><div><div class="m-title">About OneClient</div></div></div>
-    <div class="m-desc">OneClient is an external modpack made by Polyfrost. I do not want to make my own client, so I'm using theirs for now.</div>
-    <button class="btn primary" id="oc-ok" style="width:100%">${icon("check", 16)}Got it</button>`;
-  $("#oc-ok").addEventListener("click", closeModal);
-  openModal();
-}
-$("#oneclient-row").addEventListener("click", async () => {
-  if (NEW.oneclient) return setOneClient(false);
-  setOneClient(true);
-  showOneClientNotice();
-  if (!(await loadOneClientInfo())) { setOneClient(false); return; }
-  if (NEW.oneclient) updateVersionList();
+$("#critclient-row").addEventListener("click", async () => {
+  if (NEW.critclient) return setCritClient(false);
+  if (!(await loadCritClientInfo())) return;
+  setCritClient(true);
 });
-function sessionNote(a) {
-  if (!a.session) return "";
-  const expired = (a.expires || 0) - Date.now() / 1000 <= 60;
-  return expired ? ` · session token, <span style="color:var(--warn)">expired</span>` : " · session token";
-}
 function renderAccounts() {
   const list = $("#account-list");
   if (!STATE.accounts.length) { list.innerHTML = `<div class="empty">${icon("user", 30)}<div>Add an account to play.</div></div>`; return; }
@@ -1907,7 +2036,7 @@ function renderAccounts() {
     const ms = a.type === "microsoft";
     return `<div class="account-row${a.uuid === active ? " active" : ""}">
       <div class="ir-left">${faceHTML(a.name, 38)}<div><div class="name">${esc(a.name)}</div>
-        <div class="type${ms ? " ms" : ""}">${icon(ms ? "shield-check" : "user", 13)}${ms ? "Microsoft account" : "Offline account"}${sessionNote(a)}</div></div></div>
+        <div class="type${ms ? " ms" : ""}">${icon(ms ? "microsoft" : "user", 13)}${ms ? "Microsoft account" : "Offline account"}</div></div></div>
       <div class="btn-row">
         ${a.uuid === active ? "" : `<button class="btn small" data-acc="switch" data-key="${esc(a.uuid)}">${icon("check", 13)}Use</button>`}
         <button class="btn small icon-only danger" data-acc="remove" data-key="${esc(a.uuid)}" data-tip="Remove account" aria-label="Remove account">${icon("trash", 15)}</button>
@@ -1947,11 +2076,11 @@ function renderAddChoose() {
         <span class="choice-text"><span class="n">Offline</span><span class="d">Pick a username. No sign-in needed.</span></span>
         <span class="choice-arrow">${icon("chevron-right", 16)}</span></button>
       <button class="choice enter" style="--i:1" data-choice="microsoft">
-        <span class="choice-ico">${icon("shield-check", 20)}</span>
-        <span class="choice-text"><span class="n">Microsoft</span><span class="d">Sign in or use a session token.</span></span>
+        <span class="choice-ico">${icon("microsoft", 22)}</span>
+        <span class="choice-text"><span class="n">Microsoft</span><span class="d">Sign in with your Microsoft account.</span></span>
         <span class="choice-arrow">${icon("chevron-right", 16)}</span></button>
     </div>`;
-  $$(".choice").forEach((c) => c.addEventListener("click", () => c.dataset.choice === "offline" ? renderAddOffline() : (STATE.settings.ms_warning_seen ? renderMsMethod() : renderMsWarning())));
+  $$(".choice").forEach((c) => c.addEventListener("click", () => c.dataset.choice === "offline" ? renderAddOffline() : renderWebLogin()));
 }
 function renderAddOffline() {
   msCancel(); addStep++;
@@ -1972,79 +2101,15 @@ function renderAddOffline() {
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
   setTimeout(() => input.focus(), 120);
 }
-function renderMsWarning() {
-  msCancel(); addStep++;
-  $("#modal-body").innerHTML = `${backButton()}
-    <div class="m-title" style="margin-bottom:12px">Before you continue</div>
-    <div class="warn-box">${icon("alert", 20)}<div>Since Crit Launcher doesn't have Azure app approval from Mojang, it signs you in with <b>session tokens</b>. They're easy to use, but they expire after around <b>1 day</b>, so you'll need to sign in again about once a day.</div></div>
-    <button class="btn primary" id="warn-ok" style="margin-top:18px">${icon("check", 16)}I understand</button>`;
-  $("#acc-back").addEventListener("click", renderAddChoose);
-  $("#warn-ok").addEventListener("click", () => {
-    STATE.settings.ms_warning_seen = true;
-    callApi("save_settings", { ms_warning_seen: true });
-    renderMsMethod();
-  });
-}
-function renderMsMethod() {
-  msCancel(); addStep++;
-  $("#modal-body").innerHTML = `${backButton()}
-    <div class="m-title" style="margin-bottom:4px">Microsoft account</div>
-    <div class="m-desc">Pick how you want to get your Minecraft session.</div>
-    <div class="choices">
-      <button class="choice enter" style="--i:0" data-method="login">
-        <span class="choice-ico">${icon("shield-check", 20)}</span>
-        <span class="choice-text"><span class="n">Sign in with Microsoft</span><span class="d">Log in on minecraft.net in a window inside the launcher.</span></span>
-        <span class="choice-arrow">${icon("chevron-right", 16)}</span></button>
-      <button class="choice enter" style="--i:1" data-method="token">
-        <span class="choice-ico">${icon("download", 20)}</span>
-        <span class="choice-text"><span class="n">Use a session token</span><span class="d">Import from the official launcher or paste one.</span></span>
-        <span class="choice-arrow">${icon("chevron-right", 16)}</span></button>
-    </div>`;
-  $("#acc-back").addEventListener("click", renderAddChoose);
-  $$(".choice").forEach((c) => c.addEventListener("click", () => c.dataset.method === "login" ? renderWebLogin() : renderAddToken()));
-}
-function renderAddToken() {
-  msCancel(); addStep++;
-  $("#modal-body").innerHTML = `${backButton()}
-    <div class="m-title" style="margin-bottom:4px">Session token</div>
-    <div class="m-desc">Crit Launcher can't renew a session token, so you'll import or paste a new one when it expires.</div>
-    <button class="btn primary" id="tok-import" style="width:100%">${icon("download", 16)}Import from the official launcher</button>
-    <div class="hint" style="margin:8px 0 18px">Uses the account the official Minecraft launcher is signed in with on this PC.</div>
-    <div class="field"><label for="tok-input">Or paste a token</label>
-      <input class="input" id="tok-input" type="password" placeholder="Minecraft access token" autocomplete="off" spellcheck="false" />
-      <div class="hint">Never share a token with anyone. It gives full access to the account until it expires.</div></div>
-    <div class="form-error" id="tok-error" style="user-select:text"></div>
-    <button class="btn" id="tok-add">${icon("plus", 16)}Add token</button>`;
-  $("#acc-back").addEventListener("click", renderMsMethod);
-  const busy = (on) => { ["#tok-import", "#tok-add"].forEach((id) => { const el = $(id); if (el) el.disabled = on; }); };
-  $("#tok-import").addEventListener("click", async () => {
-    $("#tok-error").textContent = ""; busy(true);
-    const r = await callApi("import_official_session");
-    busy(false);
-    if (!r.success) { $("#tok-error").textContent = r.error; return; }
-    toast(`Imported ${r.imported.join(", ")}`); closeModal();
-  });
-  const add = async () => {
-    const v = $("#tok-input").value.trim();
-    if (!v) { $("#tok-error").textContent = "Paste a token first."; return; }
-    $("#tok-error").textContent = ""; busy(true);
-    const r = await callApi("add_session_token", v);
-    busy(false);
-    if (!r.success) { $("#tok-error").textContent = r.error; return; }
-    toast(`Added ${r.account.name}`); closeModal();
-  };
-  $("#tok-add").addEventListener("click", add);
-  $("#tok-input").addEventListener("keydown", (e) => { if (e.key === "Enter") add(); });
-}
 async function renderWebLogin() {
   msCancel(); const step = ++addStep;
   $("#modal-body").innerHTML = `${backButton()}
-    <div class="m-title" style="margin-bottom:4px">Sign in with Microsoft</div>
+    <div class="m-title" style="margin-bottom:4px;display:flex;align-items:center;gap:10px">${msLogo(22)}Sign in with Microsoft</div>
     <div class="m-desc">Log in to your Microsoft account in the window that opens. It closes by itself when you're done.</div>
     <div class="ms-status" id="wl-status"><span class="ico spin">${icon("loader", 18)}</span><span id="wl-status-text">Opening the sign-in window...</span></div>
     <div class="form-error" id="wl-error" style="margin-top:12px;user-select:text"></div>
     <button class="btn primary row-hidden" id="wl-again" style="margin-top:6px">${icon("refresh", 15)}Try again</button>`;
-  $("#acc-back").addEventListener("click", renderMsMethod);
+  $("#acc-back").addEventListener("click", renderAddChoose);
   $("#wl-again").addEventListener("click", renderWebLogin);
   webLoginActive = true;
   const r = await callApi("start_minecraft_web_login");
@@ -3339,7 +3404,7 @@ function fillSettingsInputs() {
 }
 function renderSettings() {
   if (!settingsDirty()) fillSettingsInputs();
-  $("#ver-line").textContent = `${verLabel(STATE.version || "1.3")} thanks for using crit`;
+  $("#ver-line").textContent = `${verLabel(STATE.version || "1.5")} thanks for using crit`;
   renderUpdateCard();
   const line = $("#java-line");
   line.innerHTML = STATE.java_ok
@@ -4025,7 +4090,7 @@ function init() {
   launchSelect = new CSelect($("#launch-pick"), { placement: "top", minWidth: 250, placeholder: "No instances", emptyText: "No instances yet",
     onChange: async (v) => { const r = await callApi("set_active_instance", v); if (!r.success) toast(r.error, "error"); } });
   versionSel = new CSelect($("#version-select"), { placement: "auto", placeholder: "Loading versions...",
-    onChange: (v) => { NEW.version = v; updateLoaderVersions(++formToken); } });
+    onChange: (v) => { NEW.version = v; if (NEW.critclient && CRITCLIENT.map) { pickCcLoader(); syncLoaderToggle(); } updateLoaderVersions(++formToken); } });
   loaderVerSel = new CSelect($("#loader-version-select"), { placement: "auto", placeholder: "Loading...",
     onChange: (v) => { NEW.loaderVersion = v; } });
   addonTypeSel = new CSelect($("#addon-type-select"), { placement: "auto",

@@ -10,19 +10,9 @@ Crit Launcher is a Minecraft launcher with many built-in features.
 * Forge and Fabric support
 * Offline mode without a Minecraft account
 * Microsoft authentication
-
-## Warning
-
-If you read the source code, you may notice a session token commands.
-
-**This does not steal your tokens.**
-
-Crit Launcher does not currently have Microsoft approval for its authentication system because we have not applied for approval yet.
-
-As a workaround, Crit Launcher opens Minecraft.net for authentication. After signing in, the launcher uses the session token provided by Minecraft.net to authenticate you.
-
-This authentication generally lasts for around one day.
-
+* built in client
+* built in server hosting
+* built in built  in built in 
 ## No Ads
 
 Crit Launcher contains no advertisements.

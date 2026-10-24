@@ -2,17 +2,11 @@
 
 Crit Launcher is a Minecraft launcher with many built-in features.
 
-## Feature List
+<details>
+<summary>feature list</summary>
+test
 
-* Built-in mod, modpack, and resource pack management
-* Built-in skin switcher
-* Built-in cape switcher
-* Forge and Fabric support
-* Offline mode without a Minecraft account
-* Microsoft authentication
-* built in client
-* built in server hosting
-* built in built  in built in 
+</details>
 ## No Ads
 
 Crit Launcher contains no advertisements.

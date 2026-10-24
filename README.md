@@ -34,4 +34,4 @@ pyinstaller --onefile --windowed --name crit --icon=icon.ico --add-data "backgro
 setup:
 [innosetup](https://jrsoftware.org/isinfo.php)
 then run critsetup.iss
--#this readme is valid as of v1.7
+<sub>this readme is valid as of v1.7</sub>

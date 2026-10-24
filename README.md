@@ -1,21 +1,37 @@
 # Crit Launcher
 
-Crit Launcher is a Minecraft launcher with many built-in features.
+Crit Launcher is a open source minecraft launcher 
 
 <details>
 <summary>feature list</summary>
-test
-
+fabric forge neoforge and vanilla support
+addon managment(mods resource packs modpacks shaders)
+skin managment(with a catalog)
+built in local server hosting
+importing data from other launchers
+official Microsoft authentication and offline support
+themes: default minecraft modrinth fastclient
+add shortcuts to desktop for instance
+customizable viewing methods for instances
+play time tracking
 </details>
-## No Ads
+<details>
+<summary>notes</summary>
+we are not affiliated with microsoft or mojang
+we are not affiliated with modrinth or fastclient
+we are not affiliated with fabric forge or neoforge
+we are not affiliated with mcdonalds or burger king
 
-Crit Launcher contains no advertisements.
+the themes which aim to replicate other launchers are completely custom built, no original or decompiled code was used for their creation therefore are completly unrelated, if you are fastclient or modrinth kindly create a support ticket in the discord server for any requests
+</details>
 
-to compile 
+## compilation 
 first install the source code and add a icon to the folder
 then run
 ```
 pyinstaller --onefile --windowed --name crit --icon=icon.ico --add-data "background.png;." --add-data "index.html;." launcher.py
 ```
-after that to compile use [innosetup](https://jrsoftware.org/isinfo.php)
-i wont tell you how to use inno setup cuz i dont care
+setup:
+[innosetup](https://jrsoftware.org/isinfo.php)
+then run critsetup.iss
+--this readme is valid as of v1.7

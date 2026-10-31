@@ -1,5 +1,4 @@
-# v1.5 malware included tung utng sahur
-# for legal reasons the first line is a joke
+# version 1.7 dont steal my shi
 import os
 import sys
 import base64
@@ -14,6 +13,7 @@ import logging
 import zipfile
 import platform
 import subprocess
+import tarfile
 import threading
 import traceback
 import urllib.request
@@ -23,10 +23,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 
-
 def _resource_dir() -> Path:
     if getattr(sys, "frozen", False):
-        return Path(sys._MEIPASS)                              
+        return Path(sys._MEIPASS)
     return Path(__file__).resolve().parent
 
 
@@ -41,6 +40,7 @@ APP_DIR = _app_dir()
 
 DATA_DIR = Path(os.environ.get("CRIT_LAUNCHER_DATA", str(APP_DIR / "launcher_data")))
 INSTANCES_DIR = DATA_DIR / "instances"
+HORIZON_DATA_DIR = DATA_DIR / "horizon"
 VERSIONS_DIR = DATA_DIR / "versions"
 LIBRARIES_DIR = DATA_DIR / "libraries"
 ASSETS_DIR = DATA_DIR / "assets"
@@ -49,13 +49,18 @@ ASSET_INDEXES_DIR = ASSETS_DIR / "indexes"
 RUNTIME_DIR = DATA_DIR / "runtime"
 TMP_DIR = DATA_DIR / "tmp"
 SKINS_DIR = DATA_DIR / "skins"
+INSTANCE_ICONS_DIR = DATA_DIR / "instance_icons"
+
+
+PAGE_DIR = DATA_DIR / "web" if getattr(sys, "frozen", False) else RESOURCE_DIR
 
 ACCOUNTS_FILE = DATA_DIR / "accounts.json"
 SETTINGS_FILE = DATA_DIR / "settings.json"
 LOG_FILE = DATA_DIR / "launcher.log"
 
 for _d in (DATA_DIR, INSTANCES_DIR, VERSIONS_DIR, LIBRARIES_DIR, ASSETS_DIR,
-           ASSET_OBJECTS_DIR, ASSET_INDEXES_DIR, RUNTIME_DIR, TMP_DIR, SKINS_DIR):
+           ASSET_OBJECTS_DIR, ASSET_INDEXES_DIR, RUNTIME_DIR, TMP_DIR, SKINS_DIR,
+           INSTANCE_ICONS_DIR, PAGE_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
@@ -69,7 +74,6 @@ def log_exception(context: str):
     logging.error("%s\n%s", context, traceback.format_exc())
 
 
-
 VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 
 FABRIC_LOADER_LIST_URL = "https://meta.fabricmc.net/v2/versions/loader"
@@ -79,10 +83,66 @@ FABRIC_PROFILE_URL_TMPL = "https://meta.fabricmc.net/v2/versions/loader/{mc}/{lo
 FORGE_MAVEN = "https://maven.minecraftforge.net/net/minecraftforge/forge/"
 FORGE_METADATA_URL = FORGE_MAVEN + "maven-metadata.xml"
 
+NEOFORGE_MAVEN = "https://maven.neoforged.net/releases/net/neoforged/neoforge/"
+NEOFORGE_METADATA_URL = NEOFORGE_MAVEN + "maven-metadata.xml"
+NEOFORGE_LEGACY_MAVEN = "https://maven.neoforged.net/releases/net/neoforged/forge/"
+NEOFORGE_LEGACY_METADATA_URL = NEOFORGE_LEGACY_MAVEN + "maven-metadata.xml"
+NEOFORGE_LEGACY_MC = "1.20.1"
+
+CONSOLE_TAIL_BYTES = 400_000
+CONSOLE_CHUNK_BYTES = 262_144
+
+MOD_LOADERS = ("fabric", "forge", "neoforge")
+LOADER_NICE = {"fabric": "Fabric", "forge": "Forge", "neoforge": "NeoForge", "horizon": "Horizon"}
+
+
+
+
+HORIZON_REPO = "horizon-rust/horizon"
+HORIZON_API = "https://api.github.com/repos/" + HORIZON_REPO
+HORIZON_MARKER = "launcher-meta.json"
+HORIZON_SUMS = "SHA256SUMS"
+HORIZON_SIG = "SHA256SUMS.sig"
+
+HORIZON_TRUSTED_KEYS = ("MU4oiIQcCxkZvbwSjjXs7SySCuM6ywRQ3nGaJYZG0gw=",)
+HORIZON_MC_VERSION = "26.3"
+HORIZON_JAVA_MAJOR = 25
+
+
+def neoforge_version_to_mc(version: str):
+    if "+snapshot" in version:
+        return None
+    parts = version.split("-")[0].split(".")
+    if len(parts) < 3 or not all(p.isdigit() for p in parts):
+        return None
+    major = int(parts[0])
+    if major >= 26:
+        return f"{parts[0]}.{parts[1]}" if parts[2] == "0" else f"{parts[0]}.{parts[1]}.{parts[2]}"
+    if major < 20:
+        return None
+    return f"1.{major}" if parts[1] == "0" else f"1.{major}.{parts[1]}"
+
+
+def neoforge_installer_info(mc_version: str, loader_version: str):
+    if mc_version == NEOFORGE_LEGACY_MC:
+        full = f"{mc_version}-{loader_version}"
+        return full, f"{NEOFORGE_LEGACY_MAVEN}{full}/forge-{full}-installer.jar"
+    return loader_version, f"{NEOFORGE_MAVEN}{loader_version}/neoforge-{loader_version}-installer.jar"
+
 JAVA_RUNTIME_INDEX_URL = ("https://launchermeta.mojang.com/v1/products/java-runtime/"
                           "2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json")
 
 MODRINTH_API = "https://api.modrinth.com/v2"
+
+
+
+CURSEFORGE_API = "https://cf-api.skibidiscripts.workers.dev/v1"
+CF_GAME_ID = 432                       
+CF_CLASS_IDS = {"mod": 6, "resourcepack": 12, "shader": 6552, "modpack": 4471}
+CF_LOADER_IDS = {"forge": 1, "fabric": 4, "quilt": 5, "neoforge": 6}
+
+CF_SORT = {"relevance": 2, "downloads": 6, "follows": 2, "newest": 11, "updated": 3}
+CF_REQUIRED_RELATION = 3
 
 MC_PROFILE_URL = "https://api.minecraftservices.com/minecraft/profile"
 MC_SKINS_URL = "https://api.minecraftservices.com/minecraft/profile/skins"
@@ -90,7 +150,6 @@ MC_CAPE_URL = "https://api.minecraftservices.com/minecraft/profile/capes/active"
 MOJANG_LOOKUP_URL = "https://api.mojang.com/users/profiles/minecraft/"
 SESSION_PROFILE_URL = "https://sessionserver.mojang.com/session/minecraft/profile/"
 
-# Microsoft sign-in (stole minecraft official launcher client id)
 MS_CLIENT_ID = "00000000402b5328"
 MS_SCOPE = "service::user.auth.xboxlive.com::MBI_SSL"
 MS_REDIRECT_URI = "https://login.live.com/oauth20_desktop.srf"
@@ -103,7 +162,7 @@ MC_XBOX_LOGIN_URL = "https://api.minecraftservices.com/authentication/login_with
 RESOURCES_BASE_URL = "https://resources.download.minecraft.net"
 LIBRARIES_BASE_URL = "https://libraries.minecraft.net/"
 
-USER_AGENT = "CritLauncher/1.0 (+https://example.invalid)"
+USER_AGENT = "CritLauncher/1.0 (+https://critlauncher.xyz)"
 
 CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
 
@@ -111,13 +170,12 @@ INSTALL_SCHEMA = 2
 
 DEFAULT_JAVA_INFO = {"component": "jre-legacy", "majorVersion": 8}
 
-ADDON_TYPES = ("mod", "resourcepack", "modpack", "shader")
+ADDON_TYPES = ("mod", "resourcepack", "modpack", "shader", "datapack")
 
-INSTANCE_ICONS = {"box", "shirt", "flame", "hammer", "square", "circle", "triangle", "star",
-                  "hexagon", "diamond", "heart", "cat", "ghost", "skull", "zap", "gem", "critclient", "oneclient"}
+INSTANCE_ICONS = {"box", "shirt", "cloth", "scroll", "flame", "hammer", "circle", "triangle", "star",
+                  "hexagon", "diamond", "heart", "cat", "ghost", "zap", "gem", "critclient", "oneclient"}
 
 _INVALID_NAME_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
-
 
 
 def http_get_json(url: str, timeout: int = 20, retries: int = 2):
@@ -132,10 +190,10 @@ def http_get_json(url: str, timeout: int = 20, retries: int = 2):
             if exc.code in (400, 401, 403, 404):
                 raise
             last = exc
-        except Exception as exc:                          
+        except Exception as exc:
             last = exc
         time.sleep(0.8 * (attempt + 1))
-    raise last                      
+    raise last
 
 
 def http_get_text(url: str, timeout: int = 30) -> str:
@@ -260,12 +318,354 @@ def classpath_sep() -> str:
 def open_in_file_manager(path: Path):
     path.mkdir(parents=True, exist_ok=True)
     if current_os_name() == "windows":
-        os.startfile(str(path))                              
+        os.startfile(str(path))
     elif current_os_name() == "osx":
         subprocess.Popen(["open", str(path)])
     else:
         subprocess.Popen(["xdg-open", str(path)])
 
+
+DWMWA_USE_IMMERSIVE_DARK_MODE_OLD = 19   
+DWMWA_USE_IMMERSIVE_DARK_MODE = 20       
+DWMWA_BORDER_COLOR = 34                  
+DWMWA_CAPTION_COLOR = 35                 
+DWMWA_TEXT_COLOR = 36                    
+SWP_FLAGS = 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020  
+
+
+TITLEBAR_FALLBACKS = {
+    ("dark", "default"): ("#0b0c0e", "#e8eaed"),
+    ("dark", "modrinth"): ("#141518", "#ecf0f3"),
+    ("dark", "fastclient"): ("#0b0c0f", "#f1f2f4"),   
+    ("dark", "sklauncher"): ("#0a0d14", "#f4f4f5"),
+    ("dark", "minecraft"): ("#0b0c0e", "#e8eaed"),
+    ("oled", "default"): ("#000000", "#e8eaed"),
+    ("oled", "modrinth"): ("#000000", "#ecf0f3"),
+    ("light", "default"): ("#f2f4f7", "#1b1f24"),
+    ("light", "modrinth"): ("#f2f4f7", "#1b1f24"),
+}
+
+
+import ctypes as _ct
+
+
+class _RECT(_ct.Structure):
+    _fields_ = [("left", _ct.c_long), ("top", _ct.c_long), ("right", _ct.c_long), ("bottom", _ct.c_long)]
+
+
+class _NCCALCSIZE_PARAMS(_ct.Structure):
+    _fields_ = [("rgrc", _RECT * 3), ("lppos", _ct.c_void_p)]
+
+
+WM_NCCALCSIZE = 0x0083
+WM_NCDESTROY = 0x0082
+WM_NCLBUTTONDOWN = 0x00A1
+WM_CLOSE = 0x0010
+HTCAPTION = 2
+GWLP_WNDPROC = -4
+DWMWA_WINDOW_CORNER_PREFERENCE = 33
+DWMWCP_ROUND = 2
+SW_MAXIMIZE, SW_MINIMIZE, SW_RESTORE = 3, 6, 9
+
+
+def _colorref(hex_color: str) -> int:
+    h = str(hex_color).strip().lstrip("#")
+    if len(h) == 3:                      
+        h = "".join(c * 2 for c in h)
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return r | (g << 8) | (b << 16)      
+
+
+def _dwm_set_attr(hwnd, attr, value):
+    import ctypes
+    v = ctypes.c_int(value)
+    return ctypes.windll.dwmapi.DwmSetWindowAttribute(
+        ctypes.c_void_p(hwnd), attr, ctypes.byref(v), ctypes.sizeof(v))
+
+
+
+
+
+
+
+
+
+UI_ASSETS_DIR = APP_DIR / "assets"
+_ASSETS_RAW = "https://raw.githubusercontent.com/snigglaberry/crit-launcher/main/assets/"
+HOME_BG_ASSETS = {                       
+    "dark_bg.png": _ASSETS_RAW + "dark_Bg.png",
+    "light_bg.png": _ASSETS_RAW + "light_bg.png",
+}
+_PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+_assets_lock = threading.Lock()
+
+
+
+
+
+
+_ASSET_SEARCH_ROOTS = (UI_ASSETS_DIR, RESOURCE_DIR / "assets", APP_DIR, RESOURCE_DIR)
+_ASSET_ALIASES = {"dark_bg.png": "dark_Bg.png"}   
+
+
+def _find_asset(rel: str, min_size: int = 1):
+    """First existing copy of rel in any known asset folder, or None."""
+    rel = str(rel).replace("\\", "/")
+    head, sep, tail = rel.rpartition("/")
+    names = [rel]
+    alt = _ASSET_ALIASES.get(tail)
+    if alt:
+        names.append(head + sep + alt)
+    for root in _ASSET_SEARCH_ROOTS:
+        for name in names:
+            try:
+                p = root / name
+                if p.is_file() and p.stat().st_size >= min_size:
+                    return p
+            except OSError:
+                continue
+    return None
+
+
+def _publish_to_page_dir(rel: str, src: Path) -> bool:
+    """Copy an asset into <page>/assets so the page's relative assets/... URLs resolve in a build.
+
+    Compiled builds unpack index.html into a temp folder, so without this the only way to show the
+    art is a huge base64 data URI over the JS bridge, which large backgrounds don't survive.
+    """
+    try:
+        if PAGE_DIR == UI_ASSETS_DIR.parent or not src.is_file():
+            return False
+        dest = PAGE_DIR / "assets" / rel
+        try:
+            if dest.is_file() and dest.stat().st_size == src.stat().st_size:
+                return True
+        except OSError:
+            pass
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dest)
+        return True
+    except OSError:
+        log_exception("publish asset " + rel)
+        return False
+
+
+def _seed_local_asset(rel: str, dest: Path, min_size: int = 1) -> bool:
+    """Copy a shipped asset (bundled/extra assets folder) into dest when it isn't there yet."""
+    try:
+        if dest.is_file() and dest.stat().st_size >= min_size:
+            return True
+    except OSError:
+        pass
+    found = _find_asset(rel, min_size)
+    if not found:
+        return False
+    try:
+        if found.resolve() == dest.resolve():
+            return True
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(found, dest)
+        return dest.is_file() and dest.stat().st_size >= min_size
+    except OSError:
+        log_exception("copy bundled asset " + rel)
+        return False
+
+
+def _download_asset(url: str, dest: Path) -> bool:
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            data = r.read()
+        if not data.startswith(_PNG_MAGIC):
+            return False
+        tmp = dest.with_suffix(".part")
+        tmp.write_bytes(data)
+        tmp.replace(dest)
+        return True
+    except Exception:
+        logging.warning("Couldn't download %s", url)
+        return False
+
+
+def ensure_home_assets() -> dict:
+    """Find/copy/download the home art, return {"success": bool, "files": {name: data-URI}}."""
+    with _assets_lock:
+        try:
+            UI_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            return {"success": False, "error": str(e), "files": {}}
+        files = {}
+        ok = True
+        for name, url in HOME_BG_ASSETS.items():
+            path = UI_ASSETS_DIR / name
+            
+            if not _seed_local_asset(name, path):
+                _download_asset(url, path)
+            try:
+                ready = path.is_file() and path.stat().st_size > 0
+            except OSError:
+                ready = False
+            if not ready:
+                ok = False
+                continue
+            published = _publish_to_page_dir(name, path)
+            data = path.read_bytes()
+            
+            
+            if not published or len(data) <= 1_500_000:
+                files[name] = "data:image/png;base64," + base64.b64encode(data).decode("ascii")
+        return {"success": ok, "files": files}
+
+
+def prepare_page() -> Path:
+    """Return the index.html to load. Compiled builds get a fresh copy in PAGE_DIR so assets/ sits beside it."""
+    src = RESOURCE_DIR / "index.html"
+    if PAGE_DIR == RESOURCE_DIR:
+        return src
+    dest = PAGE_DIR / "index.html"
+    try:
+        PAGE_DIR.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dest)
+        return dest
+    except OSError:
+        log_exception("prepare_page")
+        return src
+
+
+def start_asset_download() -> None:
+    """Create assets/ right away and fetch whatever is missing in the background."""
+    try:
+        UI_ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return
+    if any(not _seed_local_asset(n, UI_ASSETS_DIR / n) for n in HOME_BG_ASSETS):
+        threading.Thread(target=ensure_home_assets, daemon=True).start()
+    if any(not _seed_local_asset("panorama/" + n, UI_ASSETS_DIR / "panorama" / n, _MIN_PANO_BYTES)
+           for n in MC_PANO_FILES):
+        threading.Thread(target=ensure_mc_panorama, daemon=True).start()
+    
+    for name in HOME_BG_ASSETS:
+        _publish_to_page_dir(name, UI_ASSETS_DIR / name)
+    for name in MC_PANO_FILES:
+        _publish_to_page_dir("panorama/" + name, UI_ASSETS_DIR / "panorama" / name)
+
+
+MC_TEX_DIR = UI_ASSETS_DIR / "mc"
+_MC_SPRITES = "assets/minecraft/textures/gui/sprites/widget/"
+MC_TEX_MEMBERS = {
+    "button.png": _MC_SPRITES + "button.png",
+    "button_highlighted.png": _MC_SPRITES + "button_highlighted.png",
+    "button_disabled.png": _MC_SPRITES + "button_disabled.png",
+    "minecraft.png": "assets/minecraft/textures/gui/title/minecraft.png",
+}
+_MC_REQUIRED = ("button.png",)
+
+
+
+
+MC_PANO_DIR = UI_ASSETS_DIR / "panorama"
+MC_PANO_FILES = ["panorama_%d.png" % i for i in range(6)]
+MC_PANO_ASSETS = {n: _ASSETS_RAW + n for n in MC_PANO_FILES}
+_MIN_PANO_BYTES = 4096                    
+
+
+def ensure_mc_panorama() -> dict:
+    """Make sure all six panorama faces are in assets/panorama/, downloading any that are missing."""
+    with _mc_tex_lock:
+        try:
+            MC_PANO_DIR.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            return {"success": False, "error": str(e)}
+        ok = True
+        files = {}
+        for name, url in MC_PANO_ASSETS.items():
+            path = MC_PANO_DIR / name
+            if not _seed_local_asset("panorama/" + name, path, _MIN_PANO_BYTES):
+                _download_asset(url, path)
+            if path.exists() and path.stat().st_size >= _MIN_PANO_BYTES:
+                _publish_to_page_dir("panorama/" + name, path)
+                
+                files[name] = "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+            else:
+                ok = False
+        return {"success": ok, "dir": str(MC_PANO_DIR), "files": files}
+_mc_tex_lock = threading.Lock()
+
+
+def _mc_missing() -> list:
+    return [n for n in MC_TEX_MEMBERS if not (MC_TEX_DIR / n).exists() or (MC_TEX_DIR / n).stat().st_size == 0]
+
+
+def _mc_extract(jar: Path, missing: list) -> None:
+    try:
+        with zipfile.ZipFile(jar) as zf:
+            names = set(zf.namelist())
+            for n in list(missing):
+                member = MC_TEX_MEMBERS[n]
+                if member not in names:
+                    continue
+                data = zf.read(member)
+                if data.startswith(_PNG_MAGIC):
+                    (MC_TEX_DIR / n).write_bytes(data)
+                    missing.remove(n)
+    except Exception:
+        logging.warning("Couldn't read textures from %s", jar)
+
+
+def _mc_download_client():
+    try:
+        manifest = http_get_json(VERSION_MANIFEST_URL)
+        latest = manifest["latest"]["release"]
+        entry = next(v for v in manifest["versions"] if v["id"] == latest)
+        url = http_get_json(entry["url"])["downloads"]["client"]["url"]
+        dest = MC_TEX_DIR / "_client.part"
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        with urllib.request.urlopen(req, timeout=60) as r, open(dest, "wb") as f:
+            shutil.copyfileobj(r, f)
+        return dest
+    except Exception:
+        log_exception("_mc_download_client")
+        return None
+
+
+def ensure_mc_textures() -> dict:
+    with _mc_tex_lock:
+        try:
+            MC_TEX_DIR.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            return {"success": False, "error": str(e), "files": {}}
+        missing = _mc_missing()
+        
+        for name in list(missing):
+            if _seed_local_asset("mc/" + name, MC_TEX_DIR / name):
+                missing.remove(name)
+        if missing:
+            try:
+                jars = sorted((p for p in VERSIONS_DIR.glob("*/*.jar") if p.parent.name == p.stem),
+                              key=lambda p: p.stat().st_mtime, reverse=True)
+            except OSError:
+                jars = []
+            for jar in jars:
+                _mc_extract(jar, missing)
+                if not missing:
+                    break
+        if missing:
+            part = _mc_download_client()
+            if part:
+                try:
+                    _mc_extract(part, missing)
+                finally:
+                    try:
+                        part.unlink()
+                    except OSError:
+                        pass
+        files = {}
+        for n in MC_TEX_MEMBERS:
+            p = MC_TEX_DIR / n
+            if p.exists() and p.stat().st_size > 0:
+                _publish_to_page_dir("mc/" + n, p)
+                files[n] = "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode("ascii")
+        return {"success": all(n in files for n in _MC_REQUIRED), "files": files}
 
 
 class JsonStore:
@@ -298,8 +698,6 @@ class JsonStore:
             self._write(data)
 
     def update(self, mutator):
-        """Atomic read-modify-write. `mutator` edits the data in place (or
-        returns a replacement)."""
         with self._lock:
             data = self._read()
             result = mutator(data)
@@ -310,21 +708,49 @@ class JsonStore:
 
 
 accounts_store = JsonStore(ACCOUNTS_FILE, [])
-THEMES = ("green", "blue", "purple", "red", "orange", "pink")
-UI_STYLES = ("default", "minecraft")
+THEMES = ("green", "blue", "purple", "red", "orange", "pink", "custom")
+UI_STYLES = ("default", "minecraft", "modrinth", "fastclient", "sklauncher")
+ADDON_VIEWS = ("browse", "installed")
+ADDON_SOURCES = ("modrinth", "curseforge")
+COLOR_MODES = ("dark", "light", "oled")
+CATALOG_SOURCES = ("labymod", "critical")
 
-settings_store = JsonStore(SETTINGS_FILE, {
+DEFAULT_SETTINGS = {
     "active_account": None,
     "active_instance": None,
     "memory_mb": 2048,
+    "min_memory_mb": 0,
     "java_path": None,
+    "jvm_args": "",
+    "game_width": 0,
+    "game_height": 0,
+    "fullscreen": False,
+    "custom_accent": "#4ade80",
+    "recent_accents": [],
+    "reduce_motion": False,
+    "bg_pattern": True,
     "sidebar_collapsed": False,
     "theme": "green",
     "ui_style": "default",
+    "addon_view": "browse",
+    "addon_instance": None,
+    "color_mode": "dark",
+    "catalog_source": "labymod",
+    "addon_source": "modrinth",
+    "agreement_accepted": False,
+    "agreement_version": 0,
     "server_beta_seen": False,
     "local_skin_warning_seen": [],
     "playtime_seconds": 0,
-})
+    "playtime_days": {},
+}
+settings_store = JsonStore(SETTINGS_FILE, DEFAULT_SETTINGS)
+
+
+def _clean_hex(value, default="#4ade80"):
+    if isinstance(value, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", value.strip()):
+        return value.strip().lower()
+    return default
 
 
 
@@ -391,10 +817,6 @@ def resolve_argument_list(spec_list, features, replacements) -> list:
 
 
 def merge_arguments(parent, child):
-    """Fabric/Forge version files only contain the *extra* arguments; they are
-    meant to be appended to the vanilla ones (this is what `inheritsFrom` means).
-    Using the loader's list on its own drops -cp / -Djava.library.path / --username
-    and the game dies instantly, which is what left Fabric instances empty."""
     if not parent and not child:
         return None
     parent = parent or {}
@@ -414,14 +836,12 @@ DEFAULT_MODERN_JVM_ARGS = [
 ]
 
 
-
 _JAVA_PROBE_CACHE: dict = {}
 _JAVA_PROBE_LOCK = threading.Lock()
 _JAVA_UI_CACHE = {"at": 0.0, "value": (None, None)}
 
 
 def console_java(path: str) -> str:
-    """javaw.exe has no console, so we can't capture its output - prefer java.exe."""
     p = Path(path)
     if p.name.lower() == "javaw.exe":
         sibling = p.with_name("java.exe")
@@ -441,7 +861,6 @@ def _parse_java_major(text: str):
 
 
 def probe_java(path: str):
-    """Returns (major_version | None, first_output_line | None). Cached."""
     exe = console_java(path)
     with _JAVA_PROBE_LOCK:
         if exe in _JAVA_PROBE_CACHE:
@@ -464,7 +883,7 @@ def probe_java(path: str):
 
 def java_compatible(major, required: int) -> bool:
     if major is None:
-        return True                             
+        return True
     if required <= 8:
         return major == 8
     return major >= required
@@ -475,7 +894,6 @@ def _java_exe_names():
 
 
 def find_system_javas() -> list:
-    """Every java executable we can find on this machine (deduplicated)."""
     found = []
     seen = set()
 
@@ -562,7 +980,6 @@ def managed_java_path(component: str):
 
 
 def install_managed_java(component: str, tracker):
-    """Downloads Mojang's own Java runtime (the same one the official launcher uses)."""
     tracker = tracker or ProgressTracker(lambda *_: None)
     tracker.set_task("Looking up Java runtime", force=True)
     plat = mojang_runtime_platform()
@@ -632,9 +1049,6 @@ def java_info_from_meta(meta: dict) -> dict:
 
 
 def resolve_java(java_info, allow_download=False, tracker=None):
-    """Picks the Java to use for a given Minecraft version.
-    Order: custom path from Settings -> launcher-managed runtime -> anything installed
-    on the machine -> (optionally) download Mojang's runtime."""
     info = java_info or DEFAULT_JAVA_INFO
     required = int(info.get("majorVersion") or 8)
     component = info.get("component") or "jre-legacy"
@@ -666,7 +1080,6 @@ def resolve_java(java_info, allow_download=False, tracker=None):
 
 
 def detect_java_for_ui():
-    """(path, first line of `java -version`) for the Settings page. Cached briefly."""
     now = time.time()
     if now - _JAVA_UI_CACHE["at"] < 20 and _JAVA_UI_CACHE["at"] > 0:
         return _JAVA_UI_CACHE["value"]
@@ -687,7 +1100,6 @@ def detect_java_for_ui():
     return value
 
 
-
 class MetaCache:
     def __init__(self):
         self._lock = threading.Lock()
@@ -696,6 +1108,7 @@ class MetaCache:
         self.fabric_loaders_by_mc = {}
         self.fabric_games = None
         self.forge_all = None
+        self.neoforge_all = None
 
     def get_manifest(self, force=False):
         with self._lock:
@@ -737,7 +1150,7 @@ class MetaCache:
                     loaders = http_get_json(
                         f"{FABRIC_LOADER_LIST_URL}/{urllib.parse.quote(mc_version)}")
                 except urllib.error.HTTPError:
-                    loaders = []                                              
+                    loaders = []
             else:
                 loaders = http_get_json(FABRIC_LOADER_LIST_URL)
         except Exception:
@@ -792,7 +1205,7 @@ class MetaCache:
         all_versions = self._forge_all_versions(force)
         prefix = mc_version + "-"
         matches = [v[len(prefix):] for v in all_versions if v.startswith(prefix)]
-        matches.reverse()                
+        matches.reverse()
         return matches
 
     def get_forge_mc_versions(self, force=False):
@@ -804,6 +1217,41 @@ class MetaCache:
                 out.append(mc)
         return out
 
+
+    def _neoforge_all_versions(self, force=False):
+        with self._lock:
+            if self.neoforge_all is not None and not force:
+                return self.neoforge_all
+        entries = []
+        try:
+            legacy_xml = http_get_text(NEOFORGE_LEGACY_METADATA_URL)
+            prefix = NEOFORGE_LEGACY_MC + "-"
+            for v in re.findall(r"<version>([^<]+)</version>", legacy_xml):
+                if v.startswith(prefix):
+                    entries.append((NEOFORGE_LEGACY_MC, v[len(prefix):]))
+        except Exception:
+            log_exception("Failed to download legacy NeoForge metadata")
+        xml_text = http_get_text(NEOFORGE_METADATA_URL)
+        for v in re.findall(r"<version>([^<]+)</version>", xml_text):
+            mc = neoforge_version_to_mc(v)
+            if mc and mc != NEOFORGE_LEGACY_MC:
+                entries.append((mc, v))
+        with self._lock:
+            self.neoforge_all = entries
+        return entries
+
+    def get_neoforge_versions(self, mc_version: str, force=False):
+        matches = [lv for mc, lv in self._neoforge_all_versions(force) if mc == mc_version]
+        matches.reverse()
+        return matches
+
+    def get_neoforge_mc_versions(self, force=False):
+        seen, out = set(), []
+        for mc, _lv in self._neoforge_all_versions(force):
+            if mc not in seen:
+                seen.add(mc)
+                out.append(mc)
+        return out
 
     def get_version_json(self, version_id: str, url: str) -> dict:
         cache_path = VERSIONS_DIR / version_id / f"{version_id}.json"
@@ -821,12 +1269,10 @@ class MetaCache:
 meta_cache = MetaCache()
 
 
-
 _meta_lock = threading.RLock()
 
 
 def _dir_size(path: Path) -> int:
-    """Total bytes under a folder (symlinks are skipped so nothing is counted twice)."""
     total = 0
     stack = [str(path)]
     while stack:
@@ -851,6 +1297,65 @@ def _dir_size(path: Path) -> int:
 def instance_dir(name: str) -> Path:
     safe = sanitize_instance_name(name)
     return INSTANCES_DIR / safe
+
+
+def sanitize_custom_icon_name(name: str) -> str:
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", str(name or "")).strip().rstrip(".")
+    name = name[:100].rstrip(" .")
+    if not name:
+        name = "Image"
+    if name.split(".", 1)[0].upper() in {
+            "CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
+            *(f"LPT{i}" for i in range(1, 10))}:
+        name = "_" + name
+    return name
+
+
+def custom_instance_icon_path(icon_key: str) -> Path | None:
+    match = re.fullmatch(r"custom:(.+)", str(icon_key or ""))
+    if not match:
+        return None
+    name = match.group(1)
+    if sanitize_custom_icon_name(name) != name:
+        return None
+    path = INSTANCE_ICONS_DIR / name
+    if path.is_file():
+        return path
+    legacy_path = INSTANCE_ICONS_DIR / f"{name}.png"
+    if legacy_path.is_file():
+        return legacy_path
+    return path
+
+
+def list_custom_instance_icons() -> list:
+    result = []
+    paths = []
+    for path in INSTANCE_ICONS_DIR.iterdir():
+        try:
+            paths.append((path.stat().st_mtime_ns, path))
+        except OSError:
+            log_exception(f"inspect custom instance icon {path.name}")
+    for _, path in sorted(paths, key=lambda item: (item[0], item[1].name.lower())):
+        if not path.is_file() or path.name.startswith(".") or path.suffix.lower() == ".tmp":
+            continue
+        try:
+            data = path.read_bytes()
+        except OSError:
+            log_exception(f"read custom instance icon {path.name}")
+            continue
+        if not data.startswith(b"\x89PNG\r\n\x1a\n"):
+            logging.error("Invalid custom instance icon file: %s", path.name)
+            continue
+        name = path.stem if path.suffix.lower() == ".png" else path.name
+        if sanitize_custom_icon_name(name) != name:
+            logging.error("Invalid custom instance icon filename: %s", path.name)
+            continue
+        result.append({
+            "key": f"custom:{name}",
+            "name": name,
+            "data": "data:image/png;base64," + base64.b64encode(data).decode("ascii"),
+        })
+    return result
 
 
 def read_instance_meta(name: str) -> dict | None:
@@ -915,10 +1420,9 @@ def instance_config_dir(name: str) -> Path:
 
 
 def ensure_game_layout(name: str, loader: str):
-    """Create the usual folders up front so the game folder is never 'empty'."""
     game = instance_game_dir(name)
     folders = ["resourcepacks", "shaderpacks", "saves"]
-    if loader in ("fabric", "forge"):
+    if loader in MOD_LOADERS:
         folders += ["mods", "config"]
     for f in folders:
         (game / f).mkdir(parents=True, exist_ok=True)
@@ -935,7 +1439,6 @@ def unique_instance_name(base: str) -> str:
     return candidate
 
 
-
 def _home_dir() -> Path:
     return Path.home()
 
@@ -946,8 +1449,6 @@ def _windows_appdata() -> Path:
 
 
 def _launcher_roots(launcher: str) -> list:
-    """Every plausible install location for a given launcher, per OS. Only
-    existing ones are used - the rest are silently skipped."""
     system = current_os_name()
     home = _home_dir()
     if launcher == "prismlauncher":
@@ -976,6 +1477,15 @@ def _launcher_roots(launcher: str) -> list:
         if system == "osx":
             return [home / "Library" / "Application Support" / ".fastclient"]
         return [home / ".fastclient"]
+    if launcher == "modrinth":
+        if system == "windows":
+            return [_windows_appdata() / "ModrinthApp",
+                    _windows_appdata() / "com.modrinth.theseus"]
+        if system == "osx":
+            return [home / "Library" / "Application Support" / "ModrinthApp",
+                    home / "Library" / "Application Support" / "com.modrinth.theseus"]
+        return [home / ".local" / "share" / "ModrinthApp",
+                home / ".local" / "share" / "com.modrinth.theseus"]
     return []
 
 
@@ -984,6 +1494,7 @@ LAUNCHER_LABELS = {
     "polymc": "PolyMC",
     "sklauncher": "SKLauncher",
     "fastclient": "Fast Client",
+    "modrinth": "Modrinth App",
 }
 
 
@@ -995,14 +1506,10 @@ def _read_json_safe(path: Path):
 
 
 def _maven_version(name: str, prefix: str) -> str:
-    """'net.fabricmc:fabric-loader:0.15.7' + 'net.fabricmc:fabric-loader:' -> '0.15.7'"""
     return name[len(prefix):] if name.startswith(prefix) else ""
 
 
 def _loader_from_version_json(vjson: dict, mc_version: str):
-    """Reads a standard Mojang-style version.json (used by the vanilla launcher
-    and, as far as can be told without official docs, Fast Client) and works out
-    whether it's a Fabric or Forge profile."""
     for lib in vjson.get("libraries", []):
         lname = lib.get("name", "")
         if lname.startswith("net.fabricmc:fabric-loader:"):
@@ -1022,7 +1529,6 @@ def _loader_from_version_json(vjson: dict, mc_version: str):
 
 
 def _loader_from_mmc_pack(components: list):
-    """PrismLauncher/MultiMC's mmc-pack.json 'components' list."""
     mc_version = None
     loader, loader_version = "vanilla", None
     for c in components or []:
@@ -1063,16 +1569,13 @@ def _count_dir(path: Path, suffix=None) -> int:
 
 
 def _prism_game_dir(instance_dir: Path) -> Path:
-    """Prism (and MultiMC) instances keep their game data in a subfolder next to
-    mmc-pack.json - normally named 'minecraft', occasionally '.minecraft' on
-    older setups. Whichever actually exists on disk wins."""
     plain = instance_dir / "minecraft"
     dotted = instance_dir / ".minecraft"
     if plain.is_dir():
         return plain
     if dotted.is_dir():
         return dotted
-    return plain                                                                     
+    return plain
 
 
 def _scan_prismlauncher(root: Path) -> list:
@@ -1093,18 +1596,19 @@ def _scan_prismlauncher(root: Path) -> list:
             "loader": loader,
             "loader_version": loader_version,
             "has_options": (game_dir / "options.txt").is_file(),
-            "mods_count": _count_dir(game_dir / "mods", ".jar") if loader in ("fabric", "forge") else 0,
+            "mods_count": _count_dir(game_dir / "mods", ".jar") if loader in MOD_LOADERS else 0,
             "resourcepacks_count": _count_dir(game_dir / "resourcepacks"),
             "saves_count": _count_dir(game_dir / "saves"),
             "shaderpacks_count": _count_dir(game_dir / "shaderpacks"),
             "schematics_count": _count_dir(game_dir / "schematics"),
             "screenshots_count": _count_images(game_dir / "screenshots"),
-            "config_count": _count_dir(game_dir / "config") if loader in ("fabric", "forge") else 0,
+            "config_count": _count_dir(game_dir / "config") if loader in MOD_LOADERS else 0,
         })
     return found
 
 
 _FASTCLIENT_FABRIC_LOG_RE = re.compile(r"Loading Minecraft (\S+) with Fabric Loader (\S+)")
+_QUILT_LOG_RE = re.compile(r"Loading Minecraft (\S+) with Quilt Loader (\S+)")
 _FASTCLIENT_MODLAUNCHER_RE = re.compile(r"ModLauncher running: args \[(.*?)\]")
 _FASTCLIENT_VERSION_ARG_RE = re.compile(r"--version,\s*([^,\]]+)")
 _FASTCLIENT_TARGET_ARG_RE = re.compile(r"--launchTarget,\s*([^,\]]+)")
@@ -1114,7 +1618,6 @@ FASTCLIENT_ROOT_SOURCE_ID = "__root__"
 
 
 def _read_first_log_line(logs_dir: Path):
-    """First non-blank line of logs/latest.log, or None if it doesn't exist."""
     log_path = logs_dir / "latest.log"
     if not log_path.is_file():
         return None
@@ -1130,15 +1633,14 @@ def _read_first_log_line(logs_dir: Path):
 
 
 def _parse_fastclient_log_line(line: str):
-    """Works out (loader, mc_version, loader_version) from a Fast Client
-    logs/latest.log first line. Returns None if the line doesn't match a
-    known Fabric or Forge/NeoForge pattern (including a vanilla log, which
-    has no such line at all)."""
     if not line:
         return None
     m = _FASTCLIENT_FABRIC_LOG_RE.search(line)
     if m:
         return "fabric", m.group(1), m.group(2)
+    m = _QUILT_LOG_RE.search(line)
+    if m:
+        return "quilt", m.group(1), m.group(2)
     m = _FASTCLIENT_MODLAUNCHER_RE.search(line)
     if m:
         args_str = m.group(1)
@@ -1159,8 +1661,6 @@ def _parse_fastclient_log_line(line: str):
 
 
 def _fastclient_versions(versions_dir: Path) -> dict:
-    """name -> parsed version.json for every version folder that has one
-    (either <name>.json, or - failing that - any other .json inside it)."""
     versions = {}
     if not versions_dir.is_dir():
         return versions
@@ -1180,10 +1680,6 @@ def _fastclient_versions(versions_dir: Path) -> dict:
 
 
 def _fastclient_profile_version_id(profile_dir: Path):
-    """A profile folder's mods/options/resourcepacks are NOT necessarily named
-    after the version they were created with - so look inside the profile
-    folder itself for any json that names its version, the way the vanilla
-    launcher's launcher_profiles.json entries do."""
     for f in profile_dir.iterdir():
         if f.is_file() and f.suffix == ".json":
             data = _read_json_safe(f)
@@ -1196,12 +1692,6 @@ def _fastclient_profile_version_id(profile_dir: Path):
 
 
 def _fastclient_profile_index(root: Path):
-    """Some launchers (mirroring the vanilla launcher's launcher_profiles.json)
-    keep the profile -> version link in a single json file at the root, not
-    inside each profile folder. Returns {profile identifier: version id} built
-    from every root-level json that has that shape, keyed by every name a
-    profile might be found under (its dict key, its "name" field, and its
-    gameDir's folder name)."""
     index = {}
     try:
         entries = list(root.iterdir())
@@ -1268,9 +1758,9 @@ def _scan_fastclient(root: Path) -> list:
             version_id = (profile_index.get(sub.name)
                           or _fastclient_profile_version_id(sub))
             if not version_id and sub.name in versions:
-                version_id = sub.name                                                   
+                version_id = sub.name
             if not version_id and len(versions) == 1:
-                version_id = next(iter(versions))                                                   
+                version_id = next(iter(versions))
 
             vjson = versions.get(version_id)
             if vjson:
@@ -1306,8 +1796,6 @@ _SK_LOG_VERSION_RES = (
 
 
 def _sk_vanilla_version_from_log(logs_dir: Path):
-    """Vanilla logs have no Fabric/Forge line, so look through the top of the
-    log for anything that names the Minecraft version."""
     log_path = logs_dir / "latest.log"
     try:
         with log_path.open("r", encoding="utf-8", errors="ignore") as f:
@@ -1324,8 +1812,6 @@ def _sk_vanilla_version_from_log(logs_dir: Path):
 
 
 def _sk_game_dir(sub: Path):
-    """The folder holding logs/mods/saves for an SKLauncher instance, or None
-    when it has no logs folder (those instances aren't listed)."""
     for cand in (sub, sub / ".minecraft", sub / "minecraft"):
         if (cand / "logs" / "latest.log").is_file():
             return cand
@@ -1359,16 +1845,53 @@ def _scan_sklauncher(root: Path) -> list:
             "loader": loader,
             "loader_version": loader_version,
             "has_options": (game_dir / "options.txt").is_file(),
-            "mods_count": _count_dir(game_dir / "mods", ".jar") if loader in ("fabric", "forge") else 0,
+            "mods_count": _count_dir(game_dir / "mods", ".jar") if loader in MOD_LOADERS else 0,
             "resourcepacks_count": _count_dir(game_dir / "resourcepacks"),
             "saves_count": _count_dir(game_dir / "saves"),
             "shaderpacks_count": _count_dir(game_dir / "shaderpacks"),
             "schematics_count": _count_dir(game_dir / "schematics"),
             "screenshots_count": _count_images(game_dir / "screenshots"),
-            "config_count": _count_dir(game_dir / "config") if loader in ("fabric", "forge") else 0,
+            "config_count": _count_dir(game_dir / "config") if loader in MOD_LOADERS else 0,
         })
     return found
 
+
+def _scan_modrinth(root: Path) -> list:
+    profiles_dir = root / "profiles"
+    if not profiles_dir.is_dir():
+        return []
+    found = []
+    for sub in sorted(profiles_dir.iterdir(), key=lambda p: p.name.lower()):
+        if not sub.is_dir():
+            continue
+        logs_dir = sub / "logs"
+        has_log = (logs_dir / "latest.log").is_file()
+        log_info = _parse_fastclient_log_line(_read_first_log_line(logs_dir)) if has_log else None
+        if log_info:
+            loader, mc_version, loader_version = log_info
+            if not mc_version:
+                mc_version = _sk_vanilla_version_from_log(logs_dir)
+        elif has_log:
+            loader, loader_version = "vanilla", None
+            mc_version = _sk_vanilla_version_from_log(logs_dir)
+        else:
+            loader, loader_version, mc_version = "unknown", None, None
+        found.append({
+            "source_id": sub.name,
+            "name": sub.name,
+            "version": mc_version,
+            "loader": loader,
+            "loader_version": loader_version,
+            "has_options": (sub / "options.txt").is_file(),
+            "mods_count": _count_dir(sub / "mods", ".jar") if loader in MOD_LOADERS else 0,
+            "resourcepacks_count": _count_dir(sub / "resourcepacks"),
+            "saves_count": _count_dir(sub / "saves"),
+            "shaderpacks_count": _count_dir(sub / "shaderpacks"),
+            "schematics_count": _count_dir(sub / "schematics"),
+            "screenshots_count": _count_images(sub / "screenshots"),
+            "config_count": _count_dir(sub / "config") if loader in MOD_LOADERS else 0,
+        })
+    return found
 
 
 _LAUNCHER_SCANNERS = {
@@ -1376,6 +1899,7 @@ _LAUNCHER_SCANNERS = {
     "polymc": _scan_prismlauncher,
     "sklauncher": _scan_sklauncher,
     "fastclient": _scan_fastclient,
+    "modrinth": _scan_modrinth,
 }
 
 
@@ -1395,11 +1919,44 @@ def scan_all_launchers() -> list:
                     "launcher": launcher, "label": LAUNCHER_LABELS[launcher],
                     "root": str(root), "instances": instances,
                 })
-            break                                              
+            break
     return sources
 
 
-def _find_scanned_instance(launcher: str, source_id: str):
+def _guess_launcher_for_dir(path: Path):
+    name = path.name.lower()
+    for key, hints in (("modrinth", ("modrinth", "theseus")), ("sklauncher", ("sklauncher",)),
+                       ("fastclient", ("fastclient", "fast client")), ("polymc", ("polymc",)),
+                       ("prismlauncher", ("prism",))):
+        if any(h in name for h in hints):
+            return key
+    for key, scanner in _LAUNCHER_SCANNERS.items():
+        try:
+            if scanner(path):
+                return key
+        except Exception:
+            continue
+    return None
+
+
+def scan_custom_launcher_dir(launcher: str, root: Path) -> dict:
+    scanner = _LAUNCHER_SCANNERS.get(launcher)
+    if not scanner:
+        raise ValueError("Unknown launcher type.")
+    return {"launcher": launcher, "label": LAUNCHER_LABELS[launcher], "root": str(root),
+            "instances": scanner(root), "custom": True}
+
+
+def _find_scanned_instance(launcher: str, source_id: str, custom_root=None):
+    if custom_root:
+        root = Path(custom_root)
+        scanner = _LAUNCHER_SCANNERS.get(launcher)
+        if not scanner or not root.is_dir():
+            return None, None
+        for inst in scanner(root):
+            if inst["source_id"] == source_id:
+                return inst, root
+        return None, None
     for root in _launcher_roots(launcher):
         if not root.is_dir():
             continue
@@ -1414,8 +1971,6 @@ def _find_scanned_instance(launcher: str, source_id: str):
 
 
 def _source_paths(launcher: str, source_id: str, root: Path):
-    """(options_path, mods_dir, resourcepacks_dir, saves_dir, config_dir,
-    shaderpacks_dir, schematics_dir, screenshots_dir) for a scanned instance."""
     if launcher in ("prismlauncher", "polymc"):
         game_dir = _prism_game_dir(root / "instances" / source_id)
         return (game_dir / "options.txt", game_dir / "mods",
@@ -1426,6 +1981,11 @@ def _source_paths(launcher: str, source_id: str, root: Path):
         return (game_dir / "options.txt", game_dir / "mods",
                 game_dir / "resourcepacks", game_dir / "saves", game_dir / "config",
                 game_dir / "shaderpacks", game_dir / "schematics", game_dir / "screenshots")
+    if launcher == "modrinth":
+        profile_dir = root / "profiles" / source_id
+        return (profile_dir / "options.txt", profile_dir / "mods",
+                profile_dir / "resourcepacks", profile_dir / "saves", profile_dir / "config",
+                profile_dir / "shaderpacks", profile_dir / "schematics", profile_dir / "screenshots")
     if launcher == "fastclient":
         profile_dir = root if source_id == FASTCLIENT_ROOT_SOURCE_ID else root / "profiles" / source_id
         return (profile_dir / "options.txt", profile_dir / "mods",
@@ -1435,8 +1995,6 @@ def _source_paths(launcher: str, source_id: str, root: Path):
 
 
 def _copy_tree_contents(src: Path, dst: Path):
-    """Copies every file/folder inside src into dst (merging, overwriting files
-    that already exist by that name)."""
     if not src.is_dir():
         return 0
     dst.mkdir(parents=True, exist_ok=True)
@@ -1452,7 +2010,6 @@ def _copy_tree_contents(src: Path, dst: Path):
         except OSError:
             log_exception(f"copying {item} -> {target}")
     return count
-
 
 
 class ProgressTracker:
@@ -1512,7 +2069,6 @@ class ProgressTracker:
             self._emit_lock.release()
 
 
-
 def maven_to_path(name: str) -> str:
     parts = name.split(":")
     group, artifact, version = parts[0], parts[1], parts[2]
@@ -1531,8 +2087,6 @@ def maven_to_path(name: str) -> str:
 
 
 def lib_key(name: str) -> str:
-    """group:artifact[:classifier] - two libraries with the same key are the same
-    library in different versions; the first one listed wins (loader before vanilla)."""
     parts = name.split(":")
     if len(parts) < 3:
         return name
@@ -1560,7 +2114,7 @@ def collect_library_entries(libraries: list, features=None):
 
     for lib in libraries:
         if lib.get("clientreq") is False:
-            continue                                     
+            continue
         if "rules" in lib and not rules_allow(lib["rules"], features):
             continue
 
@@ -1642,9 +2196,6 @@ def ensure_file(entry: dict, dest_root: Path, tracker, retries: int = 3):
 
 
 def download_all(items, tracker, workers: int = 10):
-    """Download (entry, root) pairs in parallel. Files that are already valid are
-    skipped. Entries that have no URL and don't exist (files a Forge processor is
-    going to generate later) are returned instead of raising."""
     todo, missing, seen = [], [], set()
     for entry, root in items:
         dest = root / entry["path"]
@@ -1712,10 +2263,7 @@ def _jar_main_class(jar_path: Path) -> str | None:
     return None
 
 
-
 class ForgeInstallContext:
-    """Resolves the {TOKEN}, [maven:coord] and 'literal' syntax that Forge's
-    install_profile.json uses for processor arguments and data values."""
 
     def __init__(self, profile: dict, installer_jar: Path, tmp_dir: Path,
                  mc_version: str, client_path: Path):
@@ -1777,6 +2325,500 @@ class ForgeInstallContext:
 
 
 
+def http_get_bytes(url: str, limit=None, timeout: int = 60) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read(limit) if limit else resp.read()
+
+
+def file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def horizon_asset_name():
+    system, arch = current_os_name(), current_arch()
+    if system == "windows" and arch == "64":
+        return "horizon-windows-x64.zip"
+    if system == "osx" and arch == "arm64":
+        return "horizon-macos-arm64.zip"
+    if system == "linux" and arch == "64":
+        return "horizon-linux-x86_64.tar.gz"
+    return None
+
+
+def horizon_exe(base: str) -> str:
+    return base + (".exe" if current_os_name() == "windows" else "")
+
+
+def horizon_versions_dir() -> Path:
+    return HORIZON_DATA_DIR / "versions"
+
+
+def horizon_version_dir(version: str) -> Path:
+    safe = _INVALID_NAME_RE.sub("_", str(version or ""))[:120] or "build"
+    return horizon_versions_dir() / safe
+
+
+def horizon_minecraft_dir() -> Path:
+    return HORIZON_DATA_DIR / "minecraft"
+
+
+def horizon_minecraft_version(vdir: Path) -> str:
+    """The Minecraft version a Horizon build was made for (research-lock.json in its folder)."""
+    try:
+        lock = json.loads((Path(vdir) / "research-lock.json").read_text(encoding="utf-8"))
+        return str(((lock.get("minecraft") or {}).get("version")) or HORIZON_MC_VERSION)
+    except (OSError, ValueError):
+        return HORIZON_MC_VERSION
+
+
+def horizon_resources_dir(vdir: Path) -> Path:
+    return Path(vdir) / ".local" / "horizon-client" / horizon_minecraft_version(vdir)
+
+
+
+_ED_P = 2 ** 255 - 19
+_ED_Q = 2 ** 252 + 27742317777372353535851937790883648493
+_ED_D = -121665 * pow(121666, _ED_P - 2, _ED_P) % _ED_P
+_ED_SQRT_M1 = pow(2, (_ED_P - 1) // 4, _ED_P)
+
+
+def _ed_recover_x(y, sign):
+    if y >= _ED_P:
+        return None
+    x2 = (y * y - 1) * pow(_ED_D * y * y + 1, _ED_P - 2, _ED_P) % _ED_P
+    if x2 == 0:
+        return None if sign else 0
+    x = pow(x2, (_ED_P + 3) // 8, _ED_P)
+    if (x * x - x2) % _ED_P:
+        x = x * _ED_SQRT_M1 % _ED_P
+    if (x * x - x2) % _ED_P:
+        return None
+    return _ED_P - x if (x & 1) != sign else x
+
+
+def _ed_add(a, b):
+    A = (a[1] - a[0]) * (b[1] - b[0]) % _ED_P
+    B = (a[1] + a[0]) * (b[1] + b[0]) % _ED_P
+    C = 2 * a[3] * b[3] * _ED_D % _ED_P
+    D = 2 * a[2] * b[2] % _ED_P
+    E, F, G, H = B - A, D - C, D + C, B + A
+    return (E * F % _ED_P, G * H % _ED_P, F * G % _ED_P, E * H % _ED_P)
+
+
+def _ed_mul(s, point):
+    result = (0, 1, 1, 0)
+    while s > 0:
+        if s & 1:
+            result = _ed_add(result, point)
+        point = _ed_add(point, point)
+        s >>= 1
+    return result
+
+
+def _ed_equal(a, b):
+    return ((a[0] * b[2] - b[0] * a[2]) % _ED_P == 0
+            and (a[1] * b[2] - b[1] * a[2]) % _ED_P == 0)
+
+
+def _ed_decompress(data):
+    y = int.from_bytes(data, "little")
+    sign, y = y >> 255, y & ((1 << 255) - 1)
+    x = _ed_recover_x(y, sign)
+    return None if x is None else (x, y, 1, x * y % _ED_P)
+
+
+_ED_GY = 4 * pow(5, _ED_P - 2, _ED_P) % _ED_P
+_ED_G = (_ed_recover_x(_ED_GY, 0), _ED_GY, 1, _ed_recover_x(_ED_GY, 0) * _ED_GY % _ED_P)
+
+
+def horizon_ed25519_verify(public: bytes, message: bytes, signature: bytes) -> bool:
+    if len(public) != 32 or len(signature) != 64:
+        return False
+    A, R = _ed_decompress(public), _ed_decompress(signature[:32])
+    s = int.from_bytes(signature[32:], "little")
+    if A is None or R is None or s >= _ED_Q:
+        return False
+    h = int.from_bytes(hashlib.sha512(signature[:32] + public + message).digest(), "little") % _ED_Q
+    return _ed_equal(_ed_mul(s, _ED_G), _ed_add(R, _ed_mul(h, A)))
+
+
+def horizon_version_label(release: dict) -> str:
+    tag = str(release.get("tag_name") or "")
+    if not (tag == "nightly" or tag.startswith("nightly-")):
+        return tag
+    title = str(release.get("name") or "")
+    date = commit = None
+    if title.startswith("Nightly "):
+        parts = [p.strip() for p in title[len("Nightly "):].split("\u00b7")]
+        if parts and re.fullmatch(r"\d{4}-\d{2}-\d{2}", parts[0]):
+            date = parts[0]
+        if len(parts) > 1 and re.fullmatch(r"[0-9a-fA-F]+", parts[1]):
+            commit = parts[1]
+    date = date or str(release.get("published_at") or "")[:10]
+    return ("nightly-%s-%s" % (date, commit)) if commit else ("nightly-%s" % date)
+
+
+def horizon_releases(asset_name: str) -> list:
+    try:
+        data = http_get_json(HORIZON_API + "/releases?per_page=100", timeout=30)
+    except urllib.error.HTTPError as exc:
+        if exc.code in (403, 429):
+            raise RuntimeError("GitHub's rate limit was reached. Try again in a few minutes.")
+        raise RuntimeError(f"Couldn't fetch Horizon's releases (HTTP {exc.code}).")
+    except Exception as exc:
+        raise RuntimeError(f"Couldn't reach GitHub to download Horizon: {exc}")
+
+    found = []
+    for release in data or []:
+        tag = str(release.get("tag_name") or "")
+        if release.get("draft"):
+            continue
+        nightly = tag == "nightly" or tag.startswith("nightly-")
+        game_tag = len(tag) > 1 and tag[0] == "v" and tag[1].isdigit()
+        if not (nightly or game_tag):
+            continue
+        assets = {a.get("name"): a for a in release.get("assets") or []}
+        if asset_name not in assets:
+            continue
+        found.append({"release": release, "asset": assets[asset_name],
+                      "version": horizon_version_label(release), "tag": tag})
+    found.sort(key=lambda e: str(e["release"].get("published_at") or ""), reverse=True)
+    return found
+
+
+def horizon_signed_sha256(release: dict, asset_name: str, version: str) -> str:
+    assets = {a.get("name"): a for a in release.get("assets") or []}
+    if HORIZON_SUMS not in assets or HORIZON_SIG not in assets:
+        raise RuntimeError("This Horizon build isn't signed, so it wasn't installed.")
+    sums = http_get_bytes(assets[HORIZON_SUMS]["browser_download_url"], limit=1 << 20)
+    signature = http_get_bytes(assets[HORIZON_SIG]["browser_download_url"],
+                               limit=1 << 20).decode("utf-8", "replace")
+    channel = "nightly" if version.startswith("nightly-") else str(release.get("tag_name") or "")
+    message = ("horizon release %s\n" % channel).encode() + sums
+    keys = [base64.b64decode(k) for k in HORIZON_TRUSTED_KEYS]
+    signed = False
+    for line in signature.splitlines():
+        try:
+            raw = base64.b64decode(line.strip(), validate=True)
+        except Exception:
+            continue
+        if len(raw) == 64 and any(horizon_ed25519_verify(k, message, raw) for k in keys):
+            signed = True
+            break
+    if not signed:
+        raise RuntimeError("The Horizon download's signature didn't match its release key, "
+                           "so it wasn't installed.")
+    for line in sums.decode("utf-8", "replace").splitlines():
+        parts = line.strip().split(None, 1)
+        if (len(parts) == 2 and parts[1].lstrip("*") == asset_name
+                and re.fullmatch(r"[0-9a-fA-F]{64}", parts[0])):
+            return parts[0].lower()
+    raise RuntimeError("That Horizon file isn't in the signed checksums, so it wasn't installed.")
+
+
+def horizon_unpack(archive: Path, dest: Path):
+    dest.mkdir(parents=True, exist_ok=True)
+    if archive.name.lower().endswith(".zip"):
+        with zipfile.ZipFile(archive) as zf:
+            for member in zf.infolist():
+                if not is_within(dest, dest / member.filename):
+                    raise RuntimeError("Unsafe path in the Horizon download: " + member.filename)
+            zf.extractall(dest)
+        return
+    with tarfile.open(archive) as tf:
+        for member in tf.getmembers():
+            target = dest / member.name
+            if not is_within(dest, target) or member.isdev():
+                raise RuntimeError("Unsafe entry in the Horizon download: " + member.name)
+            if member.issym() and not is_within(dest, target.parent / member.linkname):
+                raise RuntimeError("Unsafe link in the Horizon download: " + member.name)
+            if member.islnk() and not is_within(dest, dest / member.linkname):
+                raise RuntimeError("Unsafe link in the Horizon download: " + member.name)
+        try:
+            tf.extractall(dest, filter="data")
+        except TypeError:
+            tf.extractall(dest)
+
+
+def horizon_install_build(tracker):
+    """Download, verify and unpack Horizon's newest signed build. Returns (version, folder)."""
+    asset_name = horizon_asset_name()
+    if not asset_name:
+        raise RuntimeError("Horizon has no build for %s %s. It supports Windows x64, Linux x86-64 "
+                           "and macOS Apple Silicon." % (platform.system(), platform.machine()))
+    releases = horizon_releases(asset_name)
+    if not releases:
+        raise RuntimeError("Horizon has no installable build for this system right now.")
+    for entry in releases:
+        vdir = horizon_version_dir(entry["version"])
+        if (vdir / HORIZON_MARKER).is_file():
+            return entry["version"], vdir
+
+    entry = releases[0]
+    version, asset = entry["version"], entry["asset"]
+    expected = horizon_signed_sha256(entry["release"], asset_name, version)
+    vdir = horizon_version_dir(version)
+
+    tracker.reset(max(int(asset.get("size") or 1), 1))
+    tracker.set_task(f"Downloading Horizon {version}", force=True)
+    suffix = ".zip" if asset_name.endswith(".zip") else ".tar.gz"
+    archive = TMP_DIR / ("horizon-" + _INVALID_NAME_RE.sub("_", version) + suffix)
+    http_download(asset["browser_download_url"], archive, asset.get("size"), None, tracker.add)
+    if file_sha256(archive) != expected:
+        archive.unlink(missing_ok=True)
+        raise RuntimeError("The Horizon download didn't match its signed checksum, so it wasn't installed.")
+
+    tracker.set_task("Unpacking Horizon", force=True)
+    unpacked = TMP_DIR / ("horizon-unpack-" + _INVALID_NAME_RE.sub("_", version))
+    shutil.rmtree(unpacked, ignore_errors=True)
+    try:
+        horizon_unpack(archive, unpacked)
+        children = list(unpacked.iterdir())
+        top = children[0] if len(children) == 1 and children[0].is_dir() else unpacked
+        client = top / horizon_exe("horizon-client")
+        if not client.is_file():
+            raise RuntimeError("The Horizon download has no " + client.name)
+        if current_os_name() != "windows":
+            for name in ("horizon-client", "horizon-prepare", "horizon-ctl", "horizon-server"):
+                tool = top / name
+                if tool.is_file():
+                    tool.chmod(tool.stat().st_mode | 0o755)
+        shutil.rmtree(vdir, ignore_errors=True)
+        vdir.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(top), str(vdir))
+        (vdir / HORIZON_MARKER).write_text(json.dumps({
+            "version": version, "tag": entry["tag"], "asset": asset_name,
+            "installed_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        }, indent=2), encoding="utf-8")
+    finally:
+        shutil.rmtree(unpacked, ignore_errors=True)
+        archive.unlink(missing_ok=True)
+    return version, vdir
+
+
+def horizon_ensure_minecraft(mc_version: str, tracker, pinned=None):
+    """Download Mojang's own files for mc_version (json, client jar, libraries, assets)."""
+    root = horizon_minecraft_dir()
+    vfolder = root / "versions" / mc_version
+    vjson = vfolder / (mc_version + ".json")
+    done = root / (".complete-" + mc_version)
+    pin_file = root / ("pinned-%s.json" % mc_version)
+    refresh = bool(pinned)
+    if pinned:
+        root.mkdir(parents=True, exist_ok=True)
+        pin_file.write_text(json.dumps(list(pinned)), encoding="utf-8")
+    elif pin_file.is_file():
+        try:
+            pinned = tuple(json.loads(pin_file.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            pinned = None
+    if (done.is_file() and vjson.is_file() and not refresh
+            and (vfolder / (mc_version + ".jar")).is_file()):
+        return root, vjson
+    if done.is_file():
+        done.unlink(missing_ok=True)
+
+    tracker.set_task(f"Downloading Minecraft {mc_version}", force=True)
+    if pinned:
+        json_url, json_sha1 = pinned
+    else:
+        manifest = meta_cache.get_manifest()
+        entry = next((v for v in manifest.get("versions", []) if v.get("id") == mc_version), None)
+        if not entry:
+            raise RuntimeError(f"Mojang's version list has no Minecraft {mc_version}.")
+        json_url, json_sha1 = entry["url"], entry.get("sha1")
+    vfolder.mkdir(parents=True, exist_ok=True)
+    if not file_is_valid(vjson, None, json_sha1):
+        http_download(json_url, vjson, None, json_sha1)
+
+    manifest = json.loads(vjson.read_text(encoding="utf-8"))
+    client = (manifest.get("downloads") or {}).get("client") or {}
+    if not client.get("url"):
+        raise RuntimeError(f"Minecraft {mc_version} has no client download.")
+
+    libraries = {}
+    for lib in manifest.get("libraries", []):
+        downloads = lib.get("downloads") or {}
+        candidates = [downloads.get("artifact")] + list((downloads.get("classifiers") or {}).values())
+        for art in candidates:
+            if art and art.get("path") and art.get("url"):
+                libraries[art["path"]] = {"path": art["path"], "url": art["url"],
+                                           "size": art.get("size"), "sha1": art.get("sha1")}
+
+    index_info = manifest.get("assetIndex") or {}
+    if not index_info.get("url"):
+        raise RuntimeError(f"Minecraft {mc_version} has no asset index.")
+    index_path = root / "assets" / "indexes" / ((index_info.get("id") or mc_version) + ".json")
+    if not file_is_valid(index_path, None, index_info.get("sha1")):
+        http_download(index_info["url"], index_path, None, index_info.get("sha1"))
+    objects = json.loads(index_path.read_text(encoding="utf-8")).get("objects", {})
+    assets = {}
+    for obj in objects.values():
+        digest = obj.get("hash")
+        if not digest:
+            continue
+        assets[digest] = {"path": digest[:2] + "/" + digest,
+                          "url": RESOURCES_BASE_URL + "/" + digest[:2] + "/" + digest,
+                          "size": obj.get("size"), "sha1": digest, "quick": True}
+
+    
+    client_entry = {"path": mc_version + ".jar", "url": client["url"],
+                    "size": client.get("size"), "sha1": client.get("sha1")}
+    total = (entry_weight(client_entry)
+             + sum(entry_weight(e) for e in libraries.values())
+             + sum(entry_weight(e) for e in assets.values()))
+    tracker.reset(max(total, 1))
+    tracker.set_task(f"Downloading Minecraft {mc_version} files", force=True)
+    download_all([(client_entry, vfolder)], tracker)
+    tracker.set_task(f"Downloading Minecraft {mc_version} libraries", force=True)
+    download_all([(e, root / "libraries") for e in libraries.values()], tracker)
+    tracker.set_task(f"Downloading Minecraft {mc_version} assets", force=True)
+    download_all([(e, root / "assets" / "objects") for e in assets.values()], tracker, workers=16)
+    done.write_text(str(time.time()), encoding="utf-8")
+    return root, vjson
+
+
+def horizon_ensure_server_jar(mc_version: str, vjson: Path, tracker) -> Path:
+    jar = HORIZON_DATA_DIR / "server-jars" / (mc_version + ".jar")
+    if file_is_valid(jar):
+        return jar
+    server = (json.loads(vjson.read_text(encoding="utf-8")).get("downloads") or {}).get("server") or {}
+    if not server.get("url"):
+        raise RuntimeError(f"Minecraft {mc_version} has no server jar to prepare from.")
+    tracker.reset(max(int(server.get("size") or 1), 1))
+    tracker.set_task(f"Downloading the Minecraft {mc_version} server", force=True)
+    http_download(server["url"], jar, server.get("size"), server.get("sha1"), tracker.add)
+    return jar
+
+
+def horizon_find_java(tracker) -> str:
+    """A Java 25+ runtime: an installed one if possible, otherwise Mojang's own download."""
+    wanted = HORIZON_JAVA_MAJOR
+    candidates = []
+    if RUNTIME_DIR.exists():
+        for component_dir in sorted(RUNTIME_DIR.iterdir()):
+            path = managed_java_path(component_dir.name)
+            if path:
+                candidates.append(path)
+    candidates += find_system_javas()
+    best = None
+    for candidate in candidates:
+        major, _ = probe_java(candidate)
+        if major is not None and major >= wanted and (best is None or major < best[0]):
+            best = (major, candidate)
+    if best:
+        return best[1]
+
+    tracker.set_task(f"Finding a Java {wanted} runtime", force=True)
+    try:
+        index = http_get_json(JAVA_RUNTIME_INDEX_URL, timeout=30)
+        platform_entries = index.get(mojang_runtime_platform()) or {}
+        for component, entries in platform_entries.items():
+            for entry in entries or []:
+                name = str(((entry.get("version") or {}).get("name")) or "")
+                if name == str(wanted) or name.startswith(str(wanted) + "."):
+                    return install_managed_java(component, tracker)
+    except Exception:
+        log_exception("horizon java lookup")
+    raise RuntimeError(
+        f"Horizon needs Java {wanted}. Install a JDK {wanted} and point Settings at it, then try again.")
+
+
+def horizon_run_logged(cmd, cwd: Path, tracker, task: str, java_path=None):
+    tracker.set_task(task, force=True)
+    env = dict(os.environ)
+    if java_path:
+        java = Path(java_path).resolve()
+        env["JAVA_HOME"] = str(java.parent.parent)
+        env["PATH"] = str(java.parent) + os.pathsep + env.get("PATH", "")
+    try:
+        proc = subprocess.Popen(
+            cmd, cwd=str(cwd), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, text=True, errors="replace", bufsize=1, env=env,
+            creationflags=CREATE_NO_WINDOW, shell=False,
+        )
+    except OSError as exc:
+        raise RuntimeError(f"Couldn't start {Path(cmd[0]).name}: {exc}")
+    lines = []
+    for line in proc.stdout:
+        lines.append(line)
+        if len(lines) > 400:
+            del lines[:200]
+    return proc.wait(), "".join(lines)
+
+
+def horizon_prepare_build(vdir: Path, mc_version: str, mc_root: Path, server_jar: Path,
+                          tracker, java_path):
+    prep = Path(vdir) / horizon_exe("horizon-prepare")
+    if not prep.is_file():
+        raise RuntimeError("The Horizon download is missing " + prep.name)
+    base = [str(prep), "--root", str(vdir)]
+    cmd = base + ["--prepare", "--server-jar", str(server_jar), "--minecraft-dir", str(mc_root)]
+    code, output = horizon_run_logged(cmd, vdir, tracker, "Preparing Horizon's game resources", java_path)
+    if code != 0:
+        
+        
+        match = re.search(
+            r"https://piston-meta\.mojang\.com/v1/packages/([0-9a-f]{40})/%s\.json"
+            % re.escape(mc_version), output)
+        if match:
+            horizon_ensure_minecraft(mc_version, tracker, pinned=(match.group(0), match.group(1)))
+            code, output = horizon_run_logged(
+                cmd, vdir, tracker, "Preparing Horizon's game resources", java_path)
+    if code != 0:
+        logging.error("horizon-prepare failed:\n%s", output[-4000:])
+        raise RuntimeError("Horizon couldn't build the game resources. See launcher.log for details.")
+    code, output = horizon_run_logged(base + ["sounds", "--minecraft-dir", str(mc_root)],
+                                      vdir, tracker, "Copying Horizon's sounds", java_path)
+    if code != 0:
+        logging.warning("horizon-prepare sounds failed (the game will be silent):\n%s", output[-2000:])
+
+
+def horizon_setup(name: str, tracker) -> dict:
+    """Install and prepare everything one Horizon instance needs. Returns the meta to save."""
+    meta = read_instance_meta(name) or {}
+    build_version, vdir = horizon_install_build(tracker)
+    mc_version = horizon_minecraft_version(vdir)
+    resources = horizon_resources_dir(vdir)
+
+    java_path = meta.get("horizon_java")
+    if not (java_path and Path(java_path).is_file()):
+        java_path = horizon_find_java(tracker)
+
+    if not (resources / "horizon-resources.json").is_file():
+        mc_root, vjson = horizon_ensure_minecraft(mc_version, tracker)
+        
+        fallback = Path(vdir) / ".local" / "minecraft" / mc_version / "manifest.json"
+        fallback.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(vjson, fallback)
+        server_jar = horizon_ensure_server_jar(mc_version, vjson, tracker)
+        horizon_prepare_build(vdir, mc_version, mc_root, server_jar, tracker, java_path)
+
+    if not (resources / "horizon-resources.json").is_file():
+        raise RuntimeError("Horizon finished preparing but its resources are missing.")
+
+    return {
+        "version": mc_version,
+        "loader": "horizon",
+        "loader_version": None,
+        "horizon_version": build_version,
+        "horizon_dir": str(vdir),
+        "horizon_resources": str(resources),
+        "horizon_minecraft": mc_version,
+        "horizon_java": java_path,
+        "horizon_prepared": True,
+        "installed": True,
+        "schema": INSTALL_SCHEMA,
+        "java_component": "horizon",
+        "java_major": HORIZON_JAVA_MAJOR,
+    }
+
+
 class Installer:
     def __init__(self, api: "API", meta: dict):
         self.api = api
@@ -1825,7 +2867,7 @@ class Installer:
 
             if self.loader == "fabric":
                 plan = self._plan_fabric(vanilla_json, tracker)
-            elif self.loader == "forge":
+            elif self.loader in ("forge", "neoforge"):
                 plan, forge_tmp = self._plan_forge(vanilla_json, tracker)
             else:
                 plan = self._plan_vanilla(vanilla_json)
@@ -1967,15 +3009,19 @@ class Installer:
 
 
     def _plan_forge(self, vanilla_json, tracker):
+        is_neo = self.loader == "neoforge"
+        label = "NeoForge" if is_neo else "Forge"
         if not self.loader_version:
-            raise RuntimeError("No Forge version selected.")
+            raise RuntimeError(f"No {label} version selected.")
         mc_version = self.version_id
-        full_version = f"{mc_version}-{self.loader_version}"
+        if is_neo:
+            full_version, installer_url = neoforge_installer_info(mc_version, self.loader_version)
+        else:
+            full_version = f"{mc_version}-{self.loader_version}"
+            installer_url = f"{FORGE_MAVEN}{full_version}/forge-{full_version}-installer.jar"
+        installer_jar = VERSIONS_DIR / f"{label.lower()}-installer-{full_version}.jar"
 
-        installer_jar = VERSIONS_DIR / f"forge-installer-{full_version}.jar"
-        installer_url = f"{FORGE_MAVEN}{full_version}/forge-{full_version}-installer.jar"
-
-        tracker.set_task("Downloading Forge installer", force=True)
+        tracker.set_task(f"Downloading {label} installer", force=True)
         tracker.reset(8_000_000)
         if installer_jar.exists() and not zipfile.is_zipfile(installer_jar):
             installer_jar.unlink(missing_ok=True)
@@ -1984,10 +3030,10 @@ class Installer:
                 http_download(installer_url, installer_jar, progress_cb=tracker.add)
             except urllib.error.HTTPError as exc:
                 raise RuntimeError(
-                    f"Forge {self.loader_version} for Minecraft {mc_version} could not be "
+                    f"{label} {self.loader_version} for Minecraft {mc_version} could not be "
                     f"downloaded (HTTP {exc.code}).") from exc
 
-        tmp_dir = TMP_DIR / f"forge-{full_version}"
+        tmp_dir = TMP_DIR / f"{label.lower()}-{full_version}"
         shutil.rmtree(tmp_dir, ignore_errors=True)
         tmp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -2034,13 +3080,13 @@ class Installer:
         if not legacy and profile.get("processors"):
             def post(client_path, java_path, trk):
                 self._run_forge_processors(profile, installer_jar, tmp_dir, mc_version,
-                                           client_path, java_path, trk)
+                                           client_path, java_path, trk, label)
             plan["post"] = post
 
         return plan, tmp_dir
 
     def _run_forge_processors(self, profile, installer_jar, tmp_dir, mc_version,
-                              client_path, java_path, tracker):
+                              client_path, java_path, tracker, label="Forge"):
         ctx = ForgeInstallContext(profile, installer_jar, tmp_dir, mc_version, client_path)
         procs = [p for p in profile.get("processors", [])
                  if not p.get("sides") or "client" in p["sides"]]
@@ -2051,7 +3097,7 @@ class Installer:
         tracker.reset(len(procs), unit="steps")
 
         for index, proc in enumerate(procs, 1):
-            tracker.set_task(f"Setting up Forge ({index}/{len(procs)})", force=True)
+            tracker.set_task(f"Setting up {label} ({index}/{len(procs)})", force=True)
 
             if ctx.outputs_valid(proc):
                 tracker.add(1)
@@ -2060,18 +3106,18 @@ class Installer:
             jar_rel = maven_to_path(proc["jar"])
             jar_path = LIBRARIES_DIR / jar_rel
             if not jar_path.is_file():
-                raise RuntimeError(f"Missing Forge tool: {proc['jar']}")
+                raise RuntimeError(f"Missing {label} tool: {proc['jar']}")
 
             cp_parts = [str(jar_path)]
             for coord in proc.get("classpath", []):
                 cp = LIBRARIES_DIR / maven_to_path(coord)
                 if not cp.is_file():
-                    raise RuntimeError(f"Missing Forge tool library: {coord}")
+                    raise RuntimeError(f"Missing {label} tool library: {coord}")
                 cp_parts.append(str(cp))
 
             main_class = _jar_main_class(jar_path)
             if not main_class:
-                raise RuntimeError(f"Forge tool has no main class: {proc['jar']}")
+                raise RuntimeError(f"{label} tool has no main class: {proc['jar']}")
 
             args = [ctx.resolve(a) for a in proc.get("args", [])]
             cmd = [java_exe, "-cp", classpath_sep().join(cp_parts), main_class] + args
@@ -2084,12 +3130,12 @@ class Installer:
             if result.returncode != 0:
                 tail = ((result.stderr or "") + (result.stdout or ""))[-800:].strip()
                 logging.error("Forge processor failed (%s): %s", main_class, tail)
-                raise RuntimeError(f"Forge setup step failed ({main_class.split('.')[-1]}): {tail}")
+                raise RuntimeError(f"{label} setup step failed ({main_class.split('.')[-1]}): {tail}")
             tracker.add(1)
 
 
-
-def build_launch_command(meta: dict, account: dict, memory_mb: int, java_exe: str) -> list:
+def build_launch_command(meta: dict, account: dict, memory_mb: int, java_exe: str, options: dict = None) -> list:
+    options = options or {}
     name = meta["name"]
     game_dir = instance_game_dir(name)
     natives_dir = instance_dir(name) / "natives"
@@ -2150,10 +3196,32 @@ def build_launch_command(meta: dict, account: dict, memory_mb: int, java_exe: st
             "--versionType", replacements["version_type"],
         ]
 
-    command = [java_exe, f"-Xmx{memory_mb}M", f"-Xms{min(memory_mb, 1024)}M"]
+    try:
+        min_mb = int(options.get("min_memory_mb") or 0)
+    except (TypeError, ValueError):
+        min_mb = 0
+    xms = min(min_mb, memory_mb) if min_mb >= 256 else min(memory_mb, 1024)
+    command = [java_exe, f"-Xmx{memory_mb}M", f"-Xms{xms}M"]
     command.extend(jvm_args)
+    extra_jvm = str(options.get("jvm_args") or "").strip()
+    if extra_jvm:
+        try:
+            import shlex
+            tokens = shlex.split(extra_jvm, posix=(os.name != "nt"))
+        except ValueError:
+            tokens = extra_jvm.split()
+        command.extend(t.strip('"') for t in tokens if t.strip('"'))
     command.append(meta["main_class"])
     command.extend(game_args)
+    if options.get("fullscreen"):
+        command.append("--fullscreen")
+    else:
+        try:
+            gw, gh = int(options.get("game_width") or 0), int(options.get("game_height") or 0)
+        except (TypeError, ValueError):
+            gw = gh = 0
+        if gw >= 320 and gh >= 240:
+            command.extend(["--width", str(gw), "--height", str(gh)])
     return command
 
 
@@ -2179,9 +3247,7 @@ def _explain_crash(tail: str) -> str:
     return lines[-1][:220] if lines else "Check launch_output.log in the instance folder."
 
 
-
 def pick_best_version(versions: list):
-    """Modrinth returns newest first. Prefer stable releases over betas/alphas."""
     if not versions:
         return None
     for wanted in ("release", "beta", "alpha"):
@@ -2196,23 +3262,257 @@ def primary_file(version: dict):
     return next((f for f in files if f.get("primary")), files[0] if files else None)
 
 
+class CurseForgeError(Exception):
+    """Raised with a message that is safe to show in the launcher."""
 
-# Crit Client: the jars live next to versions.json on the Crit site, e.g.
-#   {"fabric": {"26.2": "crit-client-26.2.jar"}, "forge": {...}}
+
+def _cf_get(path: str, params=None, timeout: int = 20, retries: int = 2, unwrap: bool = True):
+    """GET a CurseForge endpoint through the proxy, unwrapping its {"data": ...} envelope."""
+    url = f"{CURSEFORGE_API}{path}"
+    if params:
+        clean = {k: v for k, v in params.items() if v is not None and v != ""}
+        if clean:
+            url += "?" + urllib.parse.urlencode(clean)
+    last = None
+    for attempt in range(retries + 1):
+        try:
+            data = http_get_json(url, timeout=timeout, retries=0)
+            if not unwrap:
+                return data
+            return data.get("data") if isinstance(data, dict) and "data" in data else data
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429:
+                if attempt < retries:
+                    wait = 2.0 * (attempt + 1)
+                    try:
+                        ra = exc.headers.get("Retry-After") if exc.headers else None
+                        wait = min(10.0, max(1.0, float(ra)))
+                    except (TypeError, ValueError):
+                        pass
+                    time.sleep(wait)
+                    last = exc
+                    continue
+                raise CurseForgeError("CurseForge is rate limiting requests. Try again in a minute.") from exc
+            if exc.code in (400, 401, 403, 404):
+                raise CurseForgeError("CurseForge couldn't handle that request.") from exc
+            last = exc
+        except Exception as exc:
+            last = exc
+        time.sleep(0.8 * (attempt + 1))
+    raise last if last is not None else CurseForgeError("Couldn't reach CurseForge.")
+
+
+def _cf_number(project_id) -> int:
+    raw = str(project_id or "")
+    if raw.startswith("cf:"):
+        raw = raw[3:]
+    if not raw.isdigit():
+        raise CurseForgeError("That isn't a CurseForge project.")
+    return int(raw)
+
+
+def _cf_hit(mod: dict) -> dict:
+    cats = [c.get("name") for c in (mod.get("categories") or []) if isinstance(c, dict) and c.get("name")]
+    authors = [a.get("name") for a in (mod.get("authors") or []) if isinstance(a, dict) and a.get("name")]
+    logo = mod.get("logo") if isinstance(mod.get("logo"), dict) else {}
+    
+    shots = []
+    for s in (mod.get("screenshots") or []):
+        if not isinstance(s, dict):
+            continue
+        url = s.get("url") or s.get("thumbnailUrl")
+        if isinstance(url, str) and url.startswith("https://"):
+            shots.append(url)
+    return {
+        "gallery": shots,
+        "featured_gallery": shots[0] if shots else None,
+        "color": None,
+        "project_id": f"cf:{mod.get('id')}",
+        "slug": None,
+        "title": mod.get("name") or "Unknown",
+        "description": mod.get("summary") or "",
+        "author": ", ".join(authors) or "unknown",
+        "downloads": int(mod.get("downloadCount") or 0),
+        "follows": None,
+        "icon_url": logo.get("thumbnailUrl") or logo.get("url"),
+        "categories": cats,
+        "display_categories": cats,
+        "client_side": "optional",
+        "server_side": "optional",
+        "date_modified": mod.get("dateModified") or "",
+        "source": "curseforge",
+    }
+
+
+def _cf_search(query: str, project_type: str, sort: str, offset: int, limit: int, filters=None):
+    """Search CurseForge. Returns Modrinth-shaped hits so the Addons UI renders them as-is."""
+    class_id = CF_CLASS_IDS.get(project_type)
+    if not class_id:
+        return {"hits": [], "total": 0}
+    params = {"gameId": CF_GAME_ID, "classId": class_id,
+              "sortField": CF_SORT.get(sort, 2), "sortOrder": "desc",
+              "index": max(0, int(offset or 0)),           
+              "pageSize": max(1, min(50, limit))}
+    if query:
+        params["searchFilter"] = query
+    filters = filters if isinstance(filters, dict) else {}
+    ver = filters.get("version")
+    if isinstance(ver, str) and re.match(r"^[0-9][0-9A-Za-z_.+\-]{0,19}$", ver):
+        params["gameVersion"] = ver
+    loaders = [x for x in (filters.get("loaders") or []) if x in CF_LOADER_IDS]
+    if project_type == "mod" and loaders:
+        params["modLoaderType"] = CF_LOADER_IDS[loaders[0]]
+    data = _cf_get("/mods/search", params, unwrap=False) or {}
+    mods, pagination = [], {}
+    if isinstance(data, list):
+        mods = data
+    elif isinstance(data, dict):
+        mods = data.get("data") or []
+        pagination = data.get("pagination") or {}
+    hits = [_cf_hit(m) for m in mods if isinstance(m, dict) and m.get("id") is not None]
+    return {"hits": hits, "total": int(pagination.get("totalCount") or len(hits))}
+
+
+def _cf_file_sha1(file_info: dict):
+    for h in (file_info.get("hashes") or []):
+        if isinstance(h, dict) and int(h.get("algo") or 0) == 1 and h.get("value"):
+            return h["value"]
+    return None
+
+
+def _cf_pick_file(files, mc_version=None, loader=None):
+    """Newest release file that matches the instance's Minecraft version + loader."""
+    usable = [f for f in (files or []) if isinstance(f, dict) and f.get("id") is not None]
+    if mc_version:
+        usable = [f for f in usable if mc_version in (f.get("gameVersions") or [])]
+    if loader and loader in CF_LOADER_IDS:
+        want = loader.lower()
+        usable = [f for f in usable
+                  if want in {str(g).lower() for g in (f.get("gameVersions") or [])}] or usable
+    releases = [f for f in usable if int(f.get("releaseType") or 1) == 1]
+    pool = releases or usable
+    pool.sort(key=lambda f: str(f.get("fileDate") or ""), reverse=True)
+    return pool[0] if pool else None
+
+
+def _cf_download_file(mod_id: int, file_info: dict, dest_dir: Path):
+    name = Path(str(file_info.get("fileName") or "")).name
+    if not name:
+        raise CurseForgeError("That CurseForge file has no name.")
+    dest = dest_dir / name
+    if not is_within(dest_dir, dest):
+        raise CurseForgeError("Unsafe file name in addon.")
+    url = file_info.get("downloadUrl")
+    if not url:
+        
+        detail = _cf_get(f"/mods/{mod_id}/files/{file_info['id']}") or {}
+        url = detail.get("downloadUrl") if isinstance(detail, dict) else None
+    if not isinstance(url, str) or not url.startswith("https://"):
+        raise CurseForgeError("CurseForge didn't give a download link for that file.")
+    http_download(url, dest, file_info.get("fileLength"), _cf_file_sha1(file_info))
+    return name
+
+
+def _cf_dependencies(mod_id: int, file_id) -> list:
+    if file_id is None:
+        return []
+    try:
+        deps = _cf_get(f"/mods/{mod_id}/dependencies", {"fileId": file_id}) or []
+    except CurseForgeError:
+        return []
+    return [d for d in deps if isinstance(d, dict) and d.get("modId")
+            and int(d.get("relationType") or 0) == CF_REQUIRED_RELATION]
+
+
+def curseforge_install_to(mod_id: int, dest_dir: Path, mc_version=None, loader=None,
+                          visited=None, depth: int = 0, with_deps: bool = True) -> list:
+    """Install a CurseForge project (plus its required dependencies) into dest_dir."""
+    visited = visited if visited is not None else set()
+    visited.add(mod_id)
+    files = _cf_get(f"/mods/{mod_id}/files", {"gameVersion": mc_version})
+    if isinstance(files, dict):
+        files = files.get("data") or []
+    chosen = _cf_pick_file(files, mc_version, loader)
+    if not chosen:
+        raise CurseForgeError(f"No CurseForge file of this project supports {mc_version or 'this setup'}.")
+    out = [_cf_download_file(mod_id, chosen, dest_dir)]
+    if not with_deps or depth >= 3:
+        return out
+    for dep in _cf_dependencies(mod_id, chosen.get("id")):
+        dep_id = int(dep["modId"])
+        if dep_id in visited:
+            continue
+        try:
+            out += curseforge_install_to(dep_id, dest_dir, mc_version, loader, visited, depth + 1)
+        except CurseForgeError:
+            logging.warning("CurseForge dependency %s failed", dep_id)
+    return out
+
+
 CRIT_CLIENT_BASE = "https://raw.githubusercontent.com/snigglaberry/critsite/refs/heads/main/assets/mods/"
 CRIT_CLIENT_VERSIONS_URL = CRIT_CLIENT_BASE + "versions.json"
-# Installed next to Crit Client when Modrinth has a build for the instance's version + loader
-# (required dependencies are pulled in automatically).
 CRIT_CLIENT_MODS = ["sodium", "fabric-api", "entityculling", "lithium",
                     "immediatelyfast", "zfastnoise", "moreculling"]
 CHANGELOG_REPO = "snigglaberry/crit-launcher"
-# The version this build is. Bump it on every release; it is compared with the
-# tag of the latest GitHub release to decide whether to offer an update.
-APP_VERSION = "1.5"
+
+
+def _bump_playtime(s: dict, elapsed: int):
+    s["playtime_seconds"] = int(s.get("playtime_seconds", 0)) + elapsed
+    days = s.get("playtime_days")
+    days = dict(days) if isinstance(days, dict) else {}
+    key = time.strftime("%Y-%m-%d")
+    days[key] = int(days.get(key, 0)) + elapsed
+    s["playtime_days"] = {k: days[k] for k in sorted(days)[-30:]}
+
+
+def _playtime_days() -> dict:
+    raw = settings_store.read().get("playtime_days")
+    if not isinstance(raw, dict):
+        return {}
+    return {str(k): int(v) for k, v in raw.items() if isinstance(v, (int, float))}
+
+
+MC_NEWS_HOST = "https://launchercontent.mojang.com"
+_addon_cats_mem = {"at": 0.0, "value": None}
+_mc_news_mem = {"at": 0.0, "value": None}
+_pub_servers_mem = {"at": 0.0, "value": None}
+PUBLIC_SERVERS = (
+    ("mc.ratonii.ro", "Ratonii Network", "Europe", ("minigames", "pvp", "survival"), True, True),
+    ("xy.twerion.net", "XY.TWERION.NET", "Asia", ("bedwars", "skyblock", "lifesteal"), True, True),
+    ("mc.hypixel.net", "Hypixel", "North America", ("minigames", "pvp", "skyblock", "bedwars"), False, True),
+    ("play.cubecraft.net", "CubeCraft", "Europe", ("minigames", "pvp", "bedwars"), False, True),
+    ("play.wynncraft.com", "Wynncraft", "North America", ("rpg", "survival"), False, True),
+    ("play.pika-network.net", "PikaNetwork", "North America", ("bedwars", "skyblock", "survival"), True, True),
+    ("jartex.fun", "JartexNetwork", "Europe", ("survival", "economy", "skyblock"), True, False),
+    ("play.extremecraft.net", "ExtremeCraft", "Europe", ("bedwars", "skyblock", "survival"), True, False),
+    ("play.manacube.com", "ManaCube", "North America", ("survival", "skyblock", "economy"), False, False),
+    ("play.herobrine.org", "Herobrine", "North America", ("skyblock", "survival"), False, False),
+    ("hub.mc-complex.com", "Complex Gaming", "North America", ("minigames", "pvp"), False, False),
+    ("play.invadedlands.net", "InvadedLands", "North America", ("survival", "economy"), False, False),
+    ("bedwarspractice.club", "Bedwars Practice", "North America", ("bedwars", "pvp"), False, True),
+    ("play.mccentral.org", "MC Central", "North America", ("minigames", "survival"), False, False),
+    ("pvplegacy.net", "PvP Legacy", "North America", ("pvp", "factions"), False, False),
+    ("play.pixelmonrealms.com", "Pixelmon Realms", "North America", ("modded", "survival"), False, False),
+    ("play.hyperlands.net", "Hyperlands", "North America", ("skyblock", "survival"), False, False),
+    ("play.fadecloud.com", "FadeCloud", "North America", ("survival", "economy"), False, False),
+    ("gommehd.net", "GommeHD", "Europe", ("bedwars", "minigames", "pvp"), False, True),
+    ("play.timolia.de", "Timolia", "Europe", ("minigames", "pvp"), False, False),
+    ("play.thearchon.net", "The Archon", "North America", ("survival", "economy"), False, False),
+    ("play.vimemc.net", "ViMeMC", "Europe", ("survival", "economy"), False, False),
+    ("play.snapcraft.net", "Snapcraft", "North America", ("survival", "skyblock"), False, False),
+    ("play.blossomcraft.org", "BlossomCraft", "North America", ("survival", "skyblock"), False, False),
+    ("play.skyblock.net", "Skyblock.net", "North America", ("skyblock", "economy"), False, False),
+    ("mineland.net", "Mineland", "Europe", ("minigames", "survival"), False, False),
+    ("2b2t.org", "2b2t", "North America", ("anarchy", "survival"), False, False),
+    ("kaboom.pw", "Kaboom", "North America", ("anarchy",), False, False),
+    ("constantiam.net", "Constantiam", "North America", ("anarchy",), False, False),
+    ("6b6t.org", "6b6t", "North America", ("anarchy",), False, False),
+    ("endcrystal.me", "EndCrystal", "North America", ("anarchy", "pvp"), False, False),
+)
+APP_VERSION = "1.7"
 
 
 def _version_tuple(tag) -> tuple:
-    """'v1.3.1' -> (1, 3, 1). Anything without digits becomes (0,)."""
     nums = [int(n) for n in re.findall(r"\d+", str(tag or ""))]
     while len(nums) > 1 and nums[-1] == 0:
         nums.pop()
@@ -2228,7 +3528,6 @@ class AuthError(Exception):
 
 
 def ensure_fresh_account(account: dict) -> dict:
-    """Microsoft accounts: returns a usable Minecraft token, refreshing it silently when it has expired."""
     if account.get("type") != "microsoft":
         return account
     if account.get("mc_token") and float(account.get("mc_expires", 0)) - time.time() > 60:
@@ -2237,14 +3536,11 @@ def ensure_fresh_account(account: dict) -> dict:
 
 
 def public_account(a: dict) -> dict:
-    """Accounts as the UI sees them - never includes tokens."""
     out = {"name": a.get("name"), "uuid": a.get("uuid"), "type": a.get("type", "offline")}
     return out
 
 
-
 def profile_for_token(token: str):
-    """Asks Minecraft who this token belongs to. Returns (name, uuid) or raises AuthError."""
     status, prof = http_get_auth(MC_PROFILE_URL, token)
     if status in (401, 403):
         raise AuthError("That session token isn't valid (it has probably expired).")
@@ -2272,7 +3568,6 @@ def ms_authorize_url() -> str:
 
 
 def ms_token_request(fields: dict) -> dict:
-    """Exchanges an authorization code / refresh token for Microsoft tokens."""
     body = urllib.parse.urlencode({
         "client_id": MS_CLIENT_ID, "scope": MS_SCOPE, "redirect_uri": MS_REDIRECT_URI, **fields}).encode("utf-8")
     status, data = http_send("POST", MS_TOKEN_URL, None, body, "application/x-www-form-urlencoded")
@@ -2283,9 +3578,8 @@ def ms_token_request(fields: dict) -> dict:
 
 
 def ms_to_minecraft(ms_access_token: str):
-    """Microsoft token -> Xbox Live -> XSTS -> Minecraft access token. Returns (token, expires_at)."""
     xbl, last = None, None
-    for prefix in ("", "t=", "d="):                          # the ticket format depends on the app type
+    for prefix in ("", "t=", "d="):
         body = {"Properties": {"AuthMethod": "RPS", "SiteName": "user.auth.xboxlive.com",
                                "RpsTicket": prefix + ms_access_token},
                 "RelyingParty": "http://auth.xboxlive.com", "TokenType": "JWT"}
@@ -2343,7 +3637,6 @@ def save_ms_account(name: str, account_uuid: str, token: str, expires, refresh_t
 
 
 def ms_sign_in(tokens: dict) -> dict:
-    """Finishes a sign-in from a Microsoft token response and stores the account."""
     mc_token, mc_exp = ms_to_minecraft(tokens["access_token"])
     name, account_uuid = profile_for_token(mc_token)
     return save_ms_account(name, account_uuid, mc_token, mc_exp, tokens.get("refresh_token"))
@@ -2384,12 +3677,10 @@ def find_account(accounts: list, key):
             or next((a for a in accounts if a.get("name") == key), None))
 
 
-
 PNG_SIG = b"\x89PNG\r\n\x1a\n"
 
 
 def http_send(method: str, url: str, token=None, data=None, content_type=None, timeout: int = 30, headers=None):
-    """Authenticated request that never raises on HTTP errors. Returns (status, parsed_json)."""
     hdrs = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     if token:
         hdrs["Authorization"] = f"Bearer {token}"
@@ -2406,7 +3697,6 @@ def http_send(method: str, url: str, token=None, data=None, content_type=None, t
 
 
 def decode_png_uri(uri: str) -> bytes:
-    """Validates a data: URI holding a Minecraft skin (64x64 or 64x32 PNG)."""
     m = re.match(r"^data:image/png;base64,([A-Za-z0-9+/=\s]+)$", uri or "")
     if not m:
         raise ValueError("That isn't a PNG image.")
@@ -2433,7 +3723,6 @@ def _texture_host_ok(host: str) -> bool:
 
 
 def fetch_texture_uri(url):
-    """Downloads a skin/cape texture (only from minecraft.net hosts) as a data: URI."""
     if not url:
         return None
     if url.startswith("http://textures.minecraft.net"):
@@ -2470,8 +3759,6 @@ def _skin_error(status: int) -> str:
 
 
 def _fetch_named_skin(name: str):
-    """Looks up a Minecraft username through Mojang's public API and returns its
-    current skin as a data: URI, or None if the player or skin doesn't exist."""
     try:
         found = http_get_json(MOJANG_LOOKUP_URL + urllib.parse.quote(name), retries=1)
     except Exception:
@@ -2515,7 +3802,6 @@ def list_saved_skins() -> list:
     return out
 
 
-# ---- Local skins for offline accounts (CustomSkinLoader) ----
 CSL_PROJECT = "customskinloader"
 CAPE_TEXTURE_URL = "https://textures.minecraft.net/texture/"
 MOJANG_CAPES = [
@@ -2559,10 +3845,6 @@ _CAPE_BY_ID = {c["id"]: c for c in MOJANG_CAPES}
 def _cape_url(cape: dict) -> str:
     return CAPE_TEXTURE_URL + cape["hash"]
 def _csl_find_config(instance_name: str):
-    """The CustomSkinLoader.json the mod creates the first time the game runs with it, or
-    None while it doesn't exist (the game hasn't run yet). It normally sits at
-    <game folder>/CustomSkinLoader/CustomSkinLoader.json. A CustomSkinLoader folder a
-    couple of levels down (for example inside config/) is accepted too, in any letter case."""
     game = instance_game_dir(instance_name)
     primary = game / "CustomSkinLoader" / "CustomSkinLoader.json"
     if primary.is_file():
@@ -2592,7 +3874,6 @@ def _csl_config_path(instance_name: str) -> Path:
 
 
 def _csl_local_dir(instance_name: str) -> Path:
-    """LocalSkin sits next to CustomSkinLoader.json, because the config's paths are relative to it."""
     return _csl_config_path(instance_name).parent / "LocalSkin"
 
 
@@ -2602,9 +3883,6 @@ CSL_RUN_ONCE_MSG = "You must run the game at least once to use this feature."
 
 
 def _csl_write_config(instance_name: str):
-    """Writes CustomSkinLoader.json with Crit Launcher's settings. The mod writes its own
-    version and buildNumber into that file the first time the game runs, so those two
-    values are read back from the existing file and kept as they are."""
     path = _csl_config_path(instance_name)
     version, build = CSL_CONFIG_VERSION, CSL_CONFIG_BUILD
     try:
@@ -2660,7 +3938,6 @@ def _write_bytes_atomic(path: Path, data: bytes):
     os.replace(tmp, path)
 
 
-# ---- Critical Skin API catalog (github.com/snigglaberry/critical-skin-api) ----
 CATALOG_REPO = "snigglaberry/critical-skin-api"
 CATALOG_API = f"https://api.github.com/repos/{CATALOG_REPO}/contents/skin"
 CATALOG_RAW_PREFIX = f"/{CATALOG_REPO}/"
@@ -2705,7 +3982,6 @@ def _catalog_raw_url(letter: str, fname: str) -> str:
 
 
 def _catalog_tree():
-    """Every skin in one request via the git tree. None when it can't be used."""
     try:
         data = http_get_json(f"https://api.github.com/repos/{CATALOG_REPO}/git/trees/main?recursive=1",
                              timeout=30, retries=1)
@@ -2727,7 +4003,6 @@ def _catalog_tree():
 
 
 def _catalog_walk():
-    """Fallback: list every letter folder through the contents API."""
     letters = [i["name"] for i in _catalog_listing() if i.get("type") == "dir" and i.get("name")]
 
     def one(letter):
@@ -2756,6 +4031,211 @@ def _catalog_url_ok(url: str) -> bool:
             and path.startswith(CATALOG_RAW_PREFIX) and ".." not in path)
 
 
+LABY_SEARCH_URL = "https://laby.net/api/v3/search/textures/skin"
+LABY_TAGS_URL = "https://laby.net/api/v3/tags"
+LABY_TAG_URL = "https://laby.net/api/v3/tag/{tag_id}"
+LABY_ORDERS = ("most_used", "latest", "trending_24h", "trending_7d", "trending_30d")
+LABY_PAGE_SIZE = 40
+LABY_TAG_PAGE_SIZE = 40
+LABY_TAG_LOOKUP_PAGES = 20
+LABY_SEARCH_SCAN_PAGES = 20
+LABY_HASH_RE = re.compile(r"^[0-9a-f]{16,64}$")
+LABY_TEXTURE_URLS = (
+    "https://texture.laby.net/{h}.png",
+)
+_laby_tpl = {"value": None}
+_laby_tpl_lock = threading.Lock()
+
+
+def _laby_host_ok(host: str) -> bool:
+    return host == "laby.net" or host.endswith(".laby.net") or host == "textures.minecraft.net"
+
+
+def _laby_url_ok(url: str) -> bool:
+    try:
+        p = urllib.parse.urlparse(url or "")
+    except Exception:
+        return False
+    return (p.scheme == "https" and _laby_host_ok(p.hostname or "")
+            and "/render/" not in p.path and ".." not in urllib.parse.unquote(p.path))
+
+
+def _skin_url_ok(url: str) -> bool:
+    return _catalog_url_ok(url) or _laby_url_ok(url)
+
+
+def _fetch_skin_png(url: str):
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "image/png,*/*"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = resp.read(200_001)
+    except Exception:
+        return None
+    if len(data) > 200_000 or not data.startswith(PNG_SIG) or len(data) < 33:
+        return None
+    width, height = struct.unpack(">II", data[16:24])
+    return data if (width, height) in ((64, 64), (64, 32)) else None
+
+
+def _laby_template(sample_hash: str):
+    with _laby_tpl_lock:
+        if _laby_tpl["value"]:
+            return _laby_tpl["value"]
+    for tpl in LABY_TEXTURE_URLS:
+        if _fetch_skin_png(tpl.format(h=sample_hash)):
+            with _laby_tpl_lock:
+                _laby_tpl["value"] = tpl
+            return tpl
+    return None
+
+
+def _laby_name(tags: str) -> str:
+    seen, words = set(), []
+    for w in (tags or "").split():
+        if w.lower() not in seen:
+            seen.add(w.lower())
+            words.append(w)
+    return " ".join(words[:3]) or "Skin"
+
+
+def _laby_tag_for_query(query: str, force: bool = False):
+    query = (query or "").strip().casefold()
+    if not query:
+        return None
+    tags, matches = [], []
+    for page in range(LABY_TAG_LOOKUP_PAGES):
+        offset = page * LABY_TAG_PAGE_SIZE
+        page_tags = _catalog_cached(
+            f"laby:tags:{offset}:{LABY_TAG_PAGE_SIZE}",
+            lambda offset=offset: http_get_json(
+                f"{LABY_TAGS_URL}?{urllib.parse.urlencode({'offset': offset, 'size': LABY_TAG_PAGE_SIZE})}",
+                timeout=20, retries=1),
+            force,
+        )
+        if not isinstance(page_tags, list):
+            raise ValueError("Unexpected tag list from laby.net.")
+        tags.extend(page_tags)
+        matches = [tag for tag in tags if isinstance(tag, dict)
+                   and query == str(tag.get("name") or "").casefold()
+                   and str(tag.get("id") or "").isdigit()]
+        if matches or len(page_tags) < LABY_TAG_PAGE_SIZE:
+            break
+    if not matches:
+        return None
+    matches.sort(key=lambda tag: -int(tag.get("use_count") or 0))
+    return matches[0]
+
+
+def _laby_fetch_page(offset: int, size: int, order: str, search: str = "", force: bool = False,
+                     model: str = "all"):
+    terms = [term.strip().casefold() for term in re.split(r"[,;]", search or "") if term.strip()]
+    if len(terms) > 5:
+        raise ValueError("Search for up to five tags at a time.")
+    if model not in ("all", "slim", "classic"):
+        model = "all"
+    tag = _laby_tag_for_query(terms[0], force) if len(terms) == 1 else None
+    tag_name = str(tag.get("name") or terms[0]) if tag else ""
+    matches, has_more = [], False
+
+    def matches_filters(item, check_tags=True):
+        if not isinstance(item, dict):
+            return False
+        item_tags = str((item or {}).get("tags") or "").casefold()
+        if check_tags and terms and not all(term in item_tags for term in terms):
+            return False
+        is_slim = item.get("slim") is True
+        if model == "slim" and not is_slim:
+            return False
+        if model == "classic" and is_slim:
+            return False
+        return True
+
+    if tag:
+        scan_offset = 0
+        exhausted = False
+        for _ in range(LABY_SEARCH_SCAN_PAGES):
+            query = urllib.parse.urlencode({"size": LABY_PAGE_SIZE, "offset": scan_offset})
+            data = _catalog_cached(
+                f"laby:tag-feed:{tag['id']}:{scan_offset}",
+                lambda query=query, tag_id=int(tag["id"]): http_get_json(
+                    f"{LABY_TAG_URL.format(tag_id=tag_id)}?{query}", timeout=20, retries=1),
+                force,
+            )
+            if not isinstance(data, list):
+                raise ValueError("Unexpected response from laby.net.")
+            matches.extend(item for item in data if matches_filters(item, check_tags=False))
+            if len(matches) > offset + size:
+                break
+            if len(data) < LABY_PAGE_SIZE:
+                exhausted = True
+                break
+            scan_offset += len(data)
+        has_more = len(matches) > offset + size or not exhausted and len(matches) >= offset + size
+    elif not terms and model == "all":
+        query = urllib.parse.urlencode({"size": size, "offset": offset, "order": order})
+        data = http_get_json(f"{LABY_SEARCH_URL}?{query}", timeout=20, retries=1)
+        feed_results = data.get("results") if isinstance(data, dict) else None
+        if not isinstance(feed_results, list):
+            raise ValueError("Unexpected response from laby.net.")
+        matches = feed_results
+        has_more = len(feed_results) >= size
+    else:
+        scan_offset = 0
+        exhausted = False
+        for _ in range(LABY_SEARCH_SCAN_PAGES):
+            query = urllib.parse.urlencode({"size": LABY_PAGE_SIZE, "offset": scan_offset, "order": order})
+            feed = _catalog_cached(
+                f"laby:search-feed:{order}:{scan_offset}",
+                lambda query=query: http_get_json(f"{LABY_SEARCH_URL}?{query}", timeout=20, retries=1),
+                force,
+            )
+            feed_results = feed.get("results") if isinstance(feed, dict) else None
+            if not isinstance(feed_results, list):
+                raise ValueError("Unexpected response from laby.net.")
+            matches.extend(item for item in feed_results if matches_filters(item))
+            if len(matches) > offset + size:
+                break
+            if len(feed_results) < LABY_PAGE_SIZE:
+                exhausted = True
+                break
+            scan_offset += len(feed_results)
+        has_more = len(matches) > offset + size or not exhausted and len(matches) >= offset + size
+
+    results = matches[offset:offset + size]
+    skins, seen = [], set()
+    for r in results:
+        if not isinstance(r, dict):
+            continue
+        h = str(r.get("image_hash") or "").lower()
+        if not LABY_HASH_RE.match(h) or h in seen:
+            continue
+        seen.add(h)
+        tags = tag_name or str(r.get("tags") or "")
+        try:
+            uses = max(0, int(r.get("use_count") or 0))
+        except (TypeError, ValueError):
+            uses = 0
+        skins.append({"hash": h, "name": _laby_name(tags), "tags": tags,
+                      "uses": uses, "slim": r.get("slim") is True})
+    tpl = _laby_template(skins[0]["hash"]) if skins else None
+    if skins and not tpl:
+        raise LookupError("laby-texture")
+    for sk in skins:
+        sk["url"] = tpl.format(h=sk["hash"])
+    return skins, has_more
+
+
+def _laby_error(exc) -> str:
+    if isinstance(exc, ValueError) and str(exc).startswith("Search for up to"):
+        return str(exc)
+    if isinstance(exc, LookupError):
+        return "Couldn't find laby.net's skin download address. Try the Critical Skin API source for now."
+    if isinstance(exc, urllib.error.HTTPError) and exc.code == 429:
+        return "laby.net is limiting requests right now. Try again in a little while."
+    if isinstance(exc, urllib.error.HTTPError) and exc.code == 401:
+        return "laby.net requires you to sign in to view more skin results."
+    return "Couldn't reach laby.net. Check your connection."
+
 
 def _zip_read(zf: zipfile.ZipFile, member: str):
     member = member.replace("\\", "/").lstrip("./").lstrip("/")
@@ -2780,7 +4260,6 @@ def _clean_text(value, limit: int = 240):
 
 
 def _flatten_component(c) -> str:
-    """Resource pack descriptions can be plain text or JSON text components."""
     if c is None:
         return ""
     if isinstance(c, str):
@@ -2810,7 +4289,7 @@ def _authors_text(authors):
 def _toml_fields(text: str) -> dict:
     data = None
     try:
-        import tomllib                
+        import tomllib
         data = tomllib.loads(text)
     except Exception:
         data = None
@@ -2844,7 +4323,6 @@ def _manifest_version(zf: zipfile.ZipFile):
 
 
 def read_mod_jar(path: Path) -> dict:
-    """Name / version / description / icon path for a Fabric, Quilt, Forge or NeoForge mod jar."""
     info = {"name": None, "version": None, "description": None, "authors": None,
             "loader": None, "_icon": None}
     try:
@@ -2978,7 +4456,6 @@ def list_instance_content(instance_name: str, kind: str) -> list:
 
 
 def read_content_icon(instance_name: str, kind: str, filename: str):
-    """Returns a data: URI for the icon inside a mod jar / resource pack, or None."""
     if kind == "shaderpacks":
         return None
     folder = _content_folder(instance_name, kind)
@@ -3010,14 +4487,12 @@ def read_content_icon(instance_name: str, kind: str, filename: str):
     return f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
 
 
-
-
 SERVERS_DIR = DATA_DIR / "servers"
 SERVERS_DIR.mkdir(parents=True, exist_ok=True)
 SERVER_META_FILE = "crit_server.json"
 SERVER_SOFTWARE = ("vanilla", "paper", "fabric")
 PAPER_API = "https://fill.papermc.io/v3/projects/paper"
-PAPER_USER_AGENT = "CritLauncher/1.5 (https://github.com/snigglaberry/crit-launcher)"
+PAPER_USER_AGENT = "CritLauncher/1.6 (https://github.com/snigglaberry/crit-launcher)"
 FABRIC_INSTALLER_LIST_URL = "https://meta.fabricmc.net/v2/versions/installer"
 EULA_URL = "https://aka.ms/MinecraftEULA"
 PLUGIN_LOADERS = ["paper", "spigot", "bukkit"]
@@ -3242,7 +4717,6 @@ def read_plugin_jar(path: Path) -> dict:
 
 
 class ProcSampler:
-    """CPU% (of the whole machine) and resident memory of a process, no hard dependencies."""
 
     def __init__(self, proc):
         self.proc = proc
@@ -3372,6 +4846,7 @@ class ServerMixin:
             "players": len(rt.players) if live else 0,
             "uptime": int(time.time() - rt.started) if live and rt.status == "online" else 0,
             "created": meta.get("created"),
+            "motd": str(props.get("motd", "A Crit Launcher server"))[:120],
         }
 
     def _srv_payload(self) -> list:
@@ -3548,7 +5023,6 @@ class ServerMixin:
             return False
 
     def accept_eula(self, name):
-        """Writes eula=true into eula.txt and boots the server again."""
         try:
             meta = read_server_meta(name)
             if not meta:
@@ -3682,7 +5156,6 @@ class ServerMixin:
             return False
 
     def _srv_ask(self, rt, command, pattern, timeout=3.0):
-        """Sends a command and captures (and hides) the matching response line."""
         w = {"rx": re.compile(pattern), "event": threading.Event(), "match": None}
         with rt.lock:
             rt.waiters.append(w)
@@ -4034,7 +5507,6 @@ class ServerMixin:
             return {"success": False, "error": str(exc) or "Couldn't delete that file."}
 
     def search_server_mods(self, name, query="", offset=0):
-        """Modrinth search limited to what this server can actually run."""
         try:
             meta = read_server_meta(name)
             if not meta:
@@ -4148,7 +5620,6 @@ class ServerMixin:
         return {"success": True, "files": [self._download_version_file(version, dest)], "note": note}
 
 
-
 class API(ServerMixin):
     def __init__(self):
         self._window = None
@@ -4191,6 +5662,7 @@ class API(ServerMixin):
             "sessions": sessions,
             "installing": installing,
             "playtime_total": int(settings_store.read().get("playtime_seconds", 0)),
+            "playtime_days": _playtime_days(),
         }
 
     def _state_dict(self) -> dict:
@@ -4202,6 +5674,14 @@ class API(ServerMixin):
 
         instances = []
         for meta in list_instances():
+            icon_key = meta.get("icon")
+            custom_icon_path = custom_instance_icon_path(icon_key)
+            if icon_key in INSTANCE_ICONS:
+                instance_icon = "critclient" if icon_key == "oneclient" else icon_key
+            elif custom_icon_path and custom_icon_path.is_file():
+                instance_icon = icon_key
+            else:
+                instance_icon = None
             instances.append({
                 "name": meta.get("name"),
                 "version": meta.get("version"),
@@ -4209,8 +5689,7 @@ class API(ServerMixin):
                 "loader_version": meta.get("loader_version"),
                 "installed": is_installed(meta),
                 "playtime": int(meta.get("playtime", 0)),
-                "icon": ("critclient" if meta.get("icon") == "oneclient" else meta.get("icon"))
-                        if (meta.get("icon") in INSTANCE_ICONS) else None,
+                "icon": instance_icon,
                 "created": meta.get("created"),
                 "critclient": bool(meta.get("critclient") or meta.get("oneclient")),
             })
@@ -4228,17 +5707,36 @@ class API(ServerMixin):
             "accounts": [public_account(a) for a in accounts],
             "active_account": public_account(active_account) if active_account else None,
             "instances": instances,
+            "custom_icons": list_custom_instance_icons(),
             "active_instance": active_instance,
             "running": runtime["running"],
             "sessions": runtime["sessions"],
             "installing": runtime["installing"],
             "playtime_total": runtime["playtime_total"],
+            "playtime_days": runtime["playtime_days"],
             "settings": {
                 "memory_mb": int(settings.get("memory_mb", 2048)),
+                "min_memory_mb": int(settings.get("min_memory_mb") or 0),
                 "java_path": settings.get("java_path"),
+                "jvm_args": settings.get("jvm_args") if isinstance(settings.get("jvm_args"), str) else "",
+                "game_width": int(settings.get("game_width") or 0),
+                "game_height": int(settings.get("game_height") or 0),
+                "fullscreen": bool(settings.get("fullscreen", False)),
+                "custom_accent": _clean_hex(settings.get("custom_accent")),
+                "recent_accents": [_clean_hex(x) for x in (settings.get("recent_accents") or []) if _clean_hex(x, None)][:10],
+                "reduce_motion": bool(settings.get("reduce_motion", False)),
+                "bg_pattern": bool(settings.get("bg_pattern", True)),
                 "sidebar_collapsed": bool(settings.get("sidebar_collapsed", False)),
                 "theme": settings.get("theme", "green") if settings.get("theme") in THEMES else "green",
                 "ui_style": settings.get("ui_style", "default") if settings.get("ui_style") in UI_STYLES else "default",
+                "addon_view": settings.get("addon_view") if settings.get("addon_view") in ADDON_VIEWS else "browse",
+                "addon_instance": settings.get("addon_instance") if isinstance(settings.get("addon_instance"), str) else None,
+                "color_mode": settings.get("color_mode", "dark") if settings.get("color_mode") in COLOR_MODES else "dark",
+                "catalog_source": settings.get("catalog_source", "labymod") if settings.get("catalog_source") in CATALOG_SOURCES else "labymod",
+                "addon_source": settings.get("addon_source") if settings.get("addon_source") in ADDON_SOURCES else "modrinth",
+                "agreement_accepted": bool(settings.get("agreement_accepted", False)),
+                "agreement_version": settings.get("agreement_version", 0)
+                if isinstance(settings.get("agreement_version", 0), int) else 0,
                 "server_beta_seen": bool(settings.get("server_beta_seen", False)),
                 "local_skin_warning_seen": [x for x in (settings.get("local_skin_warning_seen") or [])
                                             if isinstance(x, str)],
@@ -4297,6 +5795,21 @@ class API(ServerMixin):
             log_exception("get_forge_versions")
             return {"success": False, "error": str(exc) or "Forge versions could not be retrieved."}
 
+    def get_neoforge_versions(self, minecraft_version):
+        try:
+            versions = meta_cache.get_neoforge_versions(minecraft_version)
+            return {"success": True, "versions": versions}
+        except Exception as exc:
+            log_exception("get_neoforge_versions")
+            return {"success": False, "error": str(exc) or "NeoForge versions could not be retrieved."}
+
+    def get_neoforge_mc_versions(self):
+        try:
+            return {"success": True, "versions": meta_cache.get_neoforge_mc_versions()}
+        except Exception as exc:
+            log_exception("get_neoforge_mc_versions")
+            return {"success": False, "error": str(exc) or "NeoForge versions could not be retrieved."}
+
     def get_forge_mc_versions(self):
         try:
             return {"success": True, "versions": meta_cache.get_forge_mc_versions()}
@@ -4306,7 +5819,6 @@ class API(ServerMixin):
 
 
     def add_account(self, username):
-        """Adds an offline account."""
         try:
             username = (username or "").strip()
             if not username or len(username) > 16 or not re.match(r"^[A-Za-z0-9_]+$", username):
@@ -4364,8 +5876,6 @@ class API(ServerMixin):
 
 
     def start_minecraft_web_login(self):
-        """Opens Microsoft's sign-in page in a small window. When it redirects back with an
-        authorization code, the window closes and the code is turned into a Minecraft session."""
         try:
             import webview
         except ImportError:
@@ -4438,7 +5948,7 @@ class API(ServerMixin):
             if not code:
                 raise AuthError("Sign-in took too long. Try again.")
 
-            state["cancel"] = True                              # we're done with the window
+            state["cancel"] = True
             try:
                 win.destroy()
             except Exception:
@@ -4523,7 +6033,6 @@ class API(ServerMixin):
             return {"success": False, "error": f"Couldn't reset the skin: {exc}"}
 
     def set_cape(self, cape_id=None):
-        """Equips a cape, or hides the current one when cape_id is empty."""
         try:
             acc = self._skin_account()
             if cape_id:
@@ -4540,7 +6049,6 @@ class API(ServerMixin):
             log_exception("set_cape")
             return {"success": False, "error": f"Couldn't change the cape: {exc}"}
 
-    # ---------------- local skins for offline accounts (CustomSkinLoader) ----------------
     def _local_context(self, instance_name):
         accounts = accounts_store.read()
         acc = find_account(accounts, settings_store.read().get("active_account")) or (accounts[0] if accounts else None)
@@ -4557,8 +6065,6 @@ class API(ServerMixin):
         return username, meta
 
     def _csl_ensure(self, instance_name, meta) -> bool:
-        """Makes sure CustomSkinLoader is in the instance's mods folder, downloading it if needed.
-        Returns True when it had to be downloaded. Raises ValueError when it can't be."""
         if _csl_installed(instance_name):
             return False
         loader, mc = meta.get("loader"), meta.get("version")
@@ -4594,7 +6100,6 @@ class API(ServerMixin):
         return True
 
     def local_skin_targets(self):
-        """Instances that can use local skins (everything except vanilla)."""
         try:
             out = []
             for inst in list_instances():
@@ -4619,8 +6124,6 @@ class API(ServerMixin):
         return username
 
     def local_skin_plan(self):
-        """Which Fabric/Forge instances already have CustomSkinLoader, and which could
-        get it (CustomSkinLoader has a build for their Minecraft version) but don't."""
         try:
             installed, installable, total = [], [], 0
             support = {}
@@ -4638,7 +6141,7 @@ class API(ServerMixin):
                     try:
                         support[key] = bool(self._find_version(CSL_PROJECT, loader, inst.get("version")))
                     except Exception:
-                        support[key] = True            # can't tell offline; the install will report it
+                        support[key] = True
                 if support[key]:
                     installable.append({"name": name, "version": inst.get("version"), "loader": loader})
             return {"success": True, "total": total, "installed": installed, "installable": installable}
@@ -4647,7 +6150,6 @@ class API(ServerMixin):
             return {"success": False, "error": "Failed to list instances."}
 
     def local_skin_state(self):
-        """What the preview shows: the skin and cape found in the instances that have the mod."""
         try:
             username = self._offline_username()
             skin, cape = None, None
@@ -4687,10 +6189,6 @@ class API(ServerMixin):
             return {"success": False, "error": f"Couldn't install CustomSkinLoader: {exc}"}
 
     def _local_bulk(self, install, write, write_config=True):
-        """Runs `write(base, username)` for every Fabric/Forge instance that has CustomSkinLoader,
-        plus the ones listed in `install` (CustomSkinLoader is downloaded there first).
-        When write_config is set, an instance whose CustomSkinLoader.json doesn't exist yet
-        (the game has never run with the mod) is skipped with a message instead."""
         wanted = {n for n in (install or []) if isinstance(n, str)}
         results = []
         for inst in list_instances():
@@ -4726,8 +6224,6 @@ class API(ServerMixin):
         return {"success": any(r["ok"] for r in results), "results": results}
 
     def local_set_skin(self, image, install=None):
-        """Applies the skin to every instance that has CustomSkinLoader (and the ones in
-        `install`, which get the mod first)."""
         try:
             png = decode_png_uri(image)
 
@@ -4755,7 +6251,6 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't load that cape."}
 
     def local_set_cape(self, cape_id=None, install=None):
-        """Equips a Mojang cape (or removes it) on every instance that has CustomSkinLoader."""
         try:
             cape, data = None, None
             if cape_id:
@@ -4787,7 +6282,6 @@ class API(ServerMixin):
             return {"success": False, "error": f"Couldn't set the cape: {exc}"}
 
     def local_reset(self):
-        """Removes the local skin and cape from every instance that has CustomSkinLoader."""
         try:
             def write(base, username):
                 (base / "skins" / f"{username}.png").unlink(missing_ok=True)
@@ -4799,7 +6293,6 @@ class API(ServerMixin):
             return {"success": False, "error": f"Couldn't reset the local skin: {exc}"}
 
     def lookup_player_skin(self, name):
-        """Fetches any player's current skin through Mojang's public API."""
         try:
             name = (name or "").strip()
             if not re.match(r"^[A-Za-z0-9_]{1,16}$", name):
@@ -4827,7 +6320,7 @@ class API(ServerMixin):
             (SKINS_DIR / f"{skin_id}.png").write_bytes(png)
             entry = {"id": skin_id, "name": name,
                      "variant": "slim" if variant == "slim" else "classic", "created": time.time()}
-            if isinstance(source, str) and _catalog_url_ok(source):
+            if isinstance(source, str) and _skin_url_ok(source):
                 entry["source"] = source
             skins_index.update(lambda idx: idx.append(entry))
             return {"success": True, "skins": list_saved_skins()}
@@ -4838,7 +6331,6 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't save the skin."}
 
     def catalog_all(self, force=False):
-        """Every skin in the online catalog, sorted by name."""
         try:
             def load():
                 skins = _catalog_tree()
@@ -4851,10 +6343,24 @@ class API(ServerMixin):
             log_exception("catalog_all")
             return {"success": False, "error": _catalog_error(exc)}
 
-    def catalog_fetch_skin(self, url):
-        """Downloads one catalog skin and returns it as a validated PNG data: URI."""
+    def catalog_laby(self, offset=0, order="most_used", force=False, size=10, search="", model="all"):
         try:
-            if not _catalog_url_ok(url):
+            offset = max(0, int(offset or 0))
+            order = order if order in LABY_ORDERS else "most_used"
+            size = min(LABY_PAGE_SIZE, max(1, int(size or 10)))
+            search = str(search or "").strip()[:80]
+            model = model if model in ("all", "slim", "classic") else "all"
+            key = f"laby:{order}:{model}:{size}:{offset}:{search.casefold()}"
+            skins, more = _catalog_cached(
+                key, lambda: _laby_fetch_page(offset, size, order, search, bool(force), model), bool(force))
+            return {"success": True, "skins": skins, "has_more": more, "next_offset": offset + size}
+        except Exception as exc:
+            log_exception("catalog_laby")
+            return {"success": False, "error": _laby_error(exc)}
+
+    def catalog_fetch_skin(self, url):
+        try:
+            if not _skin_url_ok(url):
                 return {"success": False, "error": "That isn't a catalog skin."}
             req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
             with urllib.request.urlopen(req, timeout=20) as resp:
@@ -4896,6 +6402,32 @@ class API(ServerMixin):
             log_exception("get_instance_content")
             return {"success": False, "error": "Couldn't read the folder."}
 
+    def delete_instance_content(self, instance_name, kind, filename):
+        try:
+            if kind not in ("mods", "resourcepacks", "shaderpacks"):
+                return {"success": False, "error": "Unknown content type."}
+            if not read_instance_meta(instance_name):
+                return {"success": False, "error": "Instance not found."}
+            with self._proc_lock:
+                running = instance_name in self._processes
+            if running:
+                return {"success": False, "error": "Close the game first - its files are in use."}
+            folder = _content_folder(instance_name, kind)
+            name = Path(str(filename or "")).name
+            path = folder / name
+            if not name or not (path.exists() or path.is_symlink()) or not is_within(folder, path) or path == folder:
+                return {"success": False, "error": "That file no longer exists."}
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path)
+            else:
+                path.unlink()
+            return {"success": True}
+        except PermissionError:
+            return {"success": False, "error": "Couldn't delete it - another program is using the file."}
+        except Exception:
+            log_exception("delete_instance_content")
+            return {"success": False, "error": "Couldn't delete that file."}
+
     def get_content_icon(self, instance_name, kind, filename):
         try:
             return {"success": True, "icon": read_content_icon(instance_name, kind, filename)}
@@ -4909,7 +6441,7 @@ class API(ServerMixin):
             "name": name,
             "version": version,
             "loader": loader,
-            "loader_version": loader_version if loader in ("fabric", "forge") else None,
+            "loader_version": loader_version if loader in MOD_LOADERS else None,
             "installed": False,
             "schema": INSTALL_SCHEMA,
             "main_class": None,
@@ -4926,7 +6458,6 @@ class API(ServerMixin):
         return meta
 
     def _critclient_versions(self) -> dict:
-        """{"fabric": {mc_version: jar_name}, "forge": {...}} from Crit's versions.json."""
         data = http_get_json(CRIT_CLIENT_VERSIONS_URL, timeout=15, retries=1)
         out = {}
         if not isinstance(data, dict):
@@ -4945,7 +6476,6 @@ class API(ServerMixin):
         return out
 
     def get_critclient_info(self):
-        """Which Minecraft versions Crit Client exists for, per loader."""
         try:
             versions = self._critclient_versions()
             if not versions:
@@ -4955,9 +6485,19 @@ class API(ServerMixin):
             log_exception("get_critclient_info")
             return {"success": False, "error": "Couldn't reach the Crit Client server to check supported versions."}
 
+    def get_horizon_mc_versions(self):
+        """The Minecraft versions a new Horizon instance can use (a build supports exactly one)."""
+        try:
+            manifest = meta_cache.get_manifest()
+            supported = [v["id"] for v in manifest.get("versions", [])
+                         if v.get("type") == "release" and v.get("id") == HORIZON_MC_VERSION]
+            return {"success": True, "versions": supported, "minecraft": HORIZON_MC_VERSION}
+        except Exception:
+            log_exception("get_horizon_mc_versions")
+            return {"success": True, "versions": [HORIZON_MC_VERSION],
+                    "minecraft": HORIZON_MC_VERSION}
+
     def create_instance(self, version, loader, loader_version, instance_name, critclient=False):
-        """Creates the instance record. Nothing is downloaded until the instance is
-        first launched, except Crit Client and its mods when that's requested."""
         try:
             name = sanitize_instance_name(instance_name)
         except ValueError as exc:
@@ -4967,8 +6507,27 @@ class API(ServerMixin):
             return {"success": False, "error": "Instance already exists."}
         if not version:
             return {"success": False, "error": "Select a Minecraft version."}
-        if loader in ("fabric", "forge") and not loader_version:
-            return {"success": False, "error": f"Select a {loader.capitalize()} version."}
+        if loader in MOD_LOADERS and not loader_version:
+            return {"success": False, "error": f"Select a {LOADER_NICE[loader]} version."}
+
+        if loader == "horizon":
+            
+            
+            if critclient:
+                return {"success": False, "error": "Crit Client needs Fabric or Forge."}
+            if version != HORIZON_MC_VERSION:
+                return {"success": False,
+                        "error": f"Horizon only supports Minecraft {HORIZON_MC_VERSION}."}
+            try:
+                self._make_instance(name, HORIZON_MC_VERSION, "horizon", None)
+            except Exception as exc:
+                log_exception("create_instance (horizon)")
+                return {"success": False, "error": f"Failed to create instance: {exc}"}
+            with self._proc_lock:
+                self._installing.add(name)
+            threading.Thread(target=self._horizon_worker, args=(name,), daemon=True).start()
+            self.push_state()
+            return {"success": True}
 
         jar_name = None
         if critclient:
@@ -5005,8 +6564,39 @@ class API(ServerMixin):
             log_exception("scan_import_sources")
             return {"success": False, "error": "Couldn't scan for other launchers."}
 
+    def pick_import_folder(self):
+        try:
+            import webview
+            if self._window is None:
+                return {"success": False, "error": "The window isn't ready yet."}
+            dialog_type = webview.FileDialog.FOLDER if hasattr(webview, "FileDialog") else webview.FOLDER_DIALOG
+            result = self._window.create_file_dialog(dialog_type)
+            if not result:
+                return {"success": True, "path": None}
+            path = Path(result[0] if isinstance(result, (list, tuple)) else result)
+            return {"success": True, "path": str(path), "guess": _guess_launcher_for_dir(path)}
+        except Exception:
+            log_exception("pick_import_folder")
+            return {"success": False, "error": "Couldn't open the folder picker."}
+
+    def scan_custom_import_dir(self, launcher, path):
+        try:
+            root = Path(path)
+            if not root.is_dir():
+                return {"success": False, "error": "That folder doesn't exist."}
+            if launcher not in _LAUNCHER_SCANNERS:
+                return {"success": False, "error": "Pick which launcher this folder belongs to."}
+            src = scan_custom_launcher_dir(launcher, root)
+            if not src["instances"]:
+                return {"success": False,
+                        "error": f"No {LAUNCHER_LABELS[launcher]} instances were found in that folder. "
+                                 "Make sure it's the launcher's root folder."}
+            return {"success": True, "source": src}
+        except Exception:
+            log_exception("scan_custom_import_dir")
+            return {"success": False, "error": "Couldn't scan that folder."}
+
     def get_import_targets(self):
-        """Existing instances that could be used as a copy-into destination."""
         try:
             return {"success": True, "instances": [
                 {"name": i["name"], "version": i["version"], "loader": i.get("loader", "vanilla"),
@@ -5016,12 +6606,10 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't list instances."}
 
     def import_launcher_instance(self, launcher, source_id, dest_name, existing, copy_options, copy_mods, copy_resourcepacks, copy_saves=False, copy_config=False,
-                                copy_shaderpacks=False, copy_schematics=False, copy_screenshots=False):
-        """Copies options/mods/resourcepacks/saves/config/shaderpacks/schematics/screenshots from another launcher's
-        instance into a new or existing Crit Launcher instance. Never downloads the
-        version itself - the normal installer does that the next time it's played."""
+                                copy_shaderpacks=False, copy_schematics=False, copy_screenshots=False,
+                                custom_root=None):
         try:
-            inst, root = _find_scanned_instance(launcher, source_id)
+            inst, root = _find_scanned_instance(launcher, source_id, custom_root)
             if not inst:
                 return {"success": False, "error": "That instance couldn't be found anymore. Try rescanning."}
             if existing:
@@ -5059,7 +6647,7 @@ class API(ServerMixin):
                        copy_shaderpacks=False, copy_schematics=False, copy_screenshots=False):
         try:
             self.emit("importStarted", {"instance": dest_name})
-            supported = inst["loader"] in ("vanilla", "fabric", "forge")
+            supported = inst["loader"] == "vanilla" or inst["loader"] in MOD_LOADERS
             dest_loader = inst["loader"] if supported else "vanilla"
             if not into_existing:
                 self._make_instance(dest_name, inst["version"], dest_loader,
@@ -5087,13 +6675,13 @@ class API(ServerMixin):
                             copied[key] = True
                         except OSError:
                             log_exception(f"copying {fname}")
-            if copy_mods and inst["loader"] in ("fabric", "forge") and mods_dir:
+            if copy_mods and inst["loader"] in MOD_LOADERS and mods_dir:
                 copied["mods"] = _copy_tree_contents(mods_dir, instance_mods_dir(dest_name))
             if copy_resourcepacks and packs_dir:
                 copied["resourcepacks"] = _copy_tree_contents(packs_dir, game_dir / "resourcepacks")
             if copy_saves and saves_dir:
                 copied["saves"] = _copy_tree_contents(saves_dir, game_dir / "saves")
-            if copy_config and inst["loader"] in ("fabric", "forge") and config_dir:
+            if copy_config and inst["loader"] in MOD_LOADERS and config_dir:
                 copied["config"] = _copy_tree_contents(config_dir, instance_config_dir(dest_name))
             if copy_shaderpacks and shaders_dir:
                 copied["shaderpacks"] = _copy_tree_contents(shaders_dir, game_dir / "shaderpacks")
@@ -5149,13 +6737,73 @@ class API(ServerMixin):
         try:
             if not read_instance_meta(instance_name):
                 return {"success": False, "error": "Instance not found."}
-            icon_key = icon_key if icon_key in INSTANCE_ICONS else None
+            custom_icon = custom_instance_icon_path(icon_key)
+            if icon_key not in INSTANCE_ICONS and not (custom_icon and custom_icon.is_file()):
+                return {"success": False, "error": "Choose a valid icon."}
             update_instance_meta(instance_name, lambda m: m.__setitem__("icon", icon_key))
             self.push_state()
             return {"success": True}
         except Exception:
             log_exception("set_instance_icon")
             return {"success": False, "error": "Couldn't change the icon."}
+
+    def add_custom_instance_icon(self, image_data, file_name):
+        try:
+            prefix = "data:image/png;base64,"
+            if not isinstance(image_data, str) or not image_data.startswith(prefix):
+                return {"success": False, "error": "The icon image must be a PNG."}
+            encoded = image_data[len(prefix):]
+            if len(encoded) > 28 * 1024 * 1024:
+                return {"success": False, "error": "That image is too large (max 20 MB)."}
+            try:
+                image = base64.b64decode(encoded, validate=True)
+            except (ValueError, base64.binascii.Error):
+                return {"success": False, "error": "That image couldn't be read."}
+            if len(image) > 20 * 1024 * 1024 or not image.startswith(b"\x89PNG\r\n\x1a\n"):
+                return {"success": False, "error": "That image isn't a valid PNG."}
+            base_name = str(file_name or "").replace("\\", "/").rsplit("/", 1)[-1]
+            base_name = base_name.rsplit(".", 1)[0] if "." in base_name else base_name
+            base_name = sanitize_custom_icon_name(base_name)
+            used_names = {
+                path.stem if path.suffix.lower() == ".png" else path.name
+                for path in INSTANCE_ICONS_DIR.iterdir() if path.is_file()
+            }
+            used_names = {name.casefold() for name in used_names}
+            icon_name = base_name
+            suffix = 2
+            while icon_name.casefold() in used_names:
+                suffix_text = f" ({suffix})"
+                icon_name = f"{base_name[:100 - len(suffix_text)].rstrip(' .')}{suffix_text}"
+                suffix += 1
+            icon_path = INSTANCE_ICONS_DIR / icon_name
+            temp_path = INSTANCE_ICONS_DIR / f".{uuid.uuid4().hex}.tmp"
+            try:
+                temp_path.write_bytes(image)
+                os.replace(temp_path, icon_path)
+            finally:
+                if temp_path.exists():
+                    temp_path.unlink()
+            self.push_state()
+            return {"success": True, "key": f"custom:{icon_name}", "name": icon_name}
+        except Exception:
+            log_exception("add_custom_instance_icon")
+            return {"success": False, "error": "Couldn't save the custom icon."}
+
+    def delete_custom_instance_icon(self, icon_key):
+        try:
+            icon_path = custom_instance_icon_path(icon_key)
+            if not icon_path or not icon_path.is_file():
+                return {"success": False, "error": "Custom icon not found."}
+            for meta in list_instances():
+                if meta.get("icon") == icon_key:
+                    if not update_instance_meta(meta["name"], lambda m: m.__setitem__("icon", None)):
+                        return {"success": False, "error": "Couldn't clear an instance using this icon."}
+            icon_path.unlink()
+            self.push_state()
+            return {"success": True}
+        except Exception:
+            log_exception("delete_custom_instance_icon")
+            return {"success": False, "error": "Couldn't delete the custom icon."}
 
     def rename_instance(self, old_name, new_name):
         try:
@@ -5189,7 +6837,6 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't rename the instance."}
 
     def get_disk_usage(self, kind):
-        """{name: bytes} for every instance or server folder."""
         try:
             root = INSTANCES_DIR if kind == "instances" else SERVERS_DIR
             out = {}
@@ -5220,8 +6867,6 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't read the screenshots folder."}
 
     def get_screenshot_image(self, instance_name, filename):
-        """Returns one screenshot as a data: URI. The page can't load file:// URLs,
-        so the gallery asks for each image through here as it scrolls into view."""
         try:
             folder = instance_game_dir(instance_name) / "screenshots"
             path = folder / Path(filename).name
@@ -5237,8 +6882,135 @@ class API(ServerMixin):
             log_exception("get_screenshot_image")
             return {"success": False, "error": "Couldn't read that screenshot."}
 
+    def get_mc_news(self, force=False):
+        try:
+            now = time.time()
+            if not force and _mc_news_mem["value"] is not None and now - _mc_news_mem["at"] < 900:
+                return {"success": True, "items": _mc_news_mem["value"]}
+            data = None
+            for url in (MC_NEWS_HOST + "/v2/news.json", MC_NEWS_HOST + "/news.json"):
+                try:
+                    data = http_get_json(url, timeout=15, retries=1)
+                    break
+                except Exception:
+                    log_exception("get_mc_news " + url)
+            if not isinstance(data, dict):
+                data = {}
+
+            def absolute(u):
+                if not isinstance(u, str) or not u:
+                    return None
+                if u.startswith(("http://", "https://")):
+                    return u
+                return MC_NEWS_HOST + (u if u.startswith("/") else "/" + u)
+
+            items = []
+            for e in (data.get("entries") or []):
+                if not isinstance(e, dict):
+                    continue
+                title = str(e.get("title") or "").strip()
+                if not title:
+                    continue
+                img = e.get("newsPageImage") or e.get("playPageImage") or {}
+                raw = img.get("url") if isinstance(img, dict) else None
+                image, alt = absolute(raw), None
+                if isinstance(raw, str) and raw.startswith("/") and not raw.startswith("/v2/"):
+                    alt = MC_NEWS_HOST + "/v2" + raw
+                link = e.get("readMoreLink")
+                items.append({"title": title, "date": str(e.get("date") or "")[:25], "image": image,
+                              "image_alt": alt,
+                              "link": link if isinstance(link, str) and link.startswith(("https://", "http://")) else None})
+            for a in (data.get("article_grid") or []):
+                if not isinstance(a, dict):
+                    continue
+                tile = a.get("default_tile") or {}
+                title = str(tile.get("title") or "").strip()
+                if not title:
+                    continue
+                raw = ((tile.get("image") or {}).get("imageURL"))
+                link = a.get("articleURL")
+                if isinstance(link, str) and link.startswith("/"):
+                    link = "https://www.minecraft.net" + link
+                items.append({"title": title, "date": str(a.get("publish_date") or "")[:25],
+                              "image": absolute(raw) if not (isinstance(raw, str) and raw.startswith("/")) else "https://www.minecraft.net" + raw,
+                              "image_alt": None,
+                              "link": link if isinstance(link, str) and link.startswith(("https://", "http://")) else None})
+            if not items:
+                try:
+                    pn = http_get_json(MC_NEWS_HOST + "/v2/javaPatchNotes.json", timeout=15, retries=1)
+                    for e in (pn.get("entries") or []):
+                        if not isinstance(e, dict):
+                            continue
+                        title = str(e.get("title") or "").strip() or ("Minecraft " + str(e.get("version") or "").strip())
+                        img = e.get("image") if isinstance(e.get("image"), dict) else {}
+                        raw = img.get("url")
+                        items.append({"title": title, "date": str(e.get("date") or "")[:25], "image": absolute(raw),
+                                      "image_alt": (MC_NEWS_HOST + "/v2" + raw) if isinstance(raw, str) and raw.startswith("/") and not raw.startswith("/v2/") else None,
+                                      "link": None})
+                except Exception:
+                    log_exception("get_mc_news patch notes")
+            items.sort(key=lambda x: x["date"], reverse=True)
+            items = items[:12]
+            if not items:
+                raise RuntimeError("news feed was empty")
+            _mc_news_mem["at"], _mc_news_mem["value"] = now, items
+            return {"success": True, "items": items}
+        except Exception:
+            log_exception("get_mc_news")
+            if _mc_news_mem["value"]:
+                return {"success": True, "items": _mc_news_mem["value"], "cached": True}
+            return {"success": False, "error": "Couldn't load the Minecraft news. Check your connection."}
+
+    def get_public_servers(self, force=False):
+        try:
+            now = time.time()
+            if not force and _pub_servers_mem["value"] is not None and now - _pub_servers_mem["at"] < 600:
+                return {"success": True, "servers": _pub_servers_mem["value"]}
+
+            def version_info(v):
+                nums = re.findall(r"\d+\.\d+(?:\.\d+)?", str(v or ""))
+                if not nums:
+                    return "", "", str(v or "")[:24]
+                key = lambda x: tuple(int(p) for p in x.split("."))
+                lo, hi = min(nums, key=key), max(nums, key=key)
+                return lo, hi, (lo if lo == hi else f"{lo} - {hi}")
+
+            def probe(entry):
+                host, name, region, tags, offline, featured = entry
+                try:
+                    d = http_get_json("https://api.mcsrvstat.us/3/" + urllib.parse.quote(host), timeout=10, retries=0)
+                except Exception:
+                    return None
+                if not isinstance(d, dict) or not d.get("online"):
+                    return None
+                players = d.get("players") if isinstance(d.get("players"), dict) else {}
+                version = d.get("version")
+                if isinstance(version, list):
+                    version = version[0] if version else ""
+                vmin, vmax, label = version_info(version)
+                icon = d.get("icon")
+                motd = d.get("motd") if isinstance(d.get("motd"), dict) else {}
+                lines = [str(x).strip()[:90] for x in (motd.get("clean") or []) if str(x).strip()][:2]
+                return {"host": host, "name": name, "region": region, "tags": list(tags),
+                        "offline": bool(offline), "featured": bool(featured),
+                        "online": int(players.get("online") or 0), "max": int(players.get("max") or 0),
+                        "version": label, "vmin": vmin, "vmax": vmax, "motd": lines,
+                        "icon": icon if isinstance(icon, str) and icon.startswith("data:image/") else None}
+
+            with ThreadPoolExecutor(max_workers=10) as ex:
+                found = [r for r in ex.map(probe, PUBLIC_SERVERS) if r]
+            found.sort(key=lambda s: s["online"], reverse=True)
+            if not found:
+                raise RuntimeError("no server answered")
+            _pub_servers_mem["at"], _pub_servers_mem["value"] = now, found
+            return {"success": True, "servers": found}
+        except Exception:
+            log_exception("get_public_servers")
+            if _pub_servers_mem["value"]:
+                return {"success": True, "servers": _pub_servers_mem["value"], "cached": True}
+            return {"success": False, "error": "Couldn't reach the server list."}
+
     def get_changelog(self, force=False):
-        """Changelog of the latest GitHub release: the changelog.txt asset, or the release notes."""
         try:
             now = time.time()
             if not force and _changelog_mem["value"] and now - _changelog_mem["at"] < 600:
@@ -5284,7 +7056,6 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't load the changelog. Check your connection."}
 
     def check_for_updates(self, force=False):
-        """Compares APP_VERSION with the latest GitHub release."""
         try:
             res = self.get_changelog(bool(force))
             if not res.get("success"):
@@ -5299,7 +7070,6 @@ class API(ServerMixin):
             return {"success": False, "error": "Couldn't check for updates."}
 
     def mute_updates(self):
-        """'Don't remind me': stays quiet until the launcher is updated (APP_VERSION changes)."""
         try:
             settings_store.update(lambda st: st.__setitem__("update_muted_at", APP_VERSION))
             return {"success": True}
@@ -5340,8 +7110,17 @@ class API(ServerMixin):
             log_exception("update")
             self.emit("updateError", {"message": "Couldn't download the update. Check your connection and try again."})
 
+    def quit_app(self):
+        """Close Crit Launcher (used when the first-run agreement is declined)."""
+        try:
+            if self._window is not None:
+                self._window.destroy()
+            return {"success": True}
+        except Exception:
+            log_exception("quit_app")
+            return {"success": False, "error": "Couldn't close the launcher."}
+
     def open_url(self, url):
-        """Opens an https link in the user's default browser (used by the Discord button)."""
         try:
             import webbrowser
             if not isinstance(url, str) or not url.startswith(("https://", "http://", "mailto:")):
@@ -5352,8 +7131,66 @@ class API(ServerMixin):
             log_exception("open_url")
             return {"success": False}
 
+    def create_desktop_shortcut(self, instance_name, icon_data=None):
+        try:
+            if os.name != "nt":
+                return {"success": False, "error": "Desktop shortcuts are only supported on Windows."}
+            instance_name = sanitize_instance_name(instance_name)
+            if not read_instance_meta(instance_name):
+                return {"success": False, "error": "Instance not found."}
+
+            desktop = Path(os.environ.get("USERPROFILE", str(Path.home()))) / "Desktop"
+            if not desktop.is_dir():
+                desktop = Path.home() / "Desktop"
+            desktop.mkdir(parents=True, exist_ok=True)
+            shortcut_path = desktop / f"Crit Launcher - {instance_name}.lnk"
+            icon_dir = DATA_DIR / "shortcut_icons"
+            icon_dir.mkdir(parents=True, exist_ok=True)
+            icon_path = icon_dir / f"{instance_name}.ico"
+            if not isinstance(icon_data, str) or not icon_data.startswith("data:image/png;base64,"):
+                return {"success": False, "error": "Couldn't prepare the instance icon for the shortcut."}
+            raw_icon = base64.b64decode(icon_data.split(",", 1)[1], validate=True)
+            if not raw_icon or len(raw_icon) > 12 * 1024 * 1024:
+                return {"success": False, "error": "The instance icon is invalid or too large."}
+            from io import BytesIO
+            from PIL import Image
+            with Image.open(BytesIO(raw_icon)) as image:
+                image = image.convert("RGBA")
+                if image.width < 1 or image.height < 1 or image.width > 4096 or image.height > 4096:
+                    return {"success": False, "error": "The instance icon has invalid dimensions."}
+                image.save(icon_path, format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+
+            target = Path(sys.executable).resolve()
+            if getattr(sys, "frozen", False):
+                arguments = subprocess.list2cmdline(["--launch-instance", instance_name])
+            else:
+                arguments = subprocess.list2cmdline([
+                    str(Path(__file__).resolve()), "--launch-instance", instance_name
+                ])
+            def ps_quote(value):
+                return "'" + str(value).replace("'", "''") + "'"
+
+            script = (
+                "$wsh = New-Object -ComObject WScript.Shell; "
+                f"$link = $wsh.CreateShortcut({ps_quote(shortcut_path)}); "
+                f"$link.TargetPath = {ps_quote(target)}; "
+                f"$link.Arguments = {ps_quote(arguments)}; "
+                f"$link.WorkingDirectory = {ps_quote(APP_DIR)}; "
+                f"$link.IconLocation = {ps_quote(str(icon_path) + ',0')}; "
+                "$link.Save()"
+            )
+            encoded = base64.b64encode(script.encode("utf-16le")).decode("ascii")
+            subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
+                check=True, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                creationflags=CREATE_NO_WINDOW,
+            )
+            return {"success": True, "path": str(shortcut_path)}
+        except Exception as exc:
+            log_exception("create_desktop_shortcut")
+            return {"success": False, "error": f"Couldn't create a desktop shortcut: {exc}"}
+
     def open_instance_folder(self, instance_name):
-        """Opens <instance>/game - the folder with saves, resourcepacks, mods, options.txt..."""
         try:
             if not read_instance_meta(instance_name):
                 return {"success": False, "error": "Instance not found."}
@@ -5374,6 +7211,21 @@ class API(ServerMixin):
                 if instance_name in self._installing:
                     return {"success": False, "error": "Instance is currently installing."}
 
+            meta = read_instance_meta(instance_name)
+            if not meta:
+                return {"success": False, "error": "Instance not found."}
+            if meta.get("loader") == "horizon":
+                
+                saved = meta.get("horizon_resources")
+                if meta.get("horizon_prepared") and saved and Path(saved).is_dir():
+                    return self._do_horizon_launch(instance_name, meta)
+                with self._proc_lock:
+                    self._installing.add(instance_name)
+                self.push_state()
+                threading.Thread(target=self._horizon_worker, args=(instance_name, True),
+                                 daemon=True).start()
+                return {"success": True, "installing": True}
+
             accounts = accounts_store.read()
             settings = settings_store.read()
             active_account = find_account(accounts, settings.get("active_account"))
@@ -5385,10 +7237,6 @@ class API(ServerMixin):
                 active_account = ensure_fresh_account(active_account)
             except AuthError as exc:
                 return {"success": False, "error": str(exc)}
-
-            meta = read_instance_meta(instance_name)
-            if not meta:
-                return {"success": False, "error": "Instance not found."}
 
             needs_install = not is_installed(meta)
             if not needs_install:
@@ -5408,6 +7256,121 @@ class API(ServerMixin):
         except Exception:
             log_exception("launch")
             return {"success": False, "error": "Failed to launch Minecraft."}
+
+    def _horizon_worker(self, name, then_launch=False):
+        """Installs Horizon, Java and Minecraft, then prepares the game's resources for one instance."""
+        try:
+            self.emit("installStarted", {"instance": name,
+                                         "title": f"Setting up Horizon for {name}..."})
+            tracker = ProgressTracker(self.emit)
+            info = horizon_setup(name, tracker)
+            update_instance_meta(name, lambda m: m.update(info))
+            self.emit("installFinished", {"instance": name,
+                                          "message": f"Horizon is ready in {name}"})
+            self.push_state()
+            if then_launch:
+                meta = read_instance_meta(name) or {}
+                result = self._do_horizon_launch(name, meta)
+                if not result.get("success"):
+                    self.emit("launchError", {"instance": name,
+                                              "message": result.get("error", "Failed to launch.")})
+        except Exception as exc:
+            log_exception("horizon setup failed")
+            self.emit("installError", {"message": f"Horizon setup failed: {exc}"})
+        finally:
+            with self._proc_lock:
+                self._installing.discard(name)
+            self.push_state()
+
+    def _horizon_session(self, instance_name, account):
+        data = {
+            "name": account["name"],
+            "uuid": account["uuid"].replace("-", ""),
+            "access_token": account["mc_token"],
+            "user_type": "msa",
+        }
+        if account.get("xuid"):
+            data["xuid"] = str(account["xuid"])
+        path = instance_dir(instance_name) / "horizon-session.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        if os.name == "posix":
+            os.chmod(path, 0o600)
+        return path
+
+    def _do_horizon_launch(self, instance_name, meta):
+        try:
+            saved_dir = meta.get("horizon_dir")
+            saved_resources = meta.get("horizon_resources")
+            vdir = Path(saved_dir) if saved_dir else Path()
+            resources = Path(saved_resources) if saved_resources else Path()
+            client = vdir / horizon_exe("horizon-client")
+            if not saved_dir or not saved_resources or not vdir.is_dir() \
+                    or not client.is_file() or not resources.is_dir():
+                return {"success": False,
+                        "error": "Horizon isn't set up yet. Press Play to finish installing it."}
+
+            ensure_game_layout(instance_name, "horizon")
+            game_dir = instance_game_dir(instance_name)
+            settings = settings_store.read()
+            accounts = accounts_store.read()
+            account = find_account(accounts, settings.get("active_account"))
+            if not account and accounts:
+                account = accounts[0]
+
+            if account and account.get("type") == "microsoft":
+                try:
+                    account = ensure_fresh_account(account)
+                except AuthError as exc:
+                    return {"success": False, "error": str(exc)}
+
+            cmd = [
+                str(client), "--resources", str(resources),
+                "--game-dir", str(game_dir), "--home", str(game_dir),
+            ]
+            is_microsoft_account = account and account.get("type") == "microsoft"
+            if account and not is_microsoft_account:
+                cmd += ["--name", str(account.get("name"))]
+            env = dict(os.environ)
+            env["HORIZON_HOME"] = str(game_dir)
+
+            log_path = instance_dir(instance_name) / "launch_output.log"
+            log_file = open(log_path, "wb")
+            session_path = None
+            try:
+                if is_microsoft_account:
+                    session_path = self._horizon_session(instance_name, account)
+                    cmd += ["--session-file", str(session_path)]
+                logging.info("Launching Horizon %s: %s", instance_name, " ".join(cmd)[:1000])
+                proc = subprocess.Popen(
+                    cmd, cwd=str(game_dir), stdin=subprocess.DEVNULL,
+                    stdout=log_file, stderr=subprocess.STDOUT, env=env,
+                    creationflags=CREATE_NO_WINDOW, shell=False,
+                )
+            except Exception:
+                log_file.close()
+                if session_path and session_path.is_file():
+                    try:
+                        session_path.unlink()
+                    except OSError:
+                        logging.exception("Couldn't remove Horizon session file after launch failure")
+                raise
+
+            started = time.time()
+            with self._proc_lock:
+                self._processes[instance_name] = proc
+                self._sessions[instance_name] = started
+
+            update_instance_meta(instance_name, lambda m: m.__setitem__("last_played", started))
+            threading.Thread(
+                target=self._watch_process,
+                args=(instance_name, proc, log_file, log_path, started),
+                daemon=True,
+            ).start()
+            self.push_state()
+            return {"success": True}
+        except Exception as exc:
+            log_exception("_do_horizon_launch")
+            return {"success": False, "error": f"Failed to start Horizon: {exc}"}
 
     def _launch_worker(self, instance_name, meta, account, needs_install):
         try:
@@ -5446,7 +7409,7 @@ class API(ServerMixin):
 
             settings = settings_store.read()
             memory_mb = int(settings.get("memory_mb", 2048))
-            command = build_launch_command(meta, account, memory_mb, console_java(java_path))
+            command = build_launch_command(meta, account, memory_mb, console_java(java_path), settings)
             game_dir = instance_game_dir(instance_name)
             ensure_game_layout(instance_name, meta.get("loader", "vanilla"))
 
@@ -5502,9 +7465,7 @@ class API(ServerMixin):
 
         if elapsed >= 1:
             try:
-                settings_store.update(
-                    lambda s: s.__setitem__("playtime_seconds",
-                                            int(s.get("playtime_seconds", 0)) + elapsed))
+                settings_store.update(lambda s: _bump_playtime(s, elapsed))
                 update_instance_meta(
                     instance_name,
                     lambda m: m.__setitem__("playtime", int(m.get("playtime", 0)) + elapsed))
@@ -5519,6 +7480,46 @@ class API(ServerMixin):
                 "message": f"{instance_name} closed unexpectedly (exit code {code}). {_explain_crash(tail)}",
             })
         self.push_state()
+
+    def get_instance_console(self, instance_name, offset=-1, session=None):
+        try:
+            name = sanitize_instance_name(instance_name)
+            log_path = instance_dir(name) / "launch_output.log"
+            with self._proc_lock:
+                running = name in self._processes
+                started = self._sessions.get(name)
+            cur_session = str(int(started * 1000)) if started else None
+            if not log_path.is_file():
+                return {"success": True, "text": "", "offset": 0, "reset": True,
+                        "running": running, "session": cur_session}
+            size = log_path.stat().st_size
+            try:
+                offset = int(offset)
+            except (TypeError, ValueError):
+                offset = -1
+            relaunched = cur_session is not None and cur_session != session and offset >= 0
+            reset = offset < 0 or offset > size or relaunched
+            if relaunched or offset > size:
+                offset = 0
+            elif offset < 0:
+                offset = max(0, size - CONSOLE_TAIL_BYTES)
+            with log_path.open("rb") as f:
+                f.seek(offset)
+                data = f.read(CONSOLE_CHUNK_BYTES)
+            if reset and offset > 0:
+                cut = data.find(b"\n")
+                if cut != -1:
+                    offset += cut + 1
+                    data = data[cut + 1:]
+            if running and offset + len(data) >= size and data and not data.endswith(b"\n"):
+                cut = data.rfind(b"\n")
+                data = data[:cut + 1] if cut != -1 else b""
+            return {"success": True, "text": data.decode("utf-8", errors="replace"),
+                    "offset": offset + len(data), "reset": reset,
+                    "running": running, "session": cur_session}
+        except Exception:
+            log_exception("get_instance_console")
+            return {"success": False, "error": "Couldn't read the console output."}
 
     def stop(self, instance_name):
         try:
@@ -5539,6 +7540,322 @@ class API(ServerMixin):
             return {"success": False, "error": "Failed to stop instance."}
 
 
+    def _window_hwnd(self):
+        import ctypes
+        from ctypes import wintypes
+        hwnd = 0
+        try:
+            hwnd = int(self._window.native.Handle.ToInt64())
+        except Exception:
+            pass
+        if not hwnd:
+            user32 = ctypes.windll.user32
+            user32.FindWindowW.restype = wintypes.HWND
+            user32.FindWindowW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
+            title = getattr(self._window, "title", None) or "Crit Launcher"
+            hwnd = user32.FindWindowW(None, title) or 0
+        return int(hwnd or 0)
+
+    def set_titlebar_theme(self, payload):
+        """Called by index.html whenever the colour mode / UI style changes (and once at startup).
+
+        payload = {"mode": "light|dark|oled", "dark": bool, "background": "#rrggbb", "text": "#rrggbb"}
+        """
+        if sys.platform != "win32":
+            return {"success": False, "error": "Title bar theming is Windows-only"}
+        try:
+            import ctypes
+            if self._window is None:
+                return {"success": False, "error": "Window not ready"}
+            hwnd = self._window_hwnd()
+            if not hwnd:
+                return {"success": False, "error": "Window handle not found"}
+
+            payload = payload or {}
+            dark = 1 if payload.get("dark") else 0
+            if _dwm_set_attr(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, dark) != 0:
+                _dwm_set_attr(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE_OLD, dark)
+
+            
+            bg = _colorref(payload.get("background") or "#0b0c0e")
+            fg = _colorref(payload.get("text") or "#e8eaed")
+            _dwm_set_attr(hwnd, DWMWA_CAPTION_COLOR, bg)
+            _dwm_set_attr(hwnd, DWMWA_BORDER_COLOR, bg)
+            _dwm_set_attr(hwnd, DWMWA_TEXT_COLOR, fg)
+
+            
+            ctypes.windll.user32.SetWindowPos(ctypes.c_void_p(hwnd), None, 0, 0, 0, 0, SWP_FLAGS)
+            return {"success": True}
+        except Exception as e:
+            log_exception("set_titlebar_theme")
+            return {"success": False, "error": str(e)}
+
+    def ensure_assets(self):
+        """index.html calls this when assets/<bg>.png isn't readable yet (first run, packaged exe)."""
+        try:
+            return ensure_home_assets()
+        except Exception:
+            log_exception("ensure_assets")
+            return {"success": False, "files": {}}
+
+    def ensure_mc_textures(self):
+        try:
+            return ensure_mc_textures()
+        except Exception:
+            log_exception("ensure_mc_textures")
+            return {"success": False, "files": {}}
+
+    def ensure_mc_panorama(self):
+        try:
+            return ensure_mc_panorama()
+        except Exception:
+            log_exception("ensure_mc_panorama")
+            return {"success": False}
+
+    def apply_saved_titlebar_theme(self):
+        """Theme the title bar from saved settings, so it is right before the page's JS has loaded."""
+        try:
+            st = settings_store.read()
+            mode = st.get("color_mode") if st.get("color_mode") in COLOR_MODES else "dark"
+            ui = st.get("ui_style")
+            style = ui if ui in ("modrinth", "fastclient", "sklauncher", "minecraft") else "default"
+            if style in ("fastclient", "sklauncher", "minecraft"):
+                mode = "dark"
+            bg, fg = TITLEBAR_FALLBACKS[(mode, style)]
+            self.set_titlebar_theme({"mode": mode, "dark": mode != "light",
+                                     "background": bg, "text": fg})
+        except Exception:
+            log_exception("apply_saved_titlebar_theme")
+
+    
+    
+    
+    def _install_frame_hook(self) -> bool:
+        if getattr(self, "_frame_proc", None) is not None:
+            return True
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        hwnd = self._window_hwnd()
+        if not hwnd:
+            return False
+
+        LRESULT = ctypes.c_ssize_t
+        WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+        is64 = ctypes.sizeof(ctypes.c_void_p) == 8
+        get_ptr = user32.GetWindowLongPtrW if is64 else user32.GetWindowLongW
+        set_ptr = user32.SetWindowLongPtrW if is64 else user32.SetWindowLongW
+        get_ptr.restype = ctypes.c_void_p
+        get_ptr.argtypes = [wintypes.HWND, ctypes.c_int]
+        set_ptr.restype = ctypes.c_void_p
+        set_ptr.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_void_p]
+        call = user32.CallWindowProcW
+        call.restype = LRESULT
+        call.argtypes = [ctypes.c_void_p, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+        is_zoomed = user32.IsZoomed
+        is_zoomed.argtypes = [wintypes.HWND]
+
+        old = get_ptr(hwnd, GWLP_WNDPROC)
+        if not old:
+            return False
+
+        def _frame_px(h):
+            
+            try:
+                user32.GetDpiForWindow.argtypes = [wintypes.HWND]
+                dpi = user32.GetDpiForWindow(h) or 96
+                return user32.GetSystemMetricsForDpi(33, dpi) + user32.GetSystemMetricsForDpi(92, dpi)
+            except Exception:
+                return user32.GetSystemMetrics(33) + user32.GetSystemMetrics(92)
+
+        def _proc(h, msg, wp, lp):
+            try:
+                if msg == WM_NCCALCSIZE and wp and not getattr(self, "_frame_disabled", False):
+                    params = ctypes.cast(lp, ctypes.POINTER(_NCCALCSIZE_PARAMS)).contents
+                    top = params.rgrc[0].top
+                    call(old, h, msg, wp, lp)             
+                    if is_zoomed(h):
+                        
+                        
+                        params.rgrc[0].top = top + _frame_px(h)
+                    else:
+                        params.rgrc[0].top = top          
+                    return 0                              
+                if msg == WM_NCDESTROY:
+                    set_ptr(h, GWLP_WNDPROC, old)
+            except Exception:
+                pass
+            return call(old, h, msg, wp, lp)
+
+        self._frame_proc = WNDPROC(_proc)                 
+        set_ptr(hwnd, GWLP_WNDPROC, ctypes.cast(self._frame_proc, ctypes.c_void_p))
+        _dwm_set_attr(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND)
+        user32.SetWindowPos(ctypes.c_void_p(hwnd), None, 0, 0, 0, 0, SWP_FLAGS)   
+        return True
+
+    def _frame_state(self) -> dict:
+        import ctypes
+        user32 = ctypes.windll.user32
+        user32.GetForegroundWindow.restype = ctypes.c_void_p
+        hwnd = self._window_hwnd()
+        return {"success": True, "maximized": bool(user32.IsZoomed(ctypes.c_void_p(hwnd))),
+                "active": (user32.GetForegroundWindow() or 0) == hwnd}
+
+    def _frame_geometry(self, hwnd):
+        import ctypes
+        from ctypes import wintypes
+        u = ctypes.WinDLL("user32")          
+        u.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+        u.GetClientRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+        u.ClientToScreen.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.POINT)]
+        u.GetParent.argtypes = [wintypes.HWND]
+        u.GetParent.restype = ctypes.c_void_p
+        u.IsWindowVisible.argtypes = [wintypes.HWND]
+        u.IsZoomed.argtypes = [wintypes.HWND]
+        u.EnumChildWindows.argtypes = [wintypes.HWND, ctypes.c_void_p, wintypes.LPARAM]
+        wr, cr, pt = wintypes.RECT(), wintypes.RECT(), wintypes.POINT(0, 0)
+        u.GetWindowRect(hwnd, ctypes.byref(wr))
+        u.GetClientRect(hwnd, ctypes.byref(cr))
+        u.ClientToScreen(hwnd, ctypes.byref(pt))
+        kids = []
+        Enum = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+        def _cb(child, _lp):
+            try:
+                if (u.GetParent(child) or 0) == hwnd and u.IsWindowVisible(child):
+                    r = wintypes.RECT()
+                    u.GetWindowRect(child, ctypes.byref(r))
+                    kids.append((int(child), r.left, r.top, r.right, r.bottom))
+            except Exception:
+                pass
+            return True
+
+        cb = Enum(_cb)
+        u.EnumChildWindows(hwnd, ctypes.cast(cb, ctypes.c_void_p), 0)
+        return {"window": (wr.left, wr.top, wr.right, wr.bottom), "client_origin": (pt.x, pt.y),
+                "client_size": (cr.right, cr.bottom), "maximized": bool(u.IsZoomed(hwnd)), "children": kids}
+
+    def _fit_children(self, hwnd) -> bool:
+        """Make sure the web view fills the whole client area (it must start at the client's top-left)."""
+        import ctypes
+        from ctypes import wintypes
+        g = self._frame_geometry(hwnd)
+        ox, oy = g["client_origin"]
+        cw, ch = g["client_size"]
+        u = ctypes.WinDLL("user32")
+        u.MoveWindow.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.BOOL]
+        moved = False
+        for kid, left, top, right, bottom in g["children"]:
+            if (right - left) < cw * 0.5:
+                continue
+            if left != ox or top != oy or (right - left) != cw or (bottom - top) != ch:
+                u.MoveWindow(kid, 0, 0, cw, ch, True)
+                moved = True
+        return moved
+
+    def _disable_frame_hook(self, hwnd):
+        import ctypes
+        self._frame_disabled = True
+        ctypes.windll.user32.SetWindowPos(ctypes.c_void_p(hwnd), None, 0, 0, 0, 0, SWP_FLAGS)  
+
+    def _verify_frame(self):
+        """After the caption is removed: log what the window looks like, fix the web view if it is
+        misplaced, and if the page still wouldn't start at the top, go back to the normal title bar
+        so the top bar is never cut off."""
+        try:
+            hwnd = self._window_hwnd()
+            if not hwnd or getattr(self, "_frame_disabled", False):
+                return
+            g = self._frame_geometry(hwnd)
+            logging.info("custom title bar geometry: %s", g)
+            if g["maximized"]:
+                return
+            if self._fit_children(hwnd):
+                g = self._frame_geometry(hwnd)
+                logging.info("custom title bar: web view was misplaced, resized it. now: %s", g)
+            if g["client_origin"][1] != g["window"][1]:
+                logging.warning("custom title bar: client area doesn't start at the window top, using the native bar")
+                self._disable_frame_hook(hwnd)
+                self.emit("customTitlebarOff")
+        except Exception:
+            log_exception("_verify_frame")
+
+    def enable_custom_titlebar(self):
+        """index.html calls this once at startup. Until it succeeds the native bar stays."""
+        if sys.platform != "win32" or self._window is None or getattr(self, "_frame_disabled", False):
+            return {"success": False}
+        try:
+            if settings_store.read().get("native_titlebar"):      
+                return {"success": False}
+            if not self._install_frame_hook():
+                return {"success": False}
+            threading.Timer(0.7, self._verify_frame).start()
+            return self._frame_state()
+        except Exception:
+            log_exception("enable_custom_titlebar")
+            return {"success": False}
+
+    def get_window_state(self):
+        try:
+            return self._frame_state()
+        except Exception:
+            return {"success": False}
+
+    def window_control(self, action):
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            hwnd = ctypes.c_void_p(self._window_hwnd())
+            if action == "minimize":
+                user32.ShowWindow(hwnd, SW_MINIMIZE)
+            elif action in ("maximize", "restore"):
+                user32.ShowWindow(hwnd, SW_RESTORE if user32.IsZoomed(hwnd) else SW_MAXIMIZE)
+            elif action == "close":
+                user32.PostMessageW(hwnd, WM_CLOSE, 0, 0)     
+            else:
+                return {"success": False}
+            return {"success": True}
+        except Exception:
+            log_exception("window_control")
+            return {"success": False}
+
+    def window_drag(self):
+        """Hand the drag to Windows itself, so snapping, maximize-on-drag and restore-on-drag all work.
+
+        The web view owns the mouse capture, and only the window's own UI thread can take it over,
+        so the move is started on that thread (not on the js-api worker thread)."""
+        try:
+            import ctypes
+            from ctypes import wintypes
+            user32 = ctypes.windll.user32
+            if not (user32.GetAsyncKeyState(0x01) & 0x8000):   
+                return {"success": False}
+            hwnd = self._window_hwnd()
+            if not hwnd:
+                return {"success": False}
+            pt = wintypes.POINT()
+            user32.GetCursorPos(ctypes.byref(pt))
+            lparam = ((pt.y & 0xFFFF) << 16) | (pt.x & 0xFFFF)
+
+            def _start():
+                try:
+                    user32.ReleaseCapture()
+                    user32.SendMessageW(ctypes.c_void_p(hwnd), WM_NCLBUTTONDOWN, HTCAPTION, lparam)
+                except Exception:
+                    log_exception("window_drag (ui thread)")
+
+            try:
+                from System import Action
+                self._window.native.BeginInvoke(Action(_start))   
+            except Exception:
+                log_exception("window_drag: UI-thread invoke unavailable, falling back")
+                user32.ReleaseCapture()
+                user32.PostMessageW(ctypes.c_void_p(hwnd), WM_NCLBUTTONDOWN, HTCAPTION, lparam)
+            return {"success": True}
+        except Exception:
+            log_exception("window_drag")
+            return {"success": False}
+
     def save_settings(self, patch: dict):
         try:
             def _apply(settings):
@@ -5550,12 +7867,53 @@ class API(ServerMixin):
                         pass
                 if "java_path" in patch:
                     settings["java_path"] = (patch["java_path"] or "").strip() or None
+                if "min_memory_mb" in patch:
+                    try:
+                        mm = int(patch["min_memory_mb"] or 0)
+                        settings["min_memory_mb"] = 0 if mm < 256 else min(mm, 32768)
+                    except (TypeError, ValueError):
+                        pass
+                if "jvm_args" in patch:
+                    settings["jvm_args"] = str(patch["jvm_args"] or "").strip()[:600]
+                for key in ("game_width", "game_height"):
+                    if key in patch:
+                        try:
+                            v = int(patch[key] or 0)
+                            settings[key] = 0 if v < 1 else max(240, min(v, 7680))
+                        except (TypeError, ValueError):
+                            pass
+                if "fullscreen" in patch:
+                    settings["fullscreen"] = bool(patch["fullscreen"])
+                if "custom_accent" in patch and _clean_hex(patch["custom_accent"], None):
+                    settings["custom_accent"] = _clean_hex(patch["custom_accent"])
+                if isinstance(patch.get("recent_accents"), list):
+                    settings["recent_accents"] = [_clean_hex(x) for x in patch["recent_accents"]
+                                                  if _clean_hex(x, None)][:10]
+                if "reduce_motion" in patch:
+                    settings["reduce_motion"] = bool(patch["reduce_motion"])
+                if "bg_pattern" in patch:
+                    settings["bg_pattern"] = bool(patch["bg_pattern"])
                 if "sidebar_collapsed" in patch:
                     settings["sidebar_collapsed"] = bool(patch["sidebar_collapsed"])
                 if patch.get("theme") in THEMES:
                     settings["theme"] = patch["theme"]
                 if patch.get("ui_style") in UI_STYLES:
                     settings["ui_style"] = patch["ui_style"]
+                if patch.get("addon_view") in ADDON_VIEWS:
+                    settings["addon_view"] = patch["addon_view"]
+                if "addon_instance" in patch:
+                    ai = patch["addon_instance"]
+                    settings["addon_instance"] = ai.strip()[:200] if isinstance(ai, str) and ai.strip() else None
+                if patch.get("color_mode") in COLOR_MODES:
+                    settings["color_mode"] = patch["color_mode"]
+                if patch.get("catalog_source") in CATALOG_SOURCES:
+                    settings["catalog_source"] = patch["catalog_source"]
+                if patch.get("addon_source") in ADDON_SOURCES:
+                    settings["addon_source"] = patch["addon_source"]
+                if "agreement_accepted" in patch:
+                    settings["agreement_accepted"] = bool(patch["agreement_accepted"])
+                if "agreement_version" in patch:
+                    settings["agreement_version"] = max(0, min(2, int(patch["agreement_version"])))
                 if "server_beta_seen" in patch:
                     settings["server_beta_seen"] = bool(patch["server_beta_seen"])
                 if isinstance(patch.get("local_skin_warning_seen"), list):
@@ -5569,23 +7927,82 @@ class API(ServerMixin):
             return {"success": False, "error": "Failed to save settings."}
 
 
-    def search_addons(self, query="", project_type="mod"):
+    def _search_curseforge(self, query, project_type, index, offset, limit, filters):
+        if project_type not in CF_CLASS_IDS:
+            return {"success": False, "error": "CurseForge has no data packs. Switch the source to Modrinth."}
+        try:
+            found = _cf_search(query, project_type, index, offset, limit, filters)
+            return {"success": True, "hits": found["hits"], "source": "curseforge",
+                    "total": int(found.get("total") or 0)}
+        except CurseForgeError as exc:
+            return {"success": False, "error": str(exc)}
+        except Exception:
+            log_exception("search_curseforge")
+            return {"success": False, "error": "Couldn't search CurseForge."}
+
+    def search_addons(self, query="", project_type="mod", index=None, offset=0, limit=30, filters=None,
+                      source="modrinth"):
+        if source == "curseforge":
+            try:
+                if project_type not in ADDON_TYPES:
+                    project_type = "mod"
+                if index not in ("relevance", "downloads", "follows", "newest", "updated"):
+                    index = "relevance" if query else "downloads"
+                off = max(0, int(offset or 0))
+                lim = max(1, min(int(limit or 30), 100))
+            except (TypeError, ValueError):
+                off, lim = 0, 30
+            return self._search_curseforge(query, project_type, index, off, lim, filters)
         try:
             if project_type not in ADDON_TYPES:
                 project_type = "mod"
+            if index not in ("relevance", "downloads", "follows", "newest", "updated"):
+                index = "relevance" if query else "downloads"
+            try:
+                offset = max(0, int(offset or 0))
+                limit = max(1, min(int(limit or 30), 100))
+            except (TypeError, ValueError):
+                offset, limit = 0, 30
             facets = [[f"project_type:{project_type}"]]
+            if isinstance(filters, dict):
+                ok = re.compile(r"^[A-Za-z0-9_.+\-]{1,40}$")
+                ver = filters.get("version")
+                if isinstance(ver, str) and ok.match(ver):
+                    facets.append([f"versions:{ver}"])
+                loaders = [x for x in (filters.get("loaders") or []) if isinstance(x, str) and ok.match(x)]
+                if loaders:
+                    facets.append([f"categories:{x}" for x in loaders])
+                for cat in (filters.get("categories") or [])[:12]:
+                    if isinstance(cat, str) and ok.match(cat):
+                        facets.append([f"categories:{cat}"])
             params = {
                 "query": query or "",
-                "limit": "30",
+                "limit": str(limit),
+                "offset": str(offset),
                 "facets": json.dumps(facets),
-                "index": "relevance" if query else "downloads",
+                "index": index,
             }
             url = f"{MODRINTH_API}/search?" + urllib.parse.urlencode(params)
             data = http_get_json(url)
-            return {"success": True, "hits": data.get("hits", [])}
+            return {"success": True, "hits": data.get("hits", []),
+                    "total": int(data.get("total_hits", 0) or 0), "source": "modrinth"}
         except Exception:
             log_exception("search_addons")
             return {"success": False, "error": "Failed to search Modrinth."}
+
+    def get_addon_categories(self):
+        try:
+            now = time.time()
+            if _addon_cats_mem["value"] and now - _addon_cats_mem["at"] < 86400:
+                return {"success": True, "categories": _addon_cats_mem["value"]}
+            data = http_get_json(f"{MODRINTH_API}/tag/category")
+            cats = [{"name": c.get("name"), "project_type": c.get("project_type"), "header": c.get("header")}
+                    for c in data if isinstance(c, dict) and c.get("name")]
+            _addon_cats_mem["at"], _addon_cats_mem["value"] = now, cats
+            return {"success": True, "categories": cats}
+        except Exception:
+            log_exception("get_addon_categories")
+            return {"success": False, "error": "Couldn't load categories."}
 
     def get_addon(self, project_id):
         try:
@@ -5596,12 +8013,11 @@ class API(ServerMixin):
             return {"success": False, "error": "Failed to load addon info."}
 
     def get_addon_targets(self, project_type="mod"):
-        """Instances an addon of this type can be installed into."""
         try:
             result = []
             for inst in list_instances():
                 loader = inst.get("loader", "vanilla")
-                if project_type == "mod" and loader not in ("fabric", "forge"):
+                if project_type == "mod" and loader not in MOD_LOADERS:
                     continue
                 if project_type == "shader" and loader != "fabric":
                     continue
@@ -5665,8 +8081,8 @@ class API(ServerMixin):
                 log_exception(f"dependency {pid} failed")
 
     def get_addon_dependencies(self, project_id, instance_name=None):
-        """Required dependencies for a mod, resolved for the given instance's
-        Minecraft version/loader when available."""
+        if isinstance(project_id, str) and project_id.startswith("cf:"):
+            return self._cf_addon_dependencies(project_id, instance_name)
         try:
             meta = read_instance_meta(instance_name) if instance_name else None
             mc_version = meta["version"] if meta else None
@@ -5692,7 +8108,68 @@ class API(ServerMixin):
             log_exception("get_addon_dependencies")
             return {"success": False, "error": "Couldn't load dependencies."}
 
+    def _cf_addon_dependencies(self, project_id, instance_name=None):
+        try:
+            meta = read_instance_meta(instance_name) if instance_name else None
+            mc_version = meta["version"] if meta else None
+            loader = meta.get("loader") if meta else None
+            mod_id = _cf_number(project_id)
+            files = _cf_get(f"/mods/{mod_id}/files", {"gameVersion": mc_version}) or []
+            if isinstance(files, dict):
+                files = files.get("data") or []
+            chosen = _cf_pick_file(files, mc_version, loader)
+            deps = []
+            for dep in _cf_dependencies(mod_id, chosen.get("id") if chosen else None):
+                dep_id = int(dep["modId"])
+                title, icon_url = f"CurseForge mod {dep_id}", None
+                try:
+                    proj = _cf_get(f"/mods/{dep_id}") or {}
+                    if isinstance(proj, dict):
+                        title = proj.get("name") or title
+                        logo = proj.get("logo") if isinstance(proj.get("logo"), dict) else {}
+                        icon_url = logo.get("thumbnailUrl") or logo.get("url")
+                except Exception:
+                    pass
+                deps.append({"project_id": f"cf:{dep_id}", "title": title, "icon_url": icon_url})
+            return {"success": True, "dependencies": deps}
+        except CurseForgeError as exc:
+            return {"success": False, "error": str(exc)}
+        except Exception:
+            log_exception("get_addon_dependencies curseforge")
+            return {"success": False, "error": "Couldn't load dependencies."}
+
+    def _install_curseforge(self, project_id, project_type, instance_name, include_deps):
+        try:
+            meta = read_instance_meta(instance_name)
+            if not meta:
+                return {"success": False, "error": "Instance not found."}
+            mc_version = meta["version"]
+            loader = meta.get("loader", "vanilla")
+            if project_type == "mod":
+                if loader not in MOD_LOADERS:
+                    return {"success": False,
+                            "error": f"{LOADER_NICE.get(loader, 'Vanilla')} instances can't run mods."}
+                dest_dir = instance_mods_dir(instance_name)
+            elif project_type == "resourcepack":
+                dest_dir = instance_game_dir(instance_name) / "resourcepacks"
+            elif project_type == "shader":
+                dest_dir = instance_game_dir(instance_name) / "shaderpacks"
+            else:
+                return {"success": False, "error": "CurseForge installs support mods, resource packs and shaders."}
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            files = curseforge_install_to(_cf_number(project_id), dest_dir, mc_version,
+                                          loader if project_type == "mod" else None,
+                                          set(), 0, bool(include_deps))
+            return {"success": True, "files": files}
+        except CurseForgeError as exc:
+            return {"success": False, "error": str(exc)}
+        except Exception as exc:
+            log_exception("install_curseforge")
+            return {"success": False, "error": f"Failed to install: {exc}"}
+
     def install_addon(self, project_id, project_type, instance_name, include_deps=True):
+        if isinstance(project_id, str) and project_id.startswith("cf:"):
+            return self._install_curseforge(project_id, project_type, instance_name, include_deps)
         try:
             meta = read_instance_meta(instance_name)
             if not meta:
@@ -5701,12 +8178,13 @@ class API(ServerMixin):
             loader = meta.get("loader", "vanilla")
 
             if project_type == "mod":
-                if loader not in ("fabric", "forge"):
-                    return {"success": False, "error": "Vanilla instances can't run mods."}
+                if loader not in MOD_LOADERS:
+                    return {"success": False,
+                            "error": f"{LOADER_NICE.get(loader, 'Vanilla')} instances can't run mods."}
                 version = self._find_version(project_id, loader, mc_version)
                 if not version:
                     return {"success": False,
-                            "error": f"No version of this mod supports {loader.capitalize()} {mc_version}."}
+                            "error": f"No version of this mod supports {LOADER_NICE.get(loader, loader)} {mc_version}."}
                 mods_dir = instance_mods_dir(instance_name)
                 mods_dir.mkdir(parents=True, exist_ok=True)
                 files: list = []
@@ -5741,8 +8219,6 @@ class API(ServerMixin):
             return {"success": False, "error": f"Failed to install: {exc}"}
 
     def _critclient_worker(self, name, mc_version, loader, jar_name):
-        """Downloads Crit Client's jar, then every supported performance mod (plus required
-        dependencies) that Modrinth has for this Minecraft version and loader."""
         try:
             self.emit("installStarted", {"instance": name, "title": f"Installing Crit Client into {name}..."})
             tracker = ProgressTracker(self.emit)
@@ -5799,8 +8275,144 @@ class API(ServerMixin):
             if self._addon_busy:
                 return {"success": False, "error": "Another addon install is already running."}
             self._addon_busy = True
-        threading.Thread(target=self._modpack_worker, args=(project_id,), daemon=True).start()
+        if isinstance(project_id, str) and project_id.startswith("cf:"):
+            threading.Thread(target=self._cf_modpack_worker, args=(project_id,), daemon=True).start()
+        else:
+            threading.Thread(target=self._modpack_worker, args=(project_id,), daemon=True).start()
         return {"success": True}
+
+    def _cf_modpack_worker(self, project_id):
+        """Install a CurseForge modpack: manifests list projectID/fileID pairs plus overrides."""
+        pack_path = work = None
+        try:
+            tracker = ProgressTracker(self.emit)
+            tracker.event = "addonProgress"
+            tracker.set_task("Fetching modpack", force=True)
+
+            mod_id = _cf_number(project_id)
+            project = _cf_get(f"/mods/{mod_id}") or {}
+            files = _cf_get(f"/mods/{mod_id}/files") or []
+            if isinstance(files, dict):
+                files = files.get("data") or []
+            files = [f for f in files if isinstance(f, dict) and not f.get("isServerPack")]
+            zips = [f for f in files if str(f.get("fileName") or "").lower().endswith(".zip")]
+            files = zips or files
+            files.sort(key=lambda f: str(f.get("fileDate") or ""), reverse=True)
+            releases = [f for f in files if int(f.get("releaseType") or 1) == 1]
+            pool = releases or files
+            if not pool:
+                raise RuntimeError("This modpack has no downloadable file.")
+            chosen = pool[0]
+
+            work = TMP_DIR / f"cf_pack_{mod_id}"
+            work.mkdir(parents=True, exist_ok=True)
+            tracker.reset(chosen.get("fileLength") or 1_000_000)
+            tracker.set_task("Downloading modpack", force=True)
+            pack_path = work / _cf_download_file(mod_id, chosen, work)
+
+            with zipfile.ZipFile(pack_path) as zf:
+                try:
+                    manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+                except KeyError:
+                    raise RuntimeError("That CurseForge pack is missing its manifest.json.")
+            mc = manifest.get("minecraft") or {}
+            mc_version = mc.get("version")
+            if not mc_version:
+                raise RuntimeError("This modpack doesn't say which Minecraft version it needs.")
+
+            loader, loader_version = "vanilla", None
+            for entry in (mc.get("modLoaders") or []):
+                if not isinstance(entry, dict) or not entry.get("primary"):
+                    continue
+                kind, _, ver = str(entry.get("id") or "").partition("-")
+                if kind == "fabric":
+                    loader, loader_version = "fabric", ver
+                elif kind == "forge":
+                    loader, loader_version = "forge", ver
+                elif kind == "neoforge":
+                    loader, loader_version = "neoforge", ver
+                elif kind in ("quilt", "liteloader"):
+                    raise RuntimeError(f"This modpack needs {kind.capitalize()}, which Crit Launcher doesn't support yet.")
+
+            name = unique_instance_name(manifest.get("name") or project.get("name") or "Modpack")
+            self._make_instance(name, mc_version, loader, loader_version)
+            game_dir = instance_game_dir(name)
+            mods_dir = game_dir / "mods"
+            mods_dir.mkdir(parents=True, exist_ok=True)
+
+            wanted = []
+            for item in (manifest.get("files") or []):
+                if not isinstance(item, dict) or item.get("required") is False:
+                    continue
+                pid, fid = item.get("projectID"), item.get("fileID")
+                if pid and fid:
+                    wanted.append((int(pid), int(fid)))
+
+            tracker.set_task("Resolving modpack files", force=True)
+
+            def _file_info(pair):
+                try:
+                    info = _cf_get(f"/mods/{pair[0]}/files/{pair[1]}") or {}
+                    return info if isinstance(info, dict) else None
+                except Exception:
+                    return None
+
+            infos = []
+            if wanted:
+                with ThreadPoolExecutor(max_workers=6) as pool_exec:
+                    for info in pool_exec.map(_file_info, wanted):
+                        if info:
+                            infos.append(info)
+
+            items = []
+            for info in infos:
+                fname = Path(str(info.get("fileName") or "")).name
+                url = info.get("downloadUrl")
+                if not fname or not isinstance(url, str) or not url.startswith("https://"):
+                    continue
+                if not is_within(mods_dir, mods_dir / fname):
+                    continue
+                items.append(({"path": fname, "url": url, "size": info.get("fileLength"),
+                               "sha1": _cf_file_sha1(info)}, mods_dir))
+
+            tracker.reset(sum(entry_weight(e) for e, _ in items) + 1)
+            tracker.set_task("Downloading modpack files", force=True)
+            download_all(items, tracker, workers=8)
+
+            tracker.set_task("Applying overrides", force=True)
+            with zipfile.ZipFile(pack_path) as zf:
+                for member in zf.namelist():
+                    for prefix in ("overrides/", "client-overrides/"):
+                        if not member.startswith(prefix):
+                            continue
+                        rel = member[len(prefix):]
+                        if not rel:
+                            break
+                        dest = game_dir / rel
+                        if not is_within(game_dir, dest):
+                            break
+                        if member.endswith("/"):
+                            dest.mkdir(parents=True, exist_ok=True)
+                        else:
+                            dest.parent.mkdir(parents=True, exist_ok=True)
+                            dest.write_bytes(zf.read(member))
+                        break
+
+            self.push_state()
+            self.emit("addonFinished", {"name": name})
+        except Exception as exc:
+            log_exception("curseforge modpack install failed")
+            self.emit("addonError", {"message": str(exc) or "Modpack install failed."})
+        finally:
+            try:
+                if pack_path:
+                    Path(pack_path).unlink(missing_ok=True)
+                if work:
+                    shutil.rmtree(work, ignore_errors=True)
+            except OSError:
+                pass
+            with self._proc_lock:
+                self._addon_busy = False
 
     def _modpack_worker(self, project_id):
         pack_path = None
@@ -5839,7 +8451,7 @@ class API(ServerMixin):
                 elif "forge" in deps:
                     loader, loader_version = "forge", deps["forge"]
                 elif "neoforge" in deps:
-                    raise RuntimeError("This modpack needs NeoForge, which Crit Launcher doesn't support yet.")
+                    loader, loader_version = "neoforge", deps["neoforge"]
                 elif "quilt-loader" in deps:
                     raise RuntimeError("This modpack needs Quilt, which Crit Launcher doesn't support yet.")
 
@@ -5896,12 +8508,27 @@ class API(ServerMixin):
                 self._addon_busy = False
 
 
-
 def main():
-    import webview                                               
+    if len(sys.argv) >= 3 and sys.argv[1] == "--launch-instance":
+        instance_name = " ".join(sys.argv[2:])
+        api = API()
+        result = api.launch(instance_name)
+        if not result.get("success"):
+            logging.error("Shortcut launch failed for %s: %s", instance_name, result.get("error"))
+            return 1
+        while True:
+            with api._proc_lock:
+                installing = instance_name in api._installing
+            if not installing:
+                break
+            time.sleep(0.25)
+        return 0
 
+    import webview
+
+    start_asset_download()
     api = API()
-    index_path = RESOURCE_DIR / "index.html"
+    index_path = prepare_page()
 
     window = webview.create_window(
         "Crit Launcher",
@@ -5923,8 +8550,16 @@ def main():
 
     window.events.closing += on_closing
 
+    def on_shown():
+        api.apply_saved_titlebar_theme()
+
+    try:
+        window.events.shown += on_shown
+    except Exception:
+        log_exception("hook shown event")
+
     webview.start(debug=False)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main() or 0)

@@ -41,7 +41,7 @@ the themes which aim to replicate other launchers are completely custom built, n
 first install the source code and add a icon to the folder
 then run
 ```
-pyinstaller --onefile --windowed --name crit --icon=icon.ico --add-data "background.png;." --add-data "index.html;." launcher.py
+pyinstaller --onefile --windowed --name crit --icon=icon.ico --add-data "index.html;." launcher.py
 ```
 setup:
 [innosetup](https://jrsoftware.org/isinfo.php)

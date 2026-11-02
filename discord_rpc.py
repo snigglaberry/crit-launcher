@@ -1,6 +1,3 @@
-# Crit Launcher Discord presence.
-# Python 3.9+, stdlib only. Talks Discord's local IPC protocol directly so there
-# is no dependency to install and nothing extra that can break a build.
 import json
 import os
 import socket
@@ -162,7 +159,6 @@ class Presence:
         while not self._stop.is_set():
             sock = self._connect()
             if self._stop.is_set():
-                # stopped while the connect was blocked; don't arm anything
                 try:
                     sock.close()
                 except (OSError, AttributeError):
@@ -176,7 +172,6 @@ class Presence:
                 backoff = min(backoff * 2, 30.0)
                 continue
             if self._stop.is_set():
-                # stopped during the handshake, so clear before leaving
                 self._clear_activity()
                 self._drop()
                 return

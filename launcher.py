@@ -40,7 +40,6 @@ def _app_dir() -> Path:
 RESOURCE_DIR = _resource_dir()
 APP_DIR = _app_dir()
 
-# the linux build keeps its launcher in src/../linux, so look one level up for helpers
 for _helper_dir in (APP_DIR, APP_DIR.parent):
     if (_helper_dir / "discord_rpc.py").is_file() and str(_helper_dir) not in sys.path:
         sys.path.insert(0, str(_helper_dir))
@@ -3676,7 +3675,6 @@ def _jwt_expired(token):
 
 def ensure_fresh_account(account: dict) -> dict:
     if account.get("type") == "ely":
-        # ely tokens are JWTs with exp in them, so skip the round trip while it is good
         if account.get("mc_token") and _jwt_expired(account["mc_token"]) is False:
             return account
         return refresh_ely_account(account)
@@ -3848,7 +3846,6 @@ def ely_sign_in(username: str, password: str, totp: str = "") -> dict:
     try:
         status, data = ely_post(ELY_AUTH, payload)
     except Exception:
-        # traceback would include the frame holding the plaintext password
         raise AuthError("Couldn't reach Ely.by. Check your connection.") from None
     message = (data or {}).get("errorMessage") or (data or {}).get("error") or ""
     if status == 401 and "two factor" in message.lower():
@@ -3962,7 +3959,6 @@ def authlib_injector() -> Path | None:
 
     for attempt in range(2):
         try:
-            # the asset name carries the version, so ask GitHub which one it is
             release = http_get_json(ELY_INJECTOR_API, timeout=20, retries=0)
             asset = next((a for a in release.get("assets", [])
                           if (a.get("name") or "").endswith(".jar")), None)
@@ -6585,7 +6581,6 @@ class API(ServerMixin):
             if not skin:
                 return {"success": False, "error": f"Ely.by has no skin for {source}."}
 
-            # keep a copy either way, so it applies once CustomSkinLoader shows up
             png = decode_png_uri(skin["image"])
             _write_bytes_atomic(SKINS_DIR / f"{username}.png", png)
             settings_store.update(lambda s: s.__setitem__("local_ely_source", source))
@@ -7683,7 +7678,6 @@ class API(ServerMixin):
             if not needs_install:
                 java_path = resolve_java(java_info_from_meta(meta), allow_download=False)
                 if java_path:
-                    # refreshing the token can mean three round trips; keep it off the click path
                     with self._proc_lock:
                         self._installing.add(instance_name)
 
@@ -8333,7 +8327,6 @@ class API(ServerMixin):
     def _presence_sync(self):
         wanted = bool(settings_store.read().get("discord_presence", False))
         if wanted and self._presence is None and not self._presence_starting:
-            # the asset lookup is a web request, so keep it off the startup path
             self._presence_starting = True
 
             def boot():
@@ -8343,8 +8336,6 @@ class API(ServerMixin):
                         DISCORD_CLIENT_ID, log=lambda m: logging.info("presence: %s", m))
                     presence.start("Crit Launcher", "v" + APP_VERSION, asset=_discord_asset())
                     with self._presence_lock:
-                        # toggling fast can stack boots; the loser has to go, or its
-                        # thread keeps pushing activity nothing can reach any more
                         if settings_store.read().get("discord_presence", False) and self._presence is None:
                             self._presence = presence
                             atexit.register(self._presence_sync_off)

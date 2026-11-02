@@ -5955,6 +5955,7 @@ class API(ServerMixin):
         self._launcher_started = time.time()
         self._presence = None
         self._presence_starting = False
+        self._presence_lock = threading.Lock()
         self._srv_init()
 
     def set_window(self, window):
@@ -8321,12 +8322,13 @@ class API(ServerMixin):
             return {"success": False}
 
     def _presence_sync_off(self):
-        if self._presence is not None:
+        with self._presence_lock:
+            presence, self._presence = self._presence, None
+        if presence is not None:
             try:
-                self._presence.stop()
+                presence.stop()
             except Exception:
                 pass
-            self._presence = None
 
     def _presence_sync(self):
         wanted = bool(settings_store.read().get("discord_presence", False))
@@ -8340,15 +8342,18 @@ class API(ServerMixin):
                     presence = discord_rpc.Presence(
                         DISCORD_CLIENT_ID, log=lambda m: logging.info("presence: %s", m))
                     presence.start("Crit Launcher", "v" + APP_VERSION, asset=_discord_asset())
-                    self._presence = presence
-                    atexit.register(self._presence_sync_off)
+                    with self._presence_lock:
+                        # toggling fast can stack boots; the loser has to go, or its
+                        # thread keeps pushing activity nothing can reach any more
+                        if settings_store.read().get("discord_presence", False) and self._presence is None:
+                            self._presence = presence
+                            atexit.register(self._presence_sync_off)
+                        else:
+                            presence.stop()
                 except Exception:
                     log_exception("presence start")
-                    self._presence = None
                 finally:
                     self._presence_starting = False
-                    if not settings_store.read().get("discord_presence", False):
-                        self._presence_sync_off()
 
             threading.Thread(target=boot, daemon=True).start()
         elif not wanted and self._presence is not None:

@@ -161,6 +161,13 @@ class Presence:
         backoff = 2.0
         while not self._stop.is_set():
             sock = self._connect()
+            if self._stop.is_set():
+                # stopped while the connect was blocked; don't arm anything
+                try:
+                    sock.close()
+                except (OSError, AttributeError):
+                    pass
+                return
             with self._lock:
                 self._sock = sock
             if sock is None or not self._handshake():
@@ -168,6 +175,11 @@ class Presence:
                 self._stop.wait(backoff)
                 backoff = min(backoff * 2, 30.0)
                 continue
+            if self._stop.is_set():
+                # stopped during the handshake, so clear before leaving
+                self._clear_activity()
+                self._drop()
+                return
             backoff = 2.0
             self._push()
             self.log("connected")
@@ -196,8 +208,7 @@ class Presence:
             except OSError:
                 pass
 
-    def stop(self):
-        self._stop.set()
+    def _clear_activity(self):
         body = json.dumps({
             "cmd": "SET_ACTIVITY",
             "args": {"pid": os.getpid(), "activity": None},
@@ -209,4 +220,8 @@ class Presence:
                     self._sock.sendall(struct.pack("<II", OP_FRAME, len(body)) + body)
                 except OSError:
                     pass
+
+    def stop(self):
+        self._stop.set()
+        self._clear_activity()
         self._drop()

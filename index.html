@@ -4167,7 +4167,6 @@ function liveNames() {
 }
 
 function cropHead(img) {
-  // the bridge hands over a whole 64x64 skin sheet, avatars want the head
   const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
   if (w < 64 || h < 32) return img;
   const cv = document.createElement("canvas");
@@ -6369,7 +6368,6 @@ function syncMemorySliders(maxMb, minMb) {
 }
 
 function fillTrack(el) {
-  // the filled part of the track only spans between the two thumb centres
   const lo = +el.min || 0, hi = +el.max || 100;
   const frac = hi > lo ? (+el.value - lo) / (hi - lo) : 0;
   el.style.setProperty("--pct", (frac * 100).toFixed(2) + "%");

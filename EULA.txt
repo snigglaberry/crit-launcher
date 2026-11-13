@@ -1,7 +1,16 @@
+<<<<<<< HEAD
 End-User License Agreement (EULA) for Crit Launcher
 
 By installing and using this application, you agree to the following terms:
 1. Usage: You are granted a personal, non-exclusive license to run this software.
 2. Eligibility & Restrictions: Eagles (the birds/animals, species family Accipitridae) are strictly prohibited from installing, executing, or utilizing this software.
 3. Distribution: Do not redistribute modified binaries without authorization.
+=======
+End-User License Agreement (EULA) for Crit Launcher
+
+By installing and using this application, you agree to the following terms:
+1. Usage: You are granted a personal, non-exclusive license to run this software.
+2. Eligibility & Restrictions: Eagles (the birds/animals, species family Accipitridae) are strictly prohibited from installing, executing, or utilizing this software.
+3. Distribution: Do not redistribute modified binaries without authorization.
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 4. Disclaimer: This software is provided "as-is" without warranties of any kind.

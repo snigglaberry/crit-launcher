@@ -7,7 +7,10 @@ import time
 
 from ..bootstrap import init as init_environment
 from ..config.paths import IS_LINUX
+<<<<<<< HEAD
 from ..config.settings import launcher_window_geometry, settings_store
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 from ..core.logs import log_exception
 from ..ui.page import prepare_page, start_asset_download
 from .facade import API
@@ -39,19 +42,28 @@ def main():
     api = API()
     index_path = prepare_page()
 
+<<<<<<< HEAD
     try:
         win_w, win_h, min_w, min_h = launcher_window_geometry(settings_store.read())
     except Exception:
         log_exception("read window size")
         win_w, win_h, min_w, min_h = 1080, 700, 900, 580
 
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
     window = webview.create_window(
         "Crit Launcher",
         str(index_path),
         js_api=api,
+<<<<<<< HEAD
         width=win_w,
         height=win_h,
         min_size=(min_w, min_h),
+=======
+        width=1080,
+        height=700,
+        min_size=(900, 580),
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
         resizable=True,
         background_color="#0b0c0e",
     )
@@ -75,4 +87,8 @@ def main():
     except Exception:
         log_exception("hook shown event")
 
+<<<<<<< HEAD
     webview.start(gui="qt" if IS_LINUX else None, debug=False)
+=======
+    webview.start(gui="qt" if IS_LINUX else None, debug=False)
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

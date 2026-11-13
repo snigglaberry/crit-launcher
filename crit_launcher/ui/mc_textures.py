@@ -34,10 +34,13 @@ _MC_REQUIRED = ("button.png",)
 MC_PANO_DIR = UI_ASSETS_DIR / "panorama"
 MC_PANO_FILES = ["panorama_%d.png" % i for i in range(6)]
 MC_PANO_ASSETS = {n: _ASSETS_RAW + n for n in MC_PANO_FILES}
+<<<<<<< HEAD
 MC_FONT_FILE = "minecraft.ttf"
 MC_FONT_URL = _ASSETS_RAW + MC_FONT_FILE
 _MIN_FONT_BYTES = 1024
 _FONT_MAGICS = (b"\x00\x01\x00\x00", b"OTTO", b"true", b"ttcf")   # TrueType / OpenType / collection
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 _MIN_PANO_BYTES = 4096                    
 
 
@@ -63,6 +66,7 @@ def ensure_mc_panorama() -> dict:
         return {"success": ok, "dir": str(MC_PANO_DIR), "files": files}
 
 
+<<<<<<< HEAD
 def ensure_mc_font() -> dict:
     """Make sure assets/minecraft.ttf exists (shipped, or downloaded from the repo's assets folder).
 
@@ -85,6 +89,8 @@ def ensure_mc_font() -> dict:
         return {"success": True, "data": "data:font/ttf;base64," + base64.b64encode(path.read_bytes()).decode("ascii")}
 
 
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 _mc_tex_lock = threading.Lock()
 
 
@@ -161,4 +167,8 @@ def ensure_mc_textures() -> dict:
             if p.exists() and p.stat().st_size > 0:
                 _publish_to_page_dir("mc/" + n, p)
                 files[n] = "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode("ascii")
+<<<<<<< HEAD
         return {"success": all(n in files for n in _MC_REQUIRED), "files": files}
+=======
+        return {"success": all(n in files for n in _MC_REQUIRED), "files": files}
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

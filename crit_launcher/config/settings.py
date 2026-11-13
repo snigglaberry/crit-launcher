@@ -6,8 +6,13 @@ from ..core.jsonstore import JsonStore
 from .paths import SETTINGS_FILE
 
 
+<<<<<<< HEAD
 THEMES = ("green", "blue", "purple", "red", "orange", "pink", "white", "custom")
 UI_STYLES = ("default", "minecraft", "modrinth", "fastclient", "sklauncher", "leather")
+=======
+THEMES = ("green", "blue", "purple", "red", "orange", "pink", "custom")
+UI_STYLES = ("default", "minecraft", "modrinth", "fastclient", "sklauncher")
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 ADDON_VIEWS = ("browse", "installed")
 ADDON_SOURCES = ("modrinth", "curseforge")
 COLOR_MODES = ("dark", "light", "oled")
@@ -28,11 +33,14 @@ DEFAULT_SETTINGS = {
     "discord_presence": False,
     "bg_pattern": True,
     "sidebar_collapsed": False,
+<<<<<<< HEAD
     "sidebar_top": False,
     "custom_bg": False,
     "launcher_width": 0,
     "launcher_height": 0,
     "window_unlocked": False,
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
     "theme": "green",
     "ui_style": "default",
     "addon_view": "browse",
@@ -47,6 +55,7 @@ DEFAULT_SETTINGS = {
     "playtime_seconds": 0,
     "playtime_days": {},
 }
+<<<<<<< HEAD
 DEFAULT_WINDOW = (1080, 700)     # launcher window size when nothing custom is saved
 LOCKED_MIN_WINDOW = (900, 580)   # normal minimum size
 UNLOCKED_MIN_WINDOW = (240, 160)  # minimum once "unlock size limits" is on
@@ -68,10 +77,16 @@ def launcher_window_geometry(settings: dict) -> tuple:
     return max(minw, min(w, MAX_WINDOW_SIDE)), max(minh, min(h, MAX_WINDOW_SIDE)), minw, minh
 
 
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 settings_store = JsonStore(SETTINGS_FILE, DEFAULT_SETTINGS)
 
 
 def _clean_hex(value, default="#4ade80"):
     if isinstance(value, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", value.strip()):
         return value.strip().lower()
+<<<<<<< HEAD
     return default
+=======
+    return default
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

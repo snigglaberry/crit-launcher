@@ -5,12 +5,18 @@ from ..config.settings import (
     ADDON_VIEWS,
     CATALOG_SOURCES,
     COLOR_MODES,
+<<<<<<< HEAD
     MAX_WINDOW_SIDE,
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
     THEMES,
     UI_STYLES,
     _clean_hex,
     settings_store,
+<<<<<<< HEAD
     window_limits,
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 )
 from ..core.logs import log_exception
 from ..core.memory import clamp_memory_mb
@@ -61,6 +67,7 @@ class SettingsApi:
                     settings["bg_pattern"] = bool(patch["bg_pattern"])
                 if "sidebar_collapsed" in patch:
                     settings["sidebar_collapsed"] = bool(patch["sidebar_collapsed"])
+<<<<<<< HEAD
                 if "sidebar_top" in patch:
                     settings["sidebar_top"] = bool(patch["sidebar_top"])
                 if "window_unlocked" in patch:
@@ -75,6 +82,8 @@ class SettingsApi:
                             pass
                     elif settings.get(key):
                         settings[key] = max(floor, int(settings[key]))
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
                 if patch.get("theme") in THEMES:
                     settings["theme"] = patch["theme"]
                 if patch.get("ui_style") in UI_STYLES:
@@ -105,4 +114,8 @@ class SettingsApi:
             return {"success": True, "settings": settings}
         except Exception:
             log_exception("save_settings")
+<<<<<<< HEAD
             return {"success": False, "error": "Failed to save settings."}
+=======
+            return {"success": False, "error": "Failed to save settings."}
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

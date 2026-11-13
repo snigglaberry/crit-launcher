@@ -9,13 +9,17 @@ from ..config.paths import IS_LINUX, PAGE_DIR, RESOURCE_DIR
 from ..core.logs import log_exception
 from .assets import (
     HOME_BG_ASSETS,
+<<<<<<< HEAD
     OPTIONAL_HOME_BG,
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
     UI_ASSETS_DIR,
     _assets_lock,
     _download_asset,
     _publish_to_page_dir,
     _seed_local_asset,
 )
+<<<<<<< HEAD
 from .mc_textures import (
     MC_FONT_FILE,
     MC_PANO_FILES,
@@ -24,6 +28,9 @@ from .mc_textures import (
     ensure_mc_font,
     ensure_mc_panorama,
 )
+=======
+from .mc_textures import MC_PANO_FILES, _MIN_PANO_BYTES, ensure_mc_panorama
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 
 
 def ensure_home_assets() -> dict:
@@ -45,8 +52,12 @@ def ensure_home_assets() -> dict:
             except OSError:
                 ready = False
             if not ready:
+<<<<<<< HEAD
                 if name not in OPTIONAL_HOME_BG:
                     ok = False
+=======
+                ok = False
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
                 continue
             published = _publish_to_page_dir(name, path)
             data = path.read_bytes()
@@ -86,6 +97,7 @@ def start_asset_download() -> None:
            for n in MC_PANO_FILES):
         threading.Thread(target=ensure_mc_panorama, daemon=True).start()
     
+<<<<<<< HEAD
     if not _seed_local_asset(MC_FONT_FILE, UI_ASSETS_DIR / MC_FONT_FILE, _MIN_FONT_BYTES):
         threading.Thread(target=ensure_mc_font, daemon=True).start()
     _publish_to_page_dir(MC_FONT_FILE, UI_ASSETS_DIR / MC_FONT_FILE)
@@ -93,3 +105,9 @@ def start_asset_download() -> None:
         _publish_to_page_dir(name, UI_ASSETS_DIR / name)
     for name in MC_PANO_FILES:
         _publish_to_page_dir("panorama/" + name, UI_ASSETS_DIR / "panorama" / name)
+=======
+    for name in HOME_BG_ASSETS:
+        _publish_to_page_dir(name, UI_ASSETS_DIR / name)
+    for name in MC_PANO_FILES:
+        _publish_to_page_dir("panorama/" + name, UI_ASSETS_DIR / "panorama" / name)
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

@@ -121,11 +121,14 @@ class AppStateApi:
                 "discord_presence": bool(settings.get("discord_presence", False)),
                 "bg_pattern": bool(settings.get("bg_pattern", True)),
                 "sidebar_collapsed": bool(settings.get("sidebar_collapsed", False)),
+<<<<<<< HEAD
                 "sidebar_top": bool(settings.get("sidebar_top", False)),
                 "custom_bg": bool(settings.get("custom_bg", False)),
                 "launcher_width": int(settings.get("launcher_width") or 0),
                 "launcher_height": int(settings.get("launcher_height") or 0),
                 "window_unlocked": bool(settings.get("window_unlocked", False)),
+=======
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
                 "theme": settings.get("theme", "green") if settings.get("theme") in THEMES else "green",
                 "ui_style": settings.get("ui_style", "default") if settings.get("ui_style") in UI_STYLES else "default",
                 "addon_view": settings.get("addon_view") if settings.get("addon_view") in ADDON_VIEWS else "browse",
@@ -179,4 +182,8 @@ class AppStateApi:
             return {"success": True}
         except Exception:
             log_exception("open_url")
+<<<<<<< HEAD
             return {"success": False}
+=======
+            return {"success": False}
+>>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

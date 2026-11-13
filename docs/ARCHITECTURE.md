@@ -164,19 +164,13 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `add_custom_instance_icon` | `crit_launcher/instances/api_icons.py` |
 | `add_ely_account` | `crit_launcher/accounts/api.py` |
 | `apply_saved_titlebar_theme` | `crit_launcher/ui/api_window.py` |
-<<<<<<< HEAD
 | `apply_window_size` | `crit_launcher/ui/api_window.py` |
-=======
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 | `cancel_minecraft_web_login` | `crit_launcher/accounts/api.py` |
 | `catalog_all` | `crit_launcher/skins/api_catalog.py` |
 | `catalog_fetch_skin` | `crit_launcher/skins/api_catalog.py` |
 | `catalog_laby` | `crit_launcher/skins/api_catalog.py` |
 | `check_for_updates` | `crit_launcher/updates/api.py` |
-<<<<<<< HEAD
 | `clear_custom_bg` | `crit_launcher/ui/api_assets.py` |
-=======
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 | `create_desktop_shortcut` | `crit_launcher/instances/api_shortcuts.py` |
 | `create_instance` | `crit_launcher/instances/api.py` |
 | `create_server` | `crit_launcher/servers/api_lifecycle.py` |
@@ -190,10 +184,7 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `emit` | `crit_launcher/app/api_state.py` |
 | `enable_custom_titlebar` | `crit_launcher/ui/api_window.py` |
 | `ensure_assets` | `crit_launcher/ui/api_assets.py` |
-<<<<<<< HEAD
 | `ensure_mc_font` | `crit_launcher/ui/api_assets.py` |
-=======
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 | `ensure_mc_panorama` | `crit_launcher/ui/api_assets.py` |
 | `ensure_mc_textures` | `crit_launcher/ui/api_assets.py` |
 | `get_addon` | `crit_launcher/addons/api.py` |
@@ -203,10 +194,7 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `get_changelog` | `crit_launcher/updates/api_changelog.py` |
 | `get_content_icon` | `crit_launcher/instances/api_content.py` |
 | `get_critclient_info` | `crit_launcher/addons/api_critclient.py` |
-<<<<<<< HEAD
 | `get_custom_bg` | `crit_launcher/ui/api_assets.py` |
-=======
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 | `get_disk_usage` | `crit_launcher/instances/api.py` |
 | `get_fabric_game_versions` | `crit_launcher/minecraft/api.py` |
 | `get_fabric_loaders` | `crit_launcher/minecraft/api.py` |
@@ -270,10 +258,7 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `rename_instance` | `crit_launcher/instances/api.py` |
 | `reset_skin` | `crit_launcher/skins/api.py` |
 | `restart_server` | `crit_launcher/servers/api_process.py` |
-<<<<<<< HEAD
 | `save_custom_bg` | `crit_launcher/ui/api_assets.py` |
-=======
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 | `save_settings` | `crit_launcher/app/api_settings.py` |
 | `save_skin` | `crit_launcher/skins/api.py` |
 | `scan_custom_import_dir` | `crit_launcher/importers/api.py` |
@@ -297,8 +282,4 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `toggle_server_content` | `crit_launcher/servers/api_content.py` |
 | `update_server_settings` | `crit_launcher/servers/api_settings.py` |
 | `window_control` | `crit_launcher/ui/api_window.py` |
-<<<<<<< HEAD
 | `window_drag` | `crit_launcher/ui/api_window.py` |
-=======
-| `window_drag` | `crit_launcher/ui/api_window.py` |
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

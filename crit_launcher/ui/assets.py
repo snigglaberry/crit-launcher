@@ -16,13 +16,9 @@ _ASSETS_RAW = "https://raw.githubusercontent.com/snigglaberry/crit-launcher/main
 HOME_BG_ASSETS = {                       
     "dark_bg.png": _ASSETS_RAW + "dark_Bg.png",
     "light_bg.png": _ASSETS_RAW + "light_bg.png",
-<<<<<<< HEAD
     "leatherclientbg.png": _ASSETS_RAW + "leatherclientbg.png",
 }
 OPTIONAL_HOME_BG = {"leatherclientbg.png"}   # a missing optional file must not fail the whole asset check
-=======
-}
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 _PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 _assets_lock = threading.Lock()
 _ASSET_SEARCH_ROOTS = (UI_ASSETS_DIR, RESOURCE_DIR / "assets", APP_DIR, RESOURCE_DIR)
@@ -92,20 +88,12 @@ def _seed_local_asset(rel: str, dest: Path, min_size: int = 1) -> bool:
         return False
 
 
-<<<<<<< HEAD
 def _download_asset(url: str, dest: Path, magics=None) -> bool:
-=======
-def _download_asset(url: str, dest: Path) -> bool:
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
     try:
         req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         with urllib.request.urlopen(req, timeout=20) as r:
             data = r.read()
-<<<<<<< HEAD
         if not data.startswith(tuple(magics) if magics else (_PNG_MAGIC,)):
-=======
-        if not data.startswith(_PNG_MAGIC):
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
             return False
         tmp = dest.with_suffix(".part")
         tmp.write_bytes(data)
@@ -113,8 +101,4 @@ def _download_asset(url: str, dest: Path) -> bool:
         return True
     except Exception:
         logging.warning("Couldn't download %s", url)
-<<<<<<< HEAD
         return False
-=======
-        return False
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

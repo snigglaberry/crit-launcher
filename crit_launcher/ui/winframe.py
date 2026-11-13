@@ -11,10 +11,7 @@ TITLEBAR_FALLBACKS = {
     ("dark", "modrinth"): ("#141518", "#ecf0f3"),
     ("dark", "fastclient"): ("#0b0c0f", "#f1f2f4"),   
     ("dark", "sklauncher"): ("#0a0d14", "#f4f4f5"),
-<<<<<<< HEAD
     ("dark", "leather"): ("#0c0d10", "#f3f3f5"),
-=======
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
     ("dark", "minecraft"): ("#0b0c0e", "#e8eaed"),
     ("oled", "default"): ("#000000", "#e8eaed"),
     ("oled", "modrinth"): ("#000000", "#ecf0f3"),
@@ -55,8 +52,4 @@ def _dwm_set_attr(hwnd, attr, value):
     import ctypes
     v = ctypes.c_int(value)
     return ctypes.windll.dwmapi.DwmSetWindowAttribute(
-<<<<<<< HEAD
         ctypes.c_void_p(hwnd), attr, ctypes.byref(v), ctypes.sizeof(v))
-=======
-        ctypes.c_void_p(hwnd), attr, ctypes.byref(v), ctypes.sizeof(v))
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

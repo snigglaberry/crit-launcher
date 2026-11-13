@@ -4,7 +4,6 @@ import logging
 import sys
 import threading
 
-<<<<<<< HEAD
 from ..config.settings import (
     COLOR_MODES,
     DEFAULT_WINDOW,
@@ -12,9 +11,6 @@ from ..config.settings import (
     settings_store,
     window_limits,
 )
-=======
-from ..config.settings import COLOR_MODES, settings_store
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 from ..core.logs import log_exception
 from .winframe import (
     DWMWA_BORDER_COLOR,
@@ -100,13 +96,8 @@ class WindowApi:
             st = settings_store.read()
             mode = st.get("color_mode") if st.get("color_mode") in COLOR_MODES else "dark"
             ui = st.get("ui_style")
-<<<<<<< HEAD
             style = ui if ui in ("modrinth", "fastclient", "sklauncher", "minecraft", "leather") else "default"
             if style in ("fastclient", "sklauncher", "minecraft", "leather"):
-=======
-            style = ui if ui in ("modrinth", "fastclient", "sklauncher", "minecraft") else "default"
-            if style in ("fastclient", "sklauncher", "minecraft"):
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
                 mode = "dark"
             bg, fg = TITLEBAR_FALLBACKS[(mode, style)]
             self.set_titlebar_theme({"mode": mode, "dark": mode != "light",
@@ -279,7 +270,6 @@ class WindowApi:
             log_exception("enable_custom_titlebar")
             return {"success": False}
 
-<<<<<<< HEAD
     def _set_min_size(self, minw, minh):
         win = self._window
         try:
@@ -329,8 +319,6 @@ class WindowApi:
             log_exception("apply_window_size")
             return {"success": False}
 
-=======
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
     def get_window_state(self):
         try:
             return self._frame_state()
@@ -390,8 +378,4 @@ class WindowApi:
             return {"success": True}
         except Exception:
             log_exception("window_drag")
-<<<<<<< HEAD
             return {"success": False}
-=======
-            return {"success": False}
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

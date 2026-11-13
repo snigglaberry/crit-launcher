@@ -1,6 +1,5 @@
 """JS-bridge API: artwork."""
 
-<<<<<<< HEAD
 import base64
 
 from ..config.paths import DATA_DIR
@@ -14,13 +13,6 @@ CUSTOM_BG_FILE = DATA_DIR / "custom_bg.jpg"
 _CUSTOM_BG_MAX = 12 * 1024 * 1024
 
 
-=======
-from ..core.logs import log_exception
-from .mc_textures import ensure_mc_panorama, ensure_mc_textures
-from .page import ensure_home_assets
-
-
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
 class UiAssetsApi:
     """Fetching the page's artwork."""
 
@@ -32,7 +24,6 @@ class UiAssetsApi:
             log_exception("ensure_assets")
             return {"success": False, "files": {}}
 
-<<<<<<< HEAD
     def ensure_mc_font(self):
         try:
             return ensure_mc_font()
@@ -40,8 +31,6 @@ class UiAssetsApi:
             log_exception("ensure_mc_font")
             return {"success": False}
 
-=======
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c
     def ensure_mc_textures(self):
         try:
             return ensure_mc_textures()
@@ -55,7 +44,6 @@ class UiAssetsApi:
         except Exception:
             log_exception("ensure_mc_panorama")
             return {"success": False}
-<<<<<<< HEAD
 
     def save_custom_bg(self, data):
         """Store the user's own background (the page sends a downscaled JPEG data URI)."""
@@ -96,5 +84,3 @@ class UiAssetsApi:
         except Exception:
             log_exception("get_custom_bg")
             return {"success": False}
-=======
->>>>>>> c8a4504af20569eff010b5589660ae1511cab67c

@@ -39,9 +39,7 @@ class JsonStore:
         try:
             with open(self.path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"Corrupted JSON file: {self.path}") from exc
-        except (FileNotFoundError, OSError):
+        except (json.JSONDecodeError, FileNotFoundError, OSError):
             return json.loads(json.dumps(self._default))
 
     def read(self):

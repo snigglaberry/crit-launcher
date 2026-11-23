@@ -2,6 +2,7 @@
 
 import json
 import os
+import tempfile
 import threading
 from pathlib import Path
 
@@ -28,18 +29,63 @@ class JsonStore:
             self._write(self._default)
 
     def _write(self, data):
-        tmp = self.path.with_suffix(".tmp")
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-        os.replace(tmp, self.path)
-        if self._sensitive and os.name == "posix":
-            os.chmod(self.path, 0o600)
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=f".{self.path.name}.",
+            suffix=".tmp",
+            dir=self.path.parent,
+        )
+        tmp = Path(tmp_name)
+
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+
+            os.replace(tmp, self.path)
+
+            if self._sensitive and os.name == "posix":
+                os.chmod(self.path, 0o600)
+        finally:
+            tmp.unlink(missing_ok=True)
 
     def _read(self):
         try:
             with open(self.path, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError, OSError):
+
+        except json.JSONDecodeError:
+            # Find backup name that does not already exist
+            backup = self.path.with_name(self.path.name + ".corrupt")
+            number = 1
+
+            while backup.exists():
+                backup = self.path.with_name(
+                    f"{self.path.name}.corrupt.{number}"
+                )
+                number += 1
+
+
+            while True:
+                try:
+                    os.link(self.path, backup)
+                    break
+                except FileExistsError:
+                    backup = self.path.with_name(
+                        f"{self.path.name}.corrupt.{number}"
+                    )
+                    number += 1
+
+            # Keep macOS/Linux account backups private
+            if self._sensitive and os.name == "posix":
+                os.chmod(backup, 0o600)
+
+            # Create fresh JSON file using default data
+            default = json.loads(json.dumps(self._default))
+
+            self._write(default)
+
+            return default
+
+        except FileNotFoundError:
             return json.loads(json.dumps(self._default))
 
     def read(self):
@@ -50,6 +96,7 @@ class JsonStore:
     def write(self, data):
         with self._lock:
             self._prepare()
+            self._read()
             self._write(data)
 
     def update(self, mutator):

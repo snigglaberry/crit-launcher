@@ -32,6 +32,26 @@ def maven_to_path(name: str) -> str:
     filename += f".{ext}"
     return f"{group_path}/{artifact}/{version}/{filename}"
 
+def safe_download_dest(root: Path, relative_path: str) -> Path:
+    if not isinstance(relative_path, str):
+        raise ValueError("Invalid download path")
+
+    rel = Path(relative_path)
+
+    if (not relative_path
+            or "\\" in relative_path
+            or rel.is_absolute()
+            or ".." in rel.parts
+            or ":" in relative_path):
+        raise ValueError("Unsafe download path")
+
+    root = root.resolve()
+    dest = root / rel
+
+    if not is_within(root, dest):
+        raise ValueError("Download path escape target dir")
+
+    return dest
 
 def lib_key(name: str) -> str:
     parts = name.split(":")
@@ -120,7 +140,7 @@ def entry_weight(entry: dict) -> int:
 
 
 def ensure_file(entry: dict, dest_root: Path, tracker, retries: int = 3):
-    dest = dest_root / entry["path"]
+    dest = safe_download_dest(dest_root, entry["path"])
     quick_sha = None if entry.get("quick") else entry.get("sha1")
     if file_is_valid(dest, entry.get("size"), quick_sha):
         return dest
@@ -145,7 +165,7 @@ def ensure_file(entry: dict, dest_root: Path, tracker, retries: int = 3):
 def download_all(items, tracker, workers: int = 10):
     todo, missing, seen = [], [], set()
     for entry, root in items:
-        dest = root / entry["path"]
+        dest = safe_download_dest(root, entry["path"])
         key = str(dest)
         if key in seen:
             continue

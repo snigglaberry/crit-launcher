@@ -90,6 +90,200 @@ class ModpacksApi:
                              daemon=True).start()
         return {"success": True}
 
+    def _extract_pack_overrides(self, zf, game_dir):
+        for member in zf.namelist():
+            for prefix in ("overrides/", "client-overrides/"):
+                if not member.startswith(prefix):
+                    continue
+                rel = member[len(prefix):]
+                if not rel:
+                    break
+                dest = game_dir / rel
+                if not is_within(game_dir, dest):
+                    break
+                if member.endswith("/"):
+                    dest.mkdir(parents=True, exist_ok=True)
+                else:
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    dest.write_bytes(zf.read(member))
+                break
+
+    def _modrinth_pack_loader(self, deps):
+        if "fabric-loader" in deps:
+            return "fabric", deps["fabric-loader"]
+        if "forge" in deps:
+            return "forge", deps["forge"]
+        if "neoforge" in deps:
+            return "neoforge", deps["neoforge"]
+        if "quilt-loader" in deps:
+            raise RuntimeError("This modpack needs Quilt, which Crit Launcher doesn't support yet.")
+        return "vanilla", None
+
+    def _install_mrpack_index(self, zf, index, tracker, name_hint=None):
+        deps = index.get("dependencies") or {}
+        mc_version = deps.get("minecraft")
+        if not mc_version:
+            raise RuntimeError("This modpack doesn't say which Minecraft version it needs.")
+        loader, loader_version = self._modrinth_pack_loader(deps)
+        name = unique_instance_name(index.get("name") or name_hint or "Modpack")
+        self._make_instance(name, mc_version, loader, loader_version)
+        game_dir = instance_game_dir(name)
+
+        items = []
+        for f in index.get("files", []):
+            if (f.get("env") or {}).get("client") == "unsupported":
+                continue
+            rel = f.get("path", "")
+            urls = f.get("downloads") or []
+            if not rel or not urls or not is_within(game_dir, game_dir / rel):
+                continue
+            items.append(({
+                "path": rel, "url": urls[0], "size": f.get("fileSize"),
+                "sha1": (f.get("hashes") or {}).get("sha1"),
+            }, game_dir))
+
+        tracker.reset(sum(entry_weight(e) for e, _ in items) + 1)
+        tracker.set_task("Downloading modpack files", force=True)
+        download_all(items, tracker, workers=8)
+
+        tracker.set_task("Applying overrides", force=True)
+        self._extract_pack_overrides(zf, game_dir)
+        return name
+
+    def _curseforge_pack_loader(self, manifest):
+        mc = manifest.get("minecraft") or {}
+        mc_version = mc.get("version")
+        if not mc_version:
+            raise RuntimeError("This modpack doesn't say which Minecraft version it needs.")
+        loader, loader_version = "vanilla", None
+        for entry in (mc.get("modLoaders") or []):
+            if not isinstance(entry, dict) or not entry.get("primary"):
+                continue
+            kind, _, ver = str(entry.get("id") or "").partition("-")
+            if kind == "fabric":
+                loader, loader_version = "fabric", ver
+            elif kind == "forge":
+                loader, loader_version = "forge", ver
+            elif kind == "neoforge":
+                loader, loader_version = "neoforge", ver
+            elif kind in ("quilt", "liteloader"):
+                raise RuntimeError(
+                    f"This modpack needs {kind.capitalize()}, which Crit Launcher doesn't support yet.")
+        return mc_version, loader, loader_version
+
+    def _install_cf_manifest(self, zf, manifest, tracker, name_hint=None):
+        mc_version, loader, loader_version = self._curseforge_pack_loader(manifest)
+        name = unique_instance_name(manifest.get("name") or name_hint or "Modpack")
+        self._make_instance(name, mc_version, loader, loader_version)
+        game_dir = instance_game_dir(name)
+        mods_dir = game_dir / "mods"
+        mods_dir.mkdir(parents=True, exist_ok=True)
+
+        wanted = []
+        for item in (manifest.get("files") or []):
+            if not isinstance(item, dict) or item.get("required") is False:
+                continue
+            pid, fid = item.get("projectID"), item.get("fileID")
+            if pid and fid:
+                wanted.append((int(pid), int(fid)))
+
+        tracker.set_task("Resolving modpack files", force=True)
+
+        def _file_info(pair):
+            try:
+                info = _cf_get(f"/mods/{pair[0]}/files/{pair[1]}") or {}
+                return info if isinstance(info, dict) else None
+            except Exception:
+                return None
+
+        infos = []
+        if wanted:
+            with ThreadPoolExecutor(max_workers=6) as pool_exec:
+                for info in pool_exec.map(_file_info, wanted):
+                    if info:
+                        infos.append(info)
+
+        items = []
+        for info in infos:
+            fname = Path(str(info.get("fileName") or "")).name
+            url = info.get("downloadUrl")
+            if not fname or not isinstance(url, str) or not url.startswith("https://"):
+                continue
+            if not is_within(mods_dir, mods_dir / fname):
+                continue
+            items.append(({"path": fname, "url": url, "size": info.get("fileLength"),
+                           "sha1": _cf_file_sha1(info)}, mods_dir))
+
+        tracker.reset(sum(entry_weight(e) for e, _ in items) + 1)
+        tracker.set_task("Downloading modpack files", force=True)
+        download_all(items, tracker, workers=8)
+
+        tracker.set_task("Applying overrides", force=True)
+        self._extract_pack_overrides(zf, game_dir)
+        return name
+
+    def pick_modpack_file(self):
+        try:
+            import webview
+            if self._window is None:
+                return {"success": False, "error": "The window isn't ready yet."}
+            dialog_type = webview.FileDialog.OPEN if hasattr(webview, "FileDialog") else webview.OPEN_DIALOG
+            result = self._window.create_file_dialog(
+                dialog_type, allow_multiple=False,
+                file_types=("Modpacks (*.mrpack;*.zip)", "All files (*.*)"))
+            if not result:
+                return {"success": True, "path": None}
+            path = Path(result[0] if isinstance(result, (list, tuple)) else result)
+            return {"success": True, "path": str(path)}
+        except Exception:
+            log_exception("pick_modpack_file")
+            return {"success": False, "error": "Couldn't open the file picker."}
+
+    def import_modpack_file(self, path):
+        try:
+            src = Path(str(path or "")).expanduser()
+            if not src.is_file():
+                return {"success": False, "error": "Pick a modpack file to import."}
+            if src.suffix.lower() not in (".mrpack", ".zip"):
+                return {"success": False, "error": "Modpacks must be .mrpack or .zip files."}
+            with self._proc_lock:
+                if self._addon_busy:
+                    return {"success": False, "error": "Another addon install is already running."}
+                self._addon_busy = True
+            threading.Thread(target=self._local_modpack_worker, args=(src,), daemon=True).start()
+            return {"success": True}
+        except Exception:
+            log_exception("import_modpack_file")
+            return {"success": False, "error": "Couldn't import that modpack."}
+
+    def _local_modpack_worker(self, path):
+        try:
+            tracker = ProgressTracker(self.emit)
+            tracker.event = "addonProgress"
+            tracker.set_task("Reading modpack", force=True)
+            with zipfile.ZipFile(path) as zf:
+                names = set(zf.namelist())
+                if "modrinth.index.json" in names:
+                    index = json.loads(zf.read("modrinth.index.json").decode("utf-8"))
+                    name = self._install_mrpack_index(zf, index, tracker, path.stem)
+                elif "manifest.json" in names:
+                    manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+                    name = self._install_cf_manifest(zf, manifest, tracker, path.stem)
+                else:
+                    raise RuntimeError(
+                        "This file isn't a Modrinth (.mrpack) or CurseForge modpack.")
+            self.push_state()
+            self.emit("addonFinished", {"name": name})
+        except zipfile.BadZipFile:
+            log_exception("local modpack install failed")
+            self.emit("addonError", {"message": "That modpack file is damaged or not a real archive."})
+        except Exception as exc:
+            log_exception("local modpack install failed")
+            self.emit("addonError", {"message": str(exc) or "Modpack import failed."})
+        finally:
+            with self._proc_lock:
+                self._addon_busy = False
+
     def _cf_modpack_worker(self, project_id, version_id=None):
         """Install a CurseForge modpack: manifests list projectID/fileID pairs plus overrides."""
         pack_path = work = None
@@ -129,88 +323,9 @@ class ModpacksApi:
                     manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
                 except KeyError:
                     raise RuntimeError("That CurseForge pack is missing its manifest.json.")
-            mc = manifest.get("minecraft") or {}
-            mc_version = mc.get("version")
-            if not mc_version:
-                raise RuntimeError("This modpack doesn't say which Minecraft version it needs.")
-
-            loader, loader_version = "vanilla", None
-            for entry in (mc.get("modLoaders") or []):
-                if not isinstance(entry, dict) or not entry.get("primary"):
-                    continue
-                kind, _, ver = str(entry.get("id") or "").partition("-")
-                if kind == "fabric":
-                    loader, loader_version = "fabric", ver
-                elif kind == "forge":
-                    loader, loader_version = "forge", ver
-                elif kind == "neoforge":
-                    loader, loader_version = "neoforge", ver
-                elif kind in ("quilt", "liteloader"):
-                    raise RuntimeError(f"This modpack needs {kind.capitalize()}, which Crit Launcher doesn't support yet.")
-
-            name = unique_instance_name(manifest.get("name") or project.get("name") or "Modpack")
-            self._make_instance(name, mc_version, loader, loader_version)
-            game_dir = instance_game_dir(name)
-            mods_dir = game_dir / "mods"
-            mods_dir.mkdir(parents=True, exist_ok=True)
-
-            wanted = []
-            for item in (manifest.get("files") or []):
-                if not isinstance(item, dict) or item.get("required") is False:
-                    continue
-                pid, fid = item.get("projectID"), item.get("fileID")
-                if pid and fid:
-                    wanted.append((int(pid), int(fid)))
-
-            tracker.set_task("Resolving modpack files", force=True)
-
-            def _file_info(pair):
-                try:
-                    info = _cf_get(f"/mods/{pair[0]}/files/{pair[1]}") or {}
-                    return info if isinstance(info, dict) else None
-                except Exception:
-                    return None
-
-            infos = []
-            if wanted:
-                with ThreadPoolExecutor(max_workers=6) as pool_exec:
-                    for info in pool_exec.map(_file_info, wanted):
-                        if info:
-                            infos.append(info)
-
-            items = []
-            for info in infos:
-                fname = Path(str(info.get("fileName") or "")).name
-                url = info.get("downloadUrl")
-                if not fname or not isinstance(url, str) or not url.startswith("https://"):
-                    continue
-                if not is_within(mods_dir, mods_dir / fname):
-                    continue
-                items.append(({"path": fname, "url": url, "size": info.get("fileLength"),
-                               "sha1": _cf_file_sha1(info)}, mods_dir))
-
-            tracker.reset(sum(entry_weight(e) for e, _ in items) + 1)
-            tracker.set_task("Downloading modpack files", force=True)
-            download_all(items, tracker, workers=8)
-
-            tracker.set_task("Applying overrides", force=True)
-            with zipfile.ZipFile(pack_path) as zf:
-                for member in zf.namelist():
-                    for prefix in ("overrides/", "client-overrides/"):
-                        if not member.startswith(prefix):
-                            continue
-                        rel = member[len(prefix):]
-                        if not rel:
-                            break
-                        dest = game_dir / rel
-                        if not is_within(game_dir, dest):
-                            break
-                        if member.endswith("/"):
-                            dest.mkdir(parents=True, exist_ok=True)
-                        else:
-                            dest.parent.mkdir(parents=True, exist_ok=True)
-                            dest.write_bytes(zf.read(member))
-                        break
+                name = self._install_cf_manifest(
+                    zf, manifest, tracker,
+                    manifest.get("name") or project.get("name") or "Modpack")
 
             self.push_state()
             self.emit("addonFinished", {"name": name})
@@ -259,58 +374,7 @@ class ModpacksApi:
 
             with zipfile.ZipFile(pack_path) as zf:
                 index = json.loads(zf.read("modrinth.index.json").decode("utf-8"))
-                deps = index.get("dependencies", {})
-                mc_version = deps.get("minecraft")
-                if not mc_version:
-                    raise RuntimeError("This modpack doesn't say which Minecraft version it needs.")
-
-                loader, loader_version = "vanilla", None
-                if "fabric-loader" in deps:
-                    loader, loader_version = "fabric", deps["fabric-loader"]
-                elif "forge" in deps:
-                    loader, loader_version = "forge", deps["forge"]
-                elif "neoforge" in deps:
-                    loader, loader_version = "neoforge", deps["neoforge"]
-                elif "quilt-loader" in deps:
-                    raise RuntimeError("This modpack needs Quilt, which Crit Launcher doesn't support yet.")
-
-                name = unique_instance_name(index.get("name") or project.get("title") or "Modpack")
-                self._make_instance(name, mc_version, loader, loader_version)
-                game_dir = instance_game_dir(name)
-
-                items = []
-                for f in index.get("files", []):
-                    if (f.get("env") or {}).get("client") == "unsupported":
-                        continue
-                    rel = f.get("path", "")
-                    urls = f.get("downloads") or []
-                    if not rel or not urls or not is_within(game_dir, game_dir / rel):
-                        continue
-                    items.append(({
-                        "path": rel, "url": urls[0], "size": f.get("fileSize"),
-                        "sha1": (f.get("hashes") or {}).get("sha1"),
-                    }, game_dir))
-
-                tracker.reset(sum(entry_weight(e) for e, _ in items) + 1)
-                tracker.set_task("Downloading modpack files", force=True)
-                download_all(items, tracker, workers=8)
-
-                tracker.set_task("Applying overrides", force=True)
-                for member in zf.namelist():
-                    for prefix in ("overrides/", "client-overrides/"):
-                        if member.startswith(prefix):
-                            rel = member[len(prefix):]
-                            if not rel:
-                                break
-                            dest = game_dir / rel
-                            if not is_within(game_dir, dest):
-                                break
-                            if member.endswith("/"):
-                                dest.mkdir(parents=True, exist_ok=True)
-                            else:
-                                dest.parent.mkdir(parents=True, exist_ok=True)
-                                dest.write_bytes(zf.read(member))
-                            break
+                name = self._install_mrpack_index(zf, index, tracker, project.get("title"))
 
             self.push_state()
             self.emit("addonFinished", {"name": name})

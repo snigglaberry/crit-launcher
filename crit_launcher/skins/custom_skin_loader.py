@@ -3,9 +3,12 @@
 import json
 import os
 import re
+from functools import lru_cache
 from pathlib import Path
 
+from ..addons.critclient import fabric_mod_info
 from ..core.fsutil import _write_bytes_atomic
+from ..instances.content import read_mod_jar
 from ..instances.store import instance_game_dir, instance_mods_dir
 
 
@@ -95,5 +98,24 @@ def _mod_present(instance_name: str, needle: str) -> bool:
     return any(p.is_file() and p.suffix.lower() == ".jar" and n in _norm_name(p.name) for p in mods.iterdir())
 
 
+@lru_cache(maxsize=4096)
+def _is_csl_jar(path: Path, size: int, modified: int, changed: int) -> bool:
+    mod_id = fabric_mod_info(path)[0] or read_mod_jar(path).get("modid")
+    if mod_id:
+        return _norm_name(mod_id) == CSL_PROJECT
+    # Some older CSL builds don't declare a mod ID.
+    return CSL_PROJECT in _norm_name(path.name)
+
+
 def _csl_installed(instance_name: str) -> bool:
-    return _mod_present(instance_name, "customskinloader")
+    mods = instance_mods_dir(instance_name)
+    if mods.is_dir():
+        for path in mods.iterdir():
+            if path.suffix.lower() == ".jar" and path.is_file():
+                try:
+                    stat = path.stat()
+                except FileNotFoundError:
+                    continue
+                if _is_csl_jar(path, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns):
+                    return True
+    return False

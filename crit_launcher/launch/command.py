@@ -3,6 +3,7 @@
 import os
 
 from ..accounts.ely import authlib_injector
+from ..addons.critclient import client_skin_bridge
 from ..config.paths import ASSETS_DIR, DATA_DIR, LIBRARIES_DIR
 from ..core.system import classpath_sep
 from ..instances.store import instance_dir, instance_game_dir
@@ -91,6 +92,11 @@ def build_launch_command(meta: dict, account: dict, memory_mb: int, java_exe: st
         if injector:
             command.insert(1, f"-javaagent:{injector}=ely.by")
 
+    account_type_property = "-Dcritclient.launcher.accountType="
+    command = [arg for arg in command if not arg.startswith(account_type_property)]
+    account_type = account.get("type")
+    if meta.get("loader") == "fabric" and account_type in ("offline", "microsoft", "ely") and client_skin_bridge(name):
+        command.append(account_type_property + account_type)
     command.append(meta["main_class"])
     command.extend(game_args)
     if options.get("fullscreen"):

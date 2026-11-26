@@ -13,7 +13,7 @@ crit_launcher/
   core/                  shared infrastructure: http, files, logging, OS helpers, json store, ed25519
   config/                paths.py (every folder/file location) and settings.py
   accounts/ skins/ instances/ importers/ addons/ servers/
-  minecraft/ horizon/ launch/ updates/ news/ discord/ ui/     one package per feature
+  minecraft/ horizon/ launch/ updates/ news/ discord/ tunnel/ ui/     one package per feature
 index.html               Windows UI          index.linux.html   Linux UI (picked automatically on Linux)
 assets/                  UI artwork (the path is also a raw.githubusercontent URL, do not move it)
 packaging/               windows/critsetup.iss, linux/ (AppImage build)
@@ -43,6 +43,40 @@ tests/                   unit tests + API-surface checks
 * Run from source: `python crit.py` (needs `pywebview`; Linux also needs PyQt6 + PyQt6-WebEngine).
 * Tests: `python -m unittest discover -s tests` (no GUI needed).
 
+## e4mc sharing
+
+Click **Share** on an online Java server, or open a Java world to LAN and click **Share** in its
+instance console. The launcher detects the local port and requests the public address immediately.
+A server's header shows the address only while that server is forwarded; otherwise it shows
+“This is not public yet.” Only one game can be forwarded at a time. Closing the popup leaves it
+running; **Stop forwarding** or exiting the game closes the tunnel.
+
+## Instance add-ons
+
+**View addons → Mods** lets you switch a mod off before launching the game. Its JAR moves
+from `game/mods/` to the instance's `game/disabled/` folder; switching it on moves it back.
+Imported `*.jar.disabled` files can also be switched back on.
+
+Shader packs install directly into `game/shaderpacks/` on any Java instance, including vanilla.
+Rendering the pack in Minecraft still requires a compatible shader renderer.
+
+## Crit Client
+
+Compatible Fabric instances have an **Install Crit Client** or **Update Crit Client** button.
+The launcher checks the installed JAR against the latest GitHub release and marks a different
+build **outdated**. The button changes only the client JAR. To install the default mod set as
+well, use **Use Crit Client** when creating a new instance.
+
+Offline skins use the enabled Fabric `critclient` JAR's `fabric.mod.json`, independently of the
+release check. The integer `custom["critclient:launcher_skin_bridge"] = 1` enables the built-in
+loader. Launcher and game share `game/config/skinstudio/offline-skins/<account-uuid>.json` in each
+instance. A selection stores `version: 1`, `variant` and a base64 PNG; a reset stores `png: null`.
+Launch passes the actual account type as `-Dcritclient.launcher.accountType` and leaves this file alone.
+
+Other compatible Fabric, Forge and NeoForge instances use CustomSkinLoader and need one game run
+to create its config. Offline capes are CSL-only. If both loaders are enabled, **View addons → Mods**
+lets the user choose which to keep enabled.
+
 ## Adding a feature
 
 Create a package, put logic in plain modules, put the page-facing methods in `api.py` as a mixin,
@@ -60,13 +94,17 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `crit_launcher/accounts/session.py` | Refreshing an account's tokens before launch. |
 | `crit_launcher/accounts/store.py` | The accounts file and account lookup. |
 | `crit_launcher/accounts/tokens.py` | JWT expiry and the public view of an account. |
+| `crit_launcher/bedrock/api.py` | Background download/launch work for Bedrock instances. |
+| `crit_launcher/bedrock/catalog.py` | Finding the newest Bedrock release. |
+| `crit_launcher/bedrock/installer.py` | Downloading, installing and starting Bedrock. |
+| `crit_launcher/bedrock/store_network.py` | Resolving older UWP package URLs through Windows Update. |
 | `crit_launcher/addons/api.py` | JS-bridge API: add-on search and install. |
 | `crit_launcher/addons/api_critclient.py` | JS-bridge API: Crit Client. |
 | `crit_launcher/addons/api_modpacks.py` | JS-bridge API: modpacks. |
 | `crit_launcher/addons/api_mods.py` | JS-bridge API: mod identification and version switching. |
-| `crit_launcher/addons/api_shaders.py` | JS-bridge API: Iris and shaders. |
+| `crit_launcher/addons/api_shaders.py` | JS-bridge API: standalone Iris installation. |
 | `crit_launcher/addons/constants.py` | Add-on type names. |
-| `crit_launcher/addons/critclient.py` | Crit Client mod set endpoints. |
+| `crit_launcher/addons/critclient.py` | Crit Client release assets, JAR updates and default mod set. |
 | `crit_launcher/addons/curseforge.py` | CurseForge proxy client. |
 | `crit_launcher/addons/fingerprint.py` | File hashes and CurseForge fingerprints for identifying mods. |
 | `crit_launcher/addons/modrinth.py` | Modrinth API helpers. |
@@ -96,10 +134,13 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `crit_launcher/importers/api.py` | JS-bridge API: importing instances. |
 | `crit_launcher/importers/common.py` | Shared helpers for reading other launchers' data. |
 | `crit_launcher/importers/fastclient.py` | FastClient instance scanner. |
+| `crit_launcher/importers/lunar.py` | Lunar Client profile scanner (shared `.minecraft` data). |
+| `crit_launcher/importers/minecraft.py` | Minecraft Launcher / `.minecraft` folder scanner. |
 | `crit_launcher/importers/modrinth_app.py` | Modrinth App instance scanner. |
 | `crit_launcher/importers/prism.py` | Prism / MultiMC instance scanner. |
 | `crit_launcher/importers/registry.py` | Scanner registry and import source resolution. |
 | `crit_launcher/importers/sklauncher.py` | SKLauncher instance scanner. |
+| `crit_launcher/importers/universal.py` | Universal scanner for any launcher or instance folder. |
 | `crit_launcher/instances/api.py` | JS-bridge API: instance management. |
 | `crit_launcher/instances/api_content.py` | JS-bridge API: installed content. |
 | `crit_launcher/instances/api_icons.py` | JS-bridge API: instance icons. |
@@ -139,11 +180,15 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `crit_launcher/skins/api_local.py` | JS-bridge API: offline-account skins. |
 | `crit_launcher/skins/capes.py` | Cape catalogue. |
 | `crit_launcher/skins/catalog.py` | The Critical skin catalog (GitHub backed). |
+| `crit_launcher/skins/critclient_bridge.py` | Read and atomically write per-account Skin Studio selections. |
 | `crit_launcher/skins/custom_skin_loader.py` | CustomSkinLoader config for offline/Ely skins. |
 | `crit_launcher/skins/laby.py` | LabyMod skin catalog client. |
 | `crit_launcher/skins/library.py` | The saved-skins library. |
 | `crit_launcher/skins/sources.py` | URL validation and fetching for catalog skins. |
 | `crit_launcher/skins/textures.py` | Skin endpoints, texture fetching and upload helpers. |
+| `crit_launcher/tunnel/api.py` | JS-bridge API: e4mc sharing. |
+| `crit_launcher/tunnel/client.py` | The e4mc relay helper process and LAN port detection. |
+| `crit_launcher/tunnel/constants.py` | e4mc endpoints and the pinned relay helper build. |
 | `crit_launcher/ui/api_assets.py` | JS-bridge API: artwork. |
 | `crit_launcher/ui/api_window.py` | JS-bridge API: native window chrome. |
 | `crit_launcher/ui/assets.py` | Locating, seeding and downloading UI artwork. |
@@ -196,6 +241,8 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `get_critclient_info` | `crit_launcher/addons/api_critclient.py` |
 | `get_custom_bg` | `crit_launcher/ui/api_assets.py` |
 | `get_disk_usage` | `crit_launcher/instances/api.py` |
+| `get_e4mc_port` | `crit_launcher/tunnel/api.py` |
+| `get_e4mc_status` | `crit_launcher/tunnel/api.py` |
 | `get_fabric_game_versions` | `crit_launcher/minecraft/api.py` |
 | `get_fabric_loaders` | `crit_launcher/minecraft/api.py` |
 | `get_forge_mc_versions` | `crit_launcher/minecraft/api.py` |
@@ -227,7 +274,9 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `get_window_state` | `crit_launcher/ui/api_window.py` |
 | `identify_mods` | `crit_launcher/addons/api_mods.py` |
 | `import_launcher_instance` | `crit_launcher/importers/api.py` |
+| `import_modpack_file` | `crit_launcher/addons/api_modpacks.py` |
 | `install_addon` | `crit_launcher/addons/api.py` |
+| `install_critclient` | `crit_launcher/addons/api_critclient.py` |
 | `install_iris` | `crit_launcher/addons/api_shaders.py` |
 | `install_modpack` | `crit_launcher/addons/api_modpacks.py` |
 | `install_server_mod` | `crit_launcher/servers/api_content.py` |
@@ -251,6 +300,7 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `open_server_folder` | `crit_launcher/servers/api_lifecycle.py` |
 | `open_url` | `crit_launcher/app/api_state.py` |
 | `pick_import_folder` | `crit_launcher/importers/api.py` |
+| `pick_modpack_file` | `crit_launcher/addons/api_modpacks.py` |
 | `player_action` | `crit_launcher/servers/api_players.py` |
 | `push_state` | `crit_launcher/app/api_state.py` |
 | `quit_app` | `crit_launcher/app/api_state.py` |
@@ -263,6 +313,7 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `save_skin` | `crit_launcher/skins/api.py` |
 | `scan_custom_import_dir` | `crit_launcher/importers/api.py` |
 | `scan_import_sources` | `crit_launcher/importers/api.py` |
+| `scan_universal_import_dir` | `crit_launcher/importers/api.py` |
 | `search_addons` | `crit_launcher/addons/api.py` |
 | `search_server_mods` | `crit_launcher/servers/api_content.py` |
 | `send_server_command` | `crit_launcher/servers/api_process.py` |
@@ -272,13 +323,16 @@ add the mixin to the bases in `app/facade.py`, and add its methods to `tests/api
 | `set_skin` | `crit_launcher/skins/api.py` |
 | `set_titlebar_theme` | `crit_launcher/ui/api_window.py` |
 | `set_window` | `crit_launcher/app/api_state.py` |
+| `start_e4mc` | `crit_launcher/tunnel/api.py` |
 | `start_minecraft_web_login` | `crit_launcher/accounts/api.py` |
 | `start_server` | `crit_launcher/servers/api_process.py` |
 | `stop` | `crit_launcher/launch/api.py` |
 | `stop_all_servers` | `crit_launcher/servers/api_process.py` |
+| `stop_e4mc` | `crit_launcher/tunnel/api.py` |
 | `stop_server` | `crit_launcher/servers/api_process.py` |
 | `switch_account` | `crit_launcher/accounts/api.py` |
 | `switch_mod_version` | `crit_launcher/addons/api_mods.py` |
+| `toggle_instance_mod` | `crit_launcher/instances/api_content.py` |
 | `toggle_server_content` | `crit_launcher/servers/api_content.py` |
 | `update_server_settings` | `crit_launcher/servers/api_settings.py` |
 | `window_control` | `crit_launcher/ui/api_window.py` |

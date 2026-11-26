@@ -9,7 +9,7 @@ from ..core.logs import log_exception
 from ..core.system import CREATE_NO_WINDOW
 from ..minecraft.java import console_java, java_info_from_meta, resolve_java
 from .meta import read_server_meta, server_dir, write_server_meta
-from .properties import _clamp_int, gamerule_candidates
+from .properties import _clamp_int, gamerule_candidates, read_properties
 from .runtime import (
     LOG_JOIN_RE,
     LOG_LEAVE_RE,
@@ -37,11 +37,18 @@ class ServerProcessApi:
                 return {"success": False, "error": f"Java {meta.get('java_major') or ''} was not found. Recreate the server."}
             mem = _clamp_int(meta.get("memory_mb"), 512, 65536, 2048)
             cmd = [console_java(java), f"-Xmx{mem}M", f"-Xms{min(mem, 1024)}M", "-jar", "server.jar", "nogui"]
-            rt = ServerRuntime(name)
-            rt.proc = subprocess.Popen(cmd, cwd=str(server_dir(name)), stdin=subprocess.PIPE,
-                                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                       creationflags=CREATE_NO_WINDOW, shell=False)
+            folder = server_dir(name)
+            props = read_properties(folder / "server.properties")
+            rt = ServerRuntime(name, _clamp_int(props.get("server-port"), 1, 65535, 25565))
             with self._srv_lock:
+                if self._closing:
+                    return {"success": False, "error": "The launcher is closing."}
+                current = self._srv_rt.get(name)
+                if current and current.status != "offline":
+                    return {"success": False, "error": "Server is already running."}
+                rt.proc = subprocess.Popen(cmd, cwd=str(folder), stdin=subprocess.PIPE,
+                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                            creationflags=CREATE_NO_WINDOW, shell=False)
                 self._srv_rt[name] = rt
             self._srv_line(rt, f"[Crit Launcher] Starting {meta['software']} {meta['version']} with {mem} MB...")
             threading.Thread(target=self._srv_reader, args=(rt, meta), daemon=True).start()
@@ -117,6 +124,7 @@ class ServerProcessApi:
             log_exception("server reader")
         finally:
             code = rt.proc.wait()
+            self._e4mc_stop_target("server", name)
             rt.status = "offline"
             rt.players.clear()
             rt.exited.set()
@@ -220,6 +228,7 @@ class ServerProcessApi:
             else:
                 self._srv_send(rt, "stop")
                 threading.Thread(target=self._srv_kill_later, args=(rt,), daemon=True).start()
+            self._e4mc_stop_target("server", name)
             return {"success": True}
         except Exception:
             log_exception("stop_server")
@@ -242,13 +251,16 @@ class ServerProcessApi:
 
     def stop_all_servers(self):
         with self._srv_lock:
-            runtimes = list(self._srv_rt.values())
-        for rt in runtimes:
-            if rt.status != "offline":
+            runtimes = [rt for rt in self._srv_rt.values() if rt.status != "offline"]
+            for rt in runtimes:
+                rt.restart_after = False
                 rt.stopping = True
-                self._srv_send(rt, "stop")
+                rt.status = "stopping"
+        deadline = time.monotonic() + 20
         for rt in runtimes:
-            rt.exited.wait(20)
+            self._srv_send(rt, "stop")
+        for rt in runtimes:
+            rt.exited.wait(max(0, deadline - time.monotonic()))
 
     def get_server_log(self, name):
         with self._srv_lock:

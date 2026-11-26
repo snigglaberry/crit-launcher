@@ -10,7 +10,7 @@ from ..accounts.ely import ely_skin_for
 from ..accounts.errors import AuthError
 from ..accounts.microsoft import MC_PROFILE_URL
 from ..accounts.session import ensure_fresh_account
-from ..accounts.store import accounts_store, find_account
+from ..accounts.store import accounts_store, find_account, selected_account
 from ..config.paths import SKINS_DIR
 from ..config.settings import settings_store
 from ..core.http import http_get_auth, http_send
@@ -42,23 +42,27 @@ class SkinsApi:
         try:
             names = [n for n in (names or []) if isinstance(n, str) and n.strip()][:40]
             faces = {}
+            payload = {"success": True, "faces": faces}
+            if active:
+                settings = settings_store.read()
+                acc = selected_account(accounts_store.read(), settings.get("active_account"))
+                if acc and acc.get("type") == "offline":
+                    local = self._local_skin_state_for(acc, settings)
+                    payload["active"] = {"name": acc["name"], "image": local["skin"], "variant": local["variant"],
+                                         "backend": local["backend"], "error": local.get("error")}
+                    if local["backend"] == "critclient":
+                        # A reset (including one made in-game) must also clear a cached account face.
+                        names = [n for n in names if n.casefold() != acc["name"].casefold()]
+                        faces[acc["name"]] = local["skin"]
+                else:
+                    skin = ely_skin_for(str(active))
+                    if skin:
+                        payload["active"] = skin
             if names:
                 with ThreadPoolExecutor(max_workers=min(8, len(names))) as pool:
                     for name, skin in zip(names, pool.map(ely_skin_for, names)):
                         if skin:
                             faces[name] = skin["image"]
-            payload = {"success": True, "faces": faces}
-            if active:
-                acc = find_account(accounts_store.read(), settings_store.read().get("active_account"))
-                if acc and acc.get("type") == "offline":
-                    local = self.local_skin_state()
-                    if local.get("success") and local.get("skin"):
-                        payload["active"] = {"name": acc["name"], "image": local["skin"],
-                                             "variant": "classic"}
-                else:
-                    skin = ely_skin_for(str(active))
-                    if skin:
-                        payload["active"] = skin
             return payload
         except Exception:
             log_exception("get_live_skins")

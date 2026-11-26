@@ -4,7 +4,8 @@ from .constants import NEOFORGE_LEGACY_MAVEN, NEOFORGE_LEGACY_MC, NEOFORGE_MAVEN
 
 
 MOD_LOADERS = ("fabric", "forge", "neoforge")
-LOADER_NICE = {"fabric": "Fabric", "forge": "Forge", "neoforge": "NeoForge", "horizon": "Horizon"}
+LOADER_NICE = {"fabric": "Fabric", "forge": "Forge", "neoforge": "NeoForge",
+               "horizon": "Horizon", "bedrock": "Bedrock"}
 
 
 def neoforge_version_to_mc(version: str):

@@ -84,8 +84,9 @@ class ProcSampler:
 
 
 class ServerRuntime:
-    def __init__(self, name):
+    def __init__(self, name, port):
         self.name = name
+        self.port = port
         self.proc = None
         self.status = "starting"
         self.started = time.time()

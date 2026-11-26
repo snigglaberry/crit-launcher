@@ -2,7 +2,7 @@
 
 import json
 
-from ..accounts.store import accounts_store, find_account
+from ..accounts.store import accounts_store, selected_account
 from ..accounts.tokens import public_account
 from ..config.settings import (
     ADDON_SOURCES,
@@ -18,7 +18,7 @@ from ..core.logs import log_exception
 from ..core.memory import memory_ceiling_mb, total_system_memory_mb
 from ..instances.icons import INSTANCE_ICONS, custom_instance_icon_path, list_custom_instance_icons
 from ..instances.playtime import _playtime_days
-from ..instances.store import is_installed, list_instances
+from ..instances.store import active_instance, is_installed, list_instances
 from ..minecraft.java import detect_java_for_ui
 from ..version import APP_VERSION
 
@@ -28,20 +28,38 @@ class AppStateApi:
 
     def set_window(self, window):
         self._window = window
+        # pywebview also calls these directly for bridge replies and startup scripts.
+        # A callback that finishes after closing starts must not touch the native view.
+        def while_open(run):
+            def call(*args, **kwargs):
+                if self._window is window and not self._closing:
+                    return run(*args, **kwargs)
+            return call
+
+        if window is not None:
+            window.evaluate_js = while_open(window.evaluate_js)
+            window.run_js = while_open(window.run_js)
+
+    def _begin_close(self):
+        self._closing = True
+        self._window = None
 
     def emit(self, name: str, data=None):
-        if self._window is None:
+        window = self._window
+        if window is None or self._closing:
             return
         try:
             payload = json.dumps(data if data is not None else {})
             name_json = json.dumps(name)
             code = f"window.__critEvent && window.__critEvent({name_json}, {payload});"
-            self._window.evaluate_js(code)
+            window.evaluate_js(code)
         except Exception:
-            log_exception(f"emit({name}) failed")
+            if not self._closing:
+                log_exception(f"emit({name}) failed")
 
     def push_state(self):
-        self.emit("stateChanged", self._state_dict())
+        if self._window is not None and not self._closing:
+            self.emit("stateChanged", self._state_dict())
 
     def _runtime_dict(self) -> dict:
         with self._proc_lock:
@@ -59,9 +77,7 @@ class AppStateApi:
     def _state_dict(self) -> dict:
         settings = settings_store.read()
         accounts = accounts_store.read()
-        active_account = find_account(accounts, settings.get("active_account"))
-        if not active_account and accounts:
-            active_account = accounts[0]
+        active_account = selected_account(accounts, settings.get("active_account"))
 
         instances = []
         for meta in list_instances():
@@ -84,11 +100,6 @@ class AppStateApi:
                 "created": meta.get("created"),
                 "critclient": bool(meta.get("critclient") or meta.get("oneclient")),
             })
-        active_instance_name = settings.get("active_instance")
-        active_instance = next(
-            (i for i in instances if i["name"] == active_instance_name), None)
-        if not active_instance and instances:
-            active_instance = instances[0]
 
         java_path, java_line = detect_java_for_ui()
         runtime = self._runtime_dict()
@@ -99,7 +110,7 @@ class AppStateApi:
             "active_account": public_account(active_account) if active_account else None,
             "instances": instances,
             "custom_icons": list_custom_instance_icons(),
-            "active_instance": active_instance,
+            "active_instance": active_instance(instances, settings.get("active_instance")),
             "running": runtime["running"],
             "sessions": runtime["sessions"],
             "installing": runtime["installing"],
@@ -130,6 +141,7 @@ class AppStateApi:
                 "ui_style": settings.get("ui_style", "default") if settings.get("ui_style") in UI_STYLES else "default",
                 "addon_view": settings.get("addon_view") if settings.get("addon_view") in ADDON_VIEWS else "browse",
                 "addon_instance": settings.get("addon_instance") if isinstance(settings.get("addon_instance"), str) else None,
+                "addon_compat_only": bool(settings.get("addon_compat_only", True)),
                 "color_mode": settings.get("color_mode", "dark") if settings.get("color_mode") in COLOR_MODES else "dark",
                 "catalog_source": settings.get("catalog_source", "labymod") if settings.get("catalog_source") in CATALOG_SOURCES else "labymod",
                 "addon_source": settings.get("addon_source") if settings.get("addon_source") in ADDON_SOURCES else "modrinth",
@@ -163,8 +175,9 @@ class AppStateApi:
     def quit_app(self):
         """Close Crit Launcher (used when the first-run agreement is declined)."""
         try:
-            if self._window is not None:
-                self._window.destroy()
+            window = self._window
+            if window is not None and not self._closing:
+                window.destroy()
             return {"success": True}
         except Exception:
             log_exception("quit_app")

@@ -1,33 +1,11 @@
-"""JS-bridge API: Iris and shaders."""
+"""JS-bridge API: standalone Iris installation."""
 
-import json
-import re
-import urllib.parse
-
-from ..core.http import http_get_json
 from ..core.logs import log_exception
-from ..instances.content import read_mod_jar
-from ..instances.store import instance_game_dir, instance_mods_dir, read_instance_meta
-from .modrinth import MODRINTH_API, pick_best_version
+from ..instances.store import instance_mods_dir, read_instance_meta
 
 
 class ShadersApi:
-    """Iris and shader-pack installation."""
-
-    def _fabric_has_iris(self, name):
-        mods = instance_mods_dir(name)
-        if not mods.is_dir():
-            return False
-        for p in mods.iterdir():
-            low = p.name.lower()
-            if not low.endswith(".jar"):
-                continue
-            if re.match(r"^iris[-_+ ]", low) and "flywheel" not in low:
-                return True
-            n = (read_mod_jar(p).get("name") or "").lower()
-            if n in ("iris", "iris shaders"):
-                return True
-        return False
+    """Install Iris when explicitly requested."""
 
     def install_iris(self, instance_name):
         try:
@@ -45,19 +23,3 @@ class ShadersApi:
         except Exception as exc:
             log_exception("install_iris")
             return {"success": False, "error": f"Failed to install Iris: {exc}"}
-
-    def _install_shader(self, project_id, instance_name, meta):
-        mc = meta["version"]
-        note = None
-        base = f"{MODRINTH_API}/project/{urllib.parse.quote(project_id)}/version"
-        versions = http_get_json(base + "?" + urllib.parse.urlencode({"game_versions": json.dumps([mc])}))
-        if not versions:
-            versions = http_get_json(base)
-            note = f"No exact match for {mc}, installed the newest version instead."
-        iris_first = [v for v in versions if "iris" in (v.get("loaders") or [])] or versions
-        version = pick_best_version(iris_first)
-        if not version:
-            raise RuntimeError("That shader pack has no downloadable version.")
-        dest = instance_game_dir(instance_name) / "shaderpacks"
-        dest.mkdir(parents=True, exist_ok=True)
-        return {"success": True, "files": [self._download_version_file(version, dest)], "note": note}

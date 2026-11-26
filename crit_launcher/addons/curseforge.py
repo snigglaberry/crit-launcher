@@ -68,6 +68,30 @@ def _cf_number(project_id) -> int:
     return int(raw)
 
 
+_CF_SLUG_CACHE = {}
+
+
+def _cf_resolve_slug(slug: str) -> int:
+    """Turn a CurseForge project slug into its numeric id."""
+    key = str(slug or "").strip().lower()
+    if not key:
+        raise CurseForgeError("That isn't a CurseForge project.")
+    if key.isdigit():
+        return int(key)
+    if key in _CF_SLUG_CACHE:
+        return _CF_SLUG_CACHE[key]
+    data = _cf_get("/mods/search", {"gameId": CF_GAME_ID,
+                                    "classId": CF_CLASS_IDS["mod"], "slug": key},
+                   unwrap=False) or {}
+    mods = data.get("data") if isinstance(data, dict) else data
+    for mod in mods or []:
+        if (isinstance(mod, dict) and mod.get("id")
+                and str(mod.get("slug") or "").lower() == key):
+            _CF_SLUG_CACHE[key] = int(mod["id"])
+            return _CF_SLUG_CACHE[key]
+    raise CurseForgeError(f"Couldn't find the CurseForge project '{slug}'.")
+
+
 def _cf_hit(mod: dict) -> dict:
     cats = [c.get("name") for c in (mod.get("categories") or []) if isinstance(c, dict) and c.get("name")]
     authors = [a.get("name") for a in (mod.get("authors") or []) if isinstance(a, dict) and a.get("name")]

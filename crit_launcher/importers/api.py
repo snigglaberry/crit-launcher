@@ -16,16 +16,19 @@ from ..instances.store import (
     read_instance_meta,
     sanitize_instance_name,
 )
-from ..minecraft.loaders import MOD_LOADERS
+from ..minecraft.loaders import LOADER_NICE, MOD_LOADERS
 from .common import LAUNCHER_LABELS
 from .registry import (
     _LAUNCHER_SCANNERS,
     _find_scanned_instance,
     _guess_launcher_for_dir,
+    _source_game_dir,
     _source_paths,
+    auto_import_source,
     scan_all_launchers,
     scan_custom_launcher_dir,
 )
+from .universal import EXTRA_GAME_DIRS, UNIVERSAL_LAUNCHER, scan_universal_source
 
 
 class ImportApi:
@@ -58,6 +61,14 @@ class ImportApi:
             root = Path(path)
             if not root.is_dir():
                 return {"success": False, "error": "That folder doesn't exist."}
+            if launcher == "auto":
+                src = auto_import_source(root)
+                if not src or not src["instances"]:
+                    return {"success": False,
+                            "error": "Couldn't find a Minecraft instance in that folder. "
+                                     "Pick the instance folder itself, a launcher folder, "
+                                     "or a .minecraft folder."}
+                return {"success": True, "source": src}
             if launcher not in _LAUNCHER_SCANNERS:
                 return {"success": False, "error": "Pick which launcher this folder belongs to."}
             src = scan_custom_launcher_dir(launcher, root)
@@ -68,6 +79,22 @@ class ImportApi:
             return {"success": True, "source": src}
         except Exception:
             log_exception("scan_custom_import_dir")
+            return {"success": False, "error": "Couldn't scan that folder."}
+
+    def scan_universal_import_dir(self, path):
+        try:
+            root = Path(path)
+            if not root.is_dir():
+                return {"success": False, "error": "That folder doesn't exist."}
+            source = scan_universal_source(root)
+            if not source:
+                return {"success": False,
+                        "error": "Couldn't find a Minecraft instance in that folder. "
+                                 "Pick the instance folder itself, or the launcher folder "
+                                 "that contains your instances."}
+            return {"success": True, "source": source}
+        except Exception:
+            log_exception("scan_universal_import_dir")
             return {"success": False, "error": "Couldn't scan that folder."}
 
     def get_import_targets(self):
@@ -81,11 +108,18 @@ class ImportApi:
 
     def import_launcher_instance(self, launcher, source_id, dest_name, existing, copy_options, copy_mods, copy_resourcepacks, copy_saves=False, copy_config=False,
                                 copy_shaderpacks=False, copy_schematics=False, copy_screenshots=False,
-                                custom_root=None):
+                                custom_root=None, copy_extras=False):
         try:
             inst, root = _find_scanned_instance(launcher, source_id, custom_root)
             if not inst:
                 return {"success": False, "error": "That instance couldn't be found anymore. Try rescanning."}
+            if launcher == UNIVERSAL_LAUNCHER:
+                loader = inst.get("loader")
+                if loader not in ("vanilla",) + MOD_LOADERS:
+                    label = LOADER_NICE.get(loader) or str(loader or "this loader").title()
+                    return {"success": False,
+                            "error": f"Crit Launcher doesn't support {label} instances yet. "
+                                     "Supported loaders are Vanilla, Fabric, Forge and NeoForge."}
             if existing:
                 if not read_instance_meta(existing):
                     return {"success": False, "error": "Destination instance not found."}
@@ -111,14 +145,15 @@ class ImportApi:
             target=self._import_worker,
             args=(launcher, inst, root, dest_name, bool(existing),
                   bool(copy_options), bool(copy_mods), bool(copy_resourcepacks), bool(copy_saves), bool(copy_config),
-                  bool(copy_shaderpacks), bool(copy_schematics), bool(copy_screenshots)),
+                  bool(copy_shaderpacks), bool(copy_schematics), bool(copy_screenshots), bool(copy_extras)),
             daemon=True,
         ).start()
         return {"success": True, "instance": dest_name}
 
     def _import_worker(self, launcher, inst, root, dest_name, into_existing,
                        copy_options, copy_mods, copy_resourcepacks, copy_saves=False, copy_config=False,
-                       copy_shaderpacks=False, copy_schematics=False, copy_screenshots=False):
+                       copy_shaderpacks=False, copy_schematics=False, copy_screenshots=False,
+                       copy_extras=False):
         try:
             self.emit("importStarted", {"instance": dest_name})
             supported = inst["loader"] == "vanilla" or inst["loader"] in MOD_LOADERS
@@ -128,12 +163,13 @@ class ImportApi:
                                     inst.get("loader_version") if supported else None)
 
             options_path, mods_dir, packs_dir, saves_dir, config_dir, shaders_dir, schem_dir, shots_dir = _source_paths(launcher, inst["source_id"], root)
+            source_game_dir = _source_game_dir(launcher, inst["source_id"], root)
             game_dir = instance_game_dir(dest_name)
             ensure_game_layout(dest_name, dest_loader)
 
             copied = {"options": False, "servers": False, "hotbar": False,
                       "mods": 0, "resourcepacks": 0, "saves": 0, "config": 0,
-                      "shaderpacks": 0, "schematics": 0, "screenshots": 0}
+                      "shaderpacks": 0, "schematics": 0, "screenshots": 0, "extras": 0}
             if copy_options and options_path:
                 if options_path.is_file():
                     try:
@@ -163,6 +199,11 @@ class ImportApi:
                 copied["schematics"] = _copy_tree_contents(schem_dir, game_dir / "schematics")
             if copy_screenshots and shots_dir:
                 copied["screenshots"] = _copy_tree_contents(shots_dir, game_dir / "screenshots")
+            if copy_extras and source_game_dir:
+                for name in EXTRA_GAME_DIRS:
+                    extra_dir = source_game_dir / name
+                    if extra_dir.is_dir():
+                        copied["extras"] += _copy_tree_contents(extra_dir, game_dir / name)
 
             self.push_state()
             self.emit("importFinished", {"instance": dest_name, "copied": copied})

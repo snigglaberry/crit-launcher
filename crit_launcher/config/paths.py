@@ -41,6 +41,10 @@ def _default_data_dir() -> Path:
 
 DATA_DIR = Path(os.environ.get("CRIT_LAUNCHER_DATA", str(_default_data_dir())))
 INSTANCES_DIR = DATA_DIR / "instances"
+# Bedrock's launcher-managed files belong to this same installation's data directory.
+BEDROCK_DIR = DATA_DIR / "bedrock"
+BEDROCK_INSTANCES_DIR = BEDROCK_DIR / "instances"
+BEDROCK_CACHE_DIR = BEDROCK_DIR / "cache"
 HORIZON_DATA_DIR = DATA_DIR / "horizon"
 VERSIONS_DIR = DATA_DIR / "versions"
 LIBRARIES_DIR = DATA_DIR / "libraries"
@@ -52,6 +56,7 @@ TMP_DIR = DATA_DIR / "tmp"
 SKINS_DIR = DATA_DIR / "skins"
 INSTANCE_ICONS_DIR = DATA_DIR / "instance_icons"
 SERVERS_DIR = DATA_DIR / "servers"
+E4MC_DIR = DATA_DIR / "e4mc"
 
 # Compiled builds unpack index.html into DATA_DIR/web so assets/ can sit beside it.
 PAGE_DIR = DATA_DIR / "web" if getattr(sys, "frozen", False) else RESOURCE_DIR
@@ -63,7 +68,8 @@ LOG_FILE = DATA_DIR / "launcher.log"
 
 def ensure_data_dirs() -> None:
     """Create the data layout. Called once from bootstrap.init(); importing this module has no side effects."""
-    for _d in (DATA_DIR, INSTANCES_DIR, VERSIONS_DIR, LIBRARIES_DIR, ASSETS_DIR,
-               ASSET_OBJECTS_DIR, ASSET_INDEXES_DIR, RUNTIME_DIR, TMP_DIR, SKINS_DIR,
-               INSTANCE_ICONS_DIR, PAGE_DIR, SERVERS_DIR):
+    for _d in (DATA_DIR, INSTANCES_DIR, BEDROCK_DIR, BEDROCK_INSTANCES_DIR, BEDROCK_CACHE_DIR,
+               VERSIONS_DIR, LIBRARIES_DIR, ASSETS_DIR, ASSET_OBJECTS_DIR, ASSET_INDEXES_DIR,
+               RUNTIME_DIR, TMP_DIR, SKINS_DIR, INSTANCE_ICONS_DIR, PAGE_DIR, SERVERS_DIR,
+               E4MC_DIR):
         _d.mkdir(parents=True, exist_ok=True)

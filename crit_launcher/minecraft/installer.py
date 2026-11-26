@@ -355,7 +355,8 @@ class Installer:
 
         installer_entries = []
         if not legacy:
-            installer_entries, _ = collect_library_entries(list(profile.get("libraries", [])))
+            installer_entries, _ = collect_library_entries(
+                list(profile.get("libraries", [])), dedupe=False)
 
         plan = {
             "main_class": version_json.get("mainClass", vanilla_json["mainClass"]),

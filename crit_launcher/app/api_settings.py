@@ -84,6 +84,8 @@ class SettingsApi:
                 if "addon_instance" in patch:
                     ai = patch["addon_instance"]
                     settings["addon_instance"] = ai.strip()[:200] if isinstance(ai, str) and ai.strip() else None
+                if "addon_compat_only" in patch:
+                    settings["addon_compat_only"] = bool(patch["addon_compat_only"])
                 if patch.get("color_mode") in COLOR_MODES:
                     settings["color_mode"] = patch["color_mode"]
                 if patch.get("catalog_source") in CATALOG_SOURCES:

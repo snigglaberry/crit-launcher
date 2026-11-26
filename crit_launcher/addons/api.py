@@ -32,6 +32,7 @@ from .modrinth import MODRINTH_API, pick_best_version, primary_file
 
 
 _addon_cats_mem = {"at": 0.0, "value": None}
+_PACK_FOLDERS = {"resourcepack": "resourcepacks", "shader": "shaderpacks"}
 
 
 class AddonsApi:
@@ -129,16 +130,13 @@ class AddonsApi:
                 loader = inst.get("loader", "vanilla")
                 if project_type == "mod" and loader not in MOD_LOADERS:
                     continue
-                if project_type == "shader" and loader != "fabric":
+                if project_type == "shader" and loader == "bedrock":
                     continue
-                item = {
+                result.append({
                     "name": inst["name"], "version": inst["version"],
                     "loader": loader, "loader_version": inst.get("loader_version"),
                     "installed": is_installed(inst),
-                }
-                if project_type == "shader":
-                    item["iris"] = self._fabric_has_iris(inst["name"])
-                result.append(item)
+                })
             return {"success": True, "instances": result}
         except Exception:
             log_exception("get_addon_targets")
@@ -248,11 +246,8 @@ class AddonsApi:
             log_exception("get_addon_dependencies curseforge")
             return {"success": False, "error": "Couldn't load dependencies."}
 
-    def _install_curseforge(self, project_id, project_type, instance_name, include_deps):
+    def _install_curseforge(self, project_id, project_type, instance_name, include_deps, meta):
         try:
-            meta = read_instance_meta(instance_name)
-            if not meta:
-                return {"success": False, "error": "Instance not found."}
             mc_version = meta["version"]
             loader = meta.get("loader", "vanilla")
             if project_type == "mod":
@@ -260,16 +255,14 @@ class AddonsApi:
                     return {"success": False,
                             "error": f"{LOADER_NICE.get(loader, 'Vanilla')} instances can't run mods."}
                 dest_dir = instance_mods_dir(instance_name)
-            elif project_type == "resourcepack":
-                dest_dir = instance_game_dir(instance_name) / "resourcepacks"
-            elif project_type == "shader":
-                dest_dir = instance_game_dir(instance_name) / "shaderpacks"
+            elif project_type in _PACK_FOLDERS:
+                dest_dir = instance_game_dir(instance_name) / _PACK_FOLDERS[project_type]
             else:
                 return {"success": False, "error": "CurseForge installs support mods, resource packs and shaders."}
             dest_dir.mkdir(parents=True, exist_ok=True)
             files = curseforge_install_to(_cf_number(project_id), dest_dir, mc_version,
                                           loader if project_type == "mod" else None,
-                                          set(), 0, bool(include_deps))
+                                          set(), 0, bool(include_deps) and project_type != "shader")
             return {"success": True, "files": files}
         except CurseForgeError as exc:
             return {"success": False, "error": str(exc)}
@@ -278,14 +271,16 @@ class AddonsApi:
             return {"success": False, "error": f"Failed to install: {exc}"}
 
     def install_addon(self, project_id, project_type, instance_name, include_deps=True):
-        if isinstance(project_id, str) and project_id.startswith("cf:"):
-            return self._install_curseforge(project_id, project_type, instance_name, include_deps)
         try:
             meta = read_instance_meta(instance_name)
             if not meta:
                 return {"success": False, "error": "Instance not found."}
             mc_version = meta["version"]
             loader = meta.get("loader", "vanilla")
+            if project_type == "shader" and loader == "bedrock":
+                return {"success": False, "error": "These shader packs are for Java Edition instances."}
+            if isinstance(project_id, str) and project_id.startswith("cf:"):
+                return self._install_curseforge(project_id, project_type, instance_name, include_deps, meta)
 
             if project_type == "mod":
                 if loader not in MOD_LOADERS:
@@ -305,23 +300,19 @@ class AddonsApi:
                     files.append(self._download_version_file(version, mods_dir))
                 return {"success": True, "files": files}
 
-            if project_type == "resourcepack":
+            if project_type in _PACK_FOLDERS:
                 note = None
                 version = self._find_version(project_id, None, mc_version)
                 if not version:
                     version = self._find_version(project_id)
                     note = f"No exact match for {mc_version}, installed the newest version instead."
                 if not version:
-                    return {"success": False, "error": "That resource pack has no downloadable version."}
-                dest_dir = instance_game_dir(instance_name) / "resourcepacks"
+                    label = "shader pack" if project_type == "shader" else "resource pack"
+                    return {"success": False, "error": f"That {label} has no downloadable version."}
+                dest_dir = instance_game_dir(instance_name) / _PACK_FOLDERS[project_type]
                 dest_dir.mkdir(parents=True, exist_ok=True)
                 name = self._download_version_file(version, dest_dir)
                 return {"success": True, "files": [name], "note": note}
-
-            if project_type == "shader":
-                if loader != "fabric":
-                    return {"success": False, "error": "Shaders install into Fabric instances (with Iris)."}
-                return self._install_shader(project_id, instance_name, meta)
 
             return {"success": False, "error": "Unsupported addon type."}
         except Exception as exc:

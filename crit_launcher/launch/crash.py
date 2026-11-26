@@ -1,6 +1,7 @@
 """Reading crash output and explaining it."""
 
 import os
+import re
 from pathlib import Path
 
 
@@ -23,4 +24,15 @@ def _explain_crash(tail: str) -> str:
     if "ClassNotFoundException" in tail or "NoClassDefFoundError" in tail:
         return "A library is missing. Delete the instance's files by re-installing it, then try again."
     lines = [ln.strip() for ln in tail.splitlines() if ln.strip()]
-    return lines[-1][:220] if lines else "Check launch_output.log in the instance folder."
+    for line in reversed(lines):
+        if line.startswith("at ") or line.startswith("..."):
+            continue
+        match = re.match(r"^(?:[A-Za-z0-9_.$]+(?:Exception|Error)):\s*(.+)$", line)
+        if match:
+            return match.group(1).strip()[:220]
+        if re.search(r"(Exception|Error|Caused by:)", line):
+            return line[:220]
+    for line in reversed(lines):
+        if not line.startswith("at "):
+            return line[:220]
+    return "Check launch_output.log in the instance folder."

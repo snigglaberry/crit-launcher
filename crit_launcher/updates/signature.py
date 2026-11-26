@@ -8,8 +8,7 @@ from ..core.ed25519 import horizon_ed25519_verify
 from ..core.http import http_get_bytes
 
 
-# FILL ME IN
-UPDATE_TRUSTED_KEYS = ()
+UPDATE_TRUSTED_KEYS = ("YJH854U8vf4kYLjtoVcbZcpiFvABV5SCNE7Ftnh0/Vg=",)
 UPDATE_SUMS = "SHA256SUMS"
 UPDATE_SIG = "SHA256SUMS.sig"
 
@@ -26,7 +25,19 @@ def update_signed_sha256(release: dict, asset_name: str) -> str:
     sums = http_get_bytes(assets[UPDATE_SUMS]["browser_download_url"], limit=1 << 20)
     signature = http_get_bytes(assets[UPDATE_SIG]["browser_download_url"], limit=1 << 20)
 
-    message = ("crit launcher release %s\n" % release.get("tag_name")).encode() + sums
+    # GitHub calls this tag_name; the launcher's changelog and its cache call it tag.
+    return signed_asset_sha256(release.get("tag_name") or release.get("tag"), sums, signature, asset_name)
+
+
+def release_message(tag: str, sums: bytes) -> bytes:
+    if not isinstance(tag, str) or not tag or any(c.isspace() for c in tag):
+        raise RuntimeError("The release has no valid tag to verify.")
+    return f"crit launcher release {tag}\n".encode("utf-8") + sums
+
+
+def signed_asset_sha256(tag: str, sums: bytes, signature: bytes, asset_name: str) -> str:
+    """Verify the exact manifest bytes before returning an asset's checksum."""
+    message = release_message(tag, sums)
     keys = [base64.b64decode(k) for k in UPDATE_TRUSTED_KEYS]
     signed = False
     for line in signature.decode("utf-8", "replace").splitlines():

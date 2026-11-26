@@ -1,6 +1,6 @@
 
 #define MyAppName "crit launcher"
-#define MyAppVersion "1.7"
+#define MyAppVersion "1.9"
 #define MyAppPublisher "CRIT"
 #define MyAppURL "https://critlauncher.xyz"
 #define MyAppExeName "crit.exe"

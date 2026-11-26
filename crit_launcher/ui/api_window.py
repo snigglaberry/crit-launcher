@@ -41,18 +41,21 @@ class WindowApi:
     """Native window chrome: custom title bar, drag, resize, theme."""
 
     def _window_hwnd(self):
+        window = self._window
+        if window is None or self._closing:
+            return 0
         import ctypes
         from ctypes import wintypes
         hwnd = 0
         try:
-            hwnd = int(self._window.native.Handle.ToInt64())
+            hwnd = int(window.native.Handle.ToInt64())
         except Exception:
             pass
         if not hwnd:
             user32 = ctypes.windll.user32
             user32.FindWindowW.restype = wintypes.HWND
             user32.FindWindowW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
-            title = getattr(self._window, "title", None) or "Crit Launcher"
+            title = getattr(window, "title", None) or "Crit Launcher"
             hwnd = user32.FindWindowW(None, title) or 0
         return int(hwnd or 0)
 
@@ -264,7 +267,9 @@ class WindowApi:
                 return {"success": False}
             if not self._install_frame_hook():
                 return {"success": False}
-            threading.Timer(0.7, self._verify_frame).start()
+            verify = threading.Timer(0.7, self._verify_frame)
+            verify.daemon = True
+            verify.start()
             return self._frame_state()
         except Exception:
             log_exception("enable_custom_titlebar")
@@ -327,15 +332,26 @@ class WindowApi:
 
     def window_control(self, action):
         try:
+            handle = self._window_hwnd()
+            if not handle:
+                return {"success": False}
             import ctypes
             user32 = ctypes.windll.user32
-            hwnd = ctypes.c_void_p(self._window_hwnd())
+            hwnd = ctypes.c_void_p(handle)
             if action == "minimize":
                 user32.ShowWindow(hwnd, SW_MINIMIZE)
             elif action in ("maximize", "restore"):
                 user32.ShowWindow(hwnd, SW_RESTORE if user32.IsZoomed(hwnd) else SW_MAXIMIZE)
             elif action == "close":
-                user32.PostMessageW(hwnd, WM_CLOSE, 0, 0)     
+                # Don't start a JS bridge reply while WM_CLOSE is being handled.
+                self._closing = True
+                posted = False
+                try:
+                    posted = bool(user32.PostMessageW(hwnd, WM_CLOSE, 0, 0))
+                    return {"success": posted}
+                finally:
+                    if not posted and self._window is not None:
+                        self._closing = False
             else:
                 return {"success": False}
             return {"success": True}

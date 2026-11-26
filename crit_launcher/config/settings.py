@@ -7,7 +7,7 @@ from .paths import SETTINGS_FILE
 
 
 THEMES = ("green", "blue", "purple", "red", "orange", "pink", "white", "custom")
-UI_STYLES = ("default", "minecraft", "modrinth", "fastclient", "sklauncher", "leather")
+UI_STYLES = ("default", "minecraft", "microsoft", "modrinth", "fastclient", "sklauncher", "leather")
 ADDON_VIEWS = ("browse", "installed")
 ADDON_SOURCES = ("modrinth", "curseforge")
 COLOR_MODES = ("dark", "light", "oled")
@@ -37,6 +37,7 @@ DEFAULT_SETTINGS = {
     "ui_style": "default",
     "addon_view": "browse",
     "addon_instance": None,
+    "addon_compat_only": True,
     "color_mode": "dark",
     "catalog_source": "labymod",
     "addon_source": "modrinth",

@@ -11,10 +11,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ..config.paths import TMP_DIR
-from ..core.fsutil import is_within
 from ..core.http import http_download, http_get_json, http_post_json
 from ..core.logs import log_exception
-from ..instances.store import instance_mods_dir, read_instance_meta
+from ..instances.content import content_file_path, iter_content_files
+from ..instances.store import read_instance_meta
 from ..minecraft.loaders import LOADER_NICE
 from .curseforge import (
     CF_GAME_ID,
@@ -41,14 +41,10 @@ class ModManagerApi:
         try:
             if not read_instance_meta(instance_name):
                 return {"success": False, "error": "Instance not found."}
-            folder = instance_mods_dir(instance_name)
-            if not folder.is_dir():
-                return {"success": True, "mods": {}}
+            paths = dict(iter_content_files(instance_name, "mods"))
             by_hash = {}
-            for p in folder.iterdir():
-                low = p.name.lower()
-                if p.is_file() and (low.endswith(".jar") or low.endswith(".jar.disabled")):
-                    by_hash.setdefault(_mod_hash(p), []).append(p.name)
+            for key, path in paths.items():
+                by_hash.setdefault(_mod_hash(path), []).append(key)
             if not by_hash:
                 return {"success": True, "mods": {}}
             found = http_post_json(f"{MODRINTH_API}/version_files",
@@ -82,7 +78,7 @@ class ModManagerApi:
             cf_state = "skipped"
             if leftovers:
                 try:
-                    self._identify_curseforge(folder, leftovers, mods)
+                    self._identify_curseforge(paths, leftovers, mods)
                     cf_state = "ok"
                 except Exception:
                     log_exception("identify_mods curseforge")
@@ -92,11 +88,11 @@ class ModManagerApi:
             log_exception("identify_mods")
             return {"success": False, "error": "Couldn't look the mods up on Modrinth."}
 
-    def _identify_curseforge(self, folder: Path, names, mods: dict):
+    def _identify_curseforge(self, paths: dict, names, mods: dict):
         """Match mod files to CurseForge projects by fingerprint and add them to mods."""
         by_fp = {}
         for name in names:
-            by_fp.setdefault(_mod_fingerprint(folder / name), []).append(name)
+            by_fp.setdefault(_mod_fingerprint(paths[name]), []).append(name)
         found = _cf_post(f"/fingerprints/{CF_GAME_ID}", {"fingerprints": list(by_fp)}) or {}
         matches = {}   # mod id -> [(file info, installed file names)]
         for match in found.get("exactMatches") or []:
@@ -236,10 +232,8 @@ class ModManagerApi:
             with self._proc_lock:
                 if instance_name in self._processes:
                     return {"success": False, "error": "Close the game first - its files are in use."}
-            folder = instance_mods_dir(instance_name)
-            old_name = Path(str(filename or "")).name
-            old_path = folder / old_name
-            if not old_name or not old_path.is_file() or not is_within(folder, old_path):
+            old_path = content_file_path(instance_name, "mods", filename)
+            if not old_path.is_file():
                 return {"success": False, "error": "That mod file no longer exists."}
             mc, loader = meta.get("version"), meta.get("loader", "vanilla")
             is_cf = str(project_id).startswith("cf:")
@@ -263,15 +257,16 @@ class ModManagerApi:
             if not compatible and not allow_incompatible:
                 return {"success": False, "incompatible": True,
                         "error": "That version isn't made for this instance."}
-            was_disabled = old_name.lower().endswith(".disabled")
             if not file_info or not new_name:
                 return {"success": False, "error": "That version has no downloadable file."}
             if not new_name.lower().endswith(".jar"):
                 return {"success": False, "error": "That version isn't a mod .jar file."}
-            final_name = new_name + (".disabled" if was_disabled else "")
-            dest = folder / final_name
-            if not is_within(folder, dest):
-                return {"success": False, "error": "Unsafe file name in mod."}
+            final_name = new_name + (".disabled" if old_path.name.lower().endswith(".disabled") else "")
+            if filename.startswith("disabled/"):
+                final_name = "disabled/" + final_name
+            dest = content_file_path(instance_name, "mods", final_name)
+            if dest != old_path and (dest.exists() or dest.is_symlink()):
+                return {"success": False, "error": f"{dest.parent.name} already contains {dest.name}."}
             if is_cf:
                 # Download into a scratch folder first, then move it into place once it is complete.
                 work = TMP_DIR / f"cf_switch_{uuid.uuid4().hex}"
@@ -286,7 +281,7 @@ class ModManagerApi:
                               (file_info.get("hashes") or {}).get("sha1"))
             if old_path != dest and old_path.exists():
                 old_path.unlink()
-            return {"success": True, "file": final_name, "old": old_name}
+            return {"success": True, "file": final_name, "old": filename}
         except PermissionError:
             return {"success": False, "error": "Couldn't replace it - another program is using the file."}
         except Exception as exc:

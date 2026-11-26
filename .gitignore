@@ -7,4 +7,12 @@ dist/
 dist-linux/
 output/
 *.spec
-# 5 billion dollar api key = sk-siodjpme8m83ppj38wprj98jpwe8rjpwe98rcjpe98rcjpew98rcjpas,9fuckyu
+.venv/
+.pytest_cache/
+.env
+.env.*
+release-keys/
+*.pem
+*.key
+*.pfx
+*.p12

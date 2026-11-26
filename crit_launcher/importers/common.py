@@ -55,6 +55,20 @@ def _launcher_roots(launcher: str) -> list:
                     home / "Library" / "Application Support" / "com.modrinth.theseus"]
         return [home / ".local" / "share" / "ModrinthApp",
                 home / ".local" / "share" / "com.modrinth.theseus"]
+    if launcher == "minecraft":
+        if system == "windows":
+            return [_windows_appdata() / ".minecraft",
+                    _windows_appdata() / "minecraft"]
+        if system == "osx":
+            return [home / "Library" / "Application Support" / "minecraft"]
+        return [home / ".minecraft"]
+    if launcher == "lunar":
+        if system == "windows":
+            return [home / ".lunarclient"]
+        if system == "osx":
+            return [home / "Library" / "Application Support" / ".lunarclient",
+                    home / ".lunarclient"]
+        return [home / ".lunarclient"]
     return []
 
 
@@ -64,6 +78,9 @@ LAUNCHER_LABELS = {
     "sklauncher": "SKLauncher",
     "fastclient": "Fast Client",
     "modrinth": "Modrinth App",
+    "minecraft": "Minecraft / .minecraft",
+    "lunar": "Lunar Client",
+    "universal": "Universal import",
 }
 
 
@@ -83,6 +100,8 @@ def _loader_from_version_json(vjson: dict, mc_version: str):
         lname = lib.get("name", "")
         if lname.startswith("net.fabricmc:fabric-loader:"):
             return "fabric", _maven_version(lname, "net.fabricmc:fabric-loader:")
+        if lname.startswith("net.neoforged:neoforge:"):
+            return "neoforge", _maven_version(lname, "net.neoforged:neoforge:")
         if lname.startswith("net.minecraftforge:forge:"):
             full = _maven_version(lname, "net.minecraftforge:forge:")
             prefix = mc_version + "-"
@@ -91,6 +110,9 @@ def _loader_from_version_json(vjson: dict, mc_version: str):
     m = re.match(r"^fabric-loader-([\w.]+)-", vid)
     if m:
         return "fabric", m.group(1)
+    m = re.match(r"^neoforge-([\w.\-]+)$", vid)
+    if m:
+        return "neoforge", m.group(1)
     m = re.match(r"^(?:[\w.]+-)?forge-([\w.]+)$", vid)
     if m:
         return "forge", m.group(1)

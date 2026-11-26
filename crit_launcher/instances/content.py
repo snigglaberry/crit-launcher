@@ -1,4 +1,4 @@
-"""Reading mods, resource packs and their icons from disk."""
+"""Listing instance content, reading its icons and enabling or disabling mods."""
 
 import base64
 import json
@@ -72,6 +72,7 @@ def _toml_fields(text: str) -> dict:
         m = mods[0] if mods and isinstance(mods[0], dict) else {}
         return {
             "name": m.get("displayName") or m.get("modId"),
+            "modid": m.get("modId"),
             "version": m.get("version"),
             "description": m.get("description"),
             "icon": m.get("logoFile") or data.get("logoFile"),
@@ -83,7 +84,8 @@ def _toml_fields(text: str) -> dict:
                         re.M | re.S)
         m = rx.search(text)
         return next((g for g in m.groups() if g is not None), None) if m else None
-    return {"name": grab("displayName") or grab("modId"), "version": grab("version"),
+    return {"name": grab("displayName") or grab("modId"), "modid": grab("modId"),
+            "version": grab("version"),
             "description": grab("description"), "icon": grab("logoFile"), "authors": grab("authors")}
 
 
@@ -98,7 +100,7 @@ def _manifest_version(zf: zipfile.ZipFile):
 
 def read_mod_jar(path: Path) -> dict:
     info = {"name": None, "version": None, "description": None, "authors": None,
-            "loader": None, "_icon": None}
+            "loader": None, "modid": None, "_icon": None}
     try:
         with zipfile.ZipFile(path) as zf:
             raw = _zip_read(zf, "fabric.mod.json")
@@ -108,7 +110,8 @@ def read_mod_jar(path: Path) -> dict:
                 if isinstance(icon, dict) and icon:
                     icon = icon[min(icon, key=lambda k: abs(int(k) - 128))] if all(
                         str(k).isdigit() for k in icon) else next(iter(icon.values()))
-                info.update(name=d.get("name") or d.get("id"), version=d.get("version"),
+                info.update(name=d.get("name") or d.get("id"), modid=d.get("id"),
+                            version=d.get("version"),
                             description=d.get("description"), authors=d.get("authors"),
                             loader="fabric", _icon=icon if isinstance(icon, str) else None)
             else:
@@ -118,7 +121,8 @@ def read_mod_jar(path: Path) -> dict:
                     ql = d.get("quilt_loader", {})
                     meta = ql.get("metadata", {})
                     contributors = meta.get("contributors")
-                    info.update(name=meta.get("name") or ql.get("id"), version=ql.get("version"),
+                    info.update(name=meta.get("name") or ql.get("id"), modid=ql.get("id"),
+                                version=ql.get("version"),
                                 description=meta.get("description"),
                                 authors=list(contributors) if isinstance(contributors, dict) else None,
                                 loader="quilt", _icon=meta.get("icon") if isinstance(meta.get("icon"), str) else None)
@@ -128,7 +132,8 @@ def read_mod_jar(path: Path) -> dict:
                         toml_raw, loader = _zip_read(zf, "META-INF/mods.toml"), "forge"
                     if toml_raw:
                         f = _toml_fields(toml_raw.decode("utf-8-sig", "replace"))
-                        info.update(name=f["name"], version=f["version"], description=f["description"],
+                        info.update(name=f["name"], modid=f["modid"], version=f["version"],
+                                    description=f["description"],
                                     authors=f["authors"], loader=loader, _icon=f["icon"])
                     else:
                         raw = _zip_read(zf, "mcmod.info")
@@ -137,7 +142,9 @@ def read_mod_jar(path: Path) -> dict:
                             if isinstance(d, dict):
                                 d = d.get("modList", [])
                             m = d[0] if d else {}
-                            info.update(name=m.get("name") or m.get("modid"), version=m.get("version"),
+                            info.update(name=m.get("name") or m.get("modid"),
+                                        modid=m.get("modid"),
+                                        version=m.get("version"),
                                         description=m.get("description"),
                                         authors=m.get("authorList") or m.get("authors"),
                                         loader="forge", _icon=m.get("logoFile"))
@@ -177,52 +184,89 @@ def read_resourcepack(path: Path) -> dict:
     return info
 
 
-def _content_folder(instance_name: str, kind: str) -> Path:
+_MOD_SUFFIXES = (".jar", ".jar.disabled")
+
+
+def _content_folders(instance_name: str, kind: str) -> dict:
+    """Active files keep their basename as a key; parked mods use disabled/<basename>."""
     game = instance_game_dir(instance_name)
-    return game / {"mods": "mods", "resourcepacks": "resourcepacks", "shaderpacks": "shaderpacks"}[kind]
+    if kind == "mods":
+        mods, disabled = game / "mods", game / "disabled"
+        folders = {"": mods} if is_within(game, mods) else {}
+        if is_within(game, disabled) and not is_within(mods, disabled):
+            folders["disabled/"] = disabled
+        return folders
+    if kind in ("resourcepacks", "shaderpacks"):
+        return {"": game / kind}
+    raise ValueError("Unknown content type.")
+
+
+def content_file_path(instance_name: str, kind: str, filename: str) -> Path:
+    if not isinstance(filename, str):
+        raise ValueError("Invalid content filename.")
+    prefix, sep, name = filename.rpartition("/")
+    folder = _content_folders(instance_name, kind).get(prefix + sep)
+    if (folder is None or not name or name in (".", "..") or "\\" in name or Path(name).name != name
+            or (kind == "mods" and not name.lower().endswith(_MOD_SUFFIXES))):
+        raise ValueError("Invalid content filename.")
+    path = folder / name
+    if not is_within(folder, path) or path.resolve() == folder.resolve():
+        raise ValueError("Invalid content path.")
+    return path
+
+
+def iter_content_files(instance_name: str, kind: str):
+    for prefix, folder in _content_folders(instance_name, kind).items():
+        if not folder.is_dir():
+            continue
+        for p in folder.iterdir():
+            if kind == "mods":
+                if not p.name.lower().endswith(_MOD_SUFFIXES) or not p.is_file():
+                    continue
+            elif not (p.is_dir() or (p.suffix.lower() == ".zip" and p.is_file())):
+                continue
+            if is_within(folder, p):
+                yield prefix + p.name, p
+
+
+def set_mod_enabled(instance_name: str, filename: str, enabled: bool) -> str:
+    src = content_file_path(instance_name, "mods", filename)
+    if not src.is_file():
+        raise ValueError("That mod file no longer exists.")
+    # Imported instances may have disabled mods stored as mods/<name>.jar.disabled.
+    name = src.name[:-len(".disabled")] if src.name.lower().endswith(".disabled") else src.name
+    key = name if enabled else "disabled/" + name
+    if filename != key:
+        if src.is_symlink():
+            raise ValueError("Can't move a symbolic link between mod folders.")
+        dest = content_file_path(instance_name, "mods", key)
+        if dest.exists() or dest.is_symlink():
+            raise ValueError(f"{dest.parent.name} already contains {name}.")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        src.rename(dest)
+    return key
 
 
 def list_instance_content(instance_name: str, kind: str) -> list:
-    folder = _content_folder(instance_name, kind)
     items = []
-    if not folder.is_dir():
-        return items
-    for p in folder.iterdir():
-        lower = p.name.lower()
+    for key, p in iter_content_files(instance_name, kind):
         enabled = True
         if kind == "mods":
-            if lower.endswith(".jar.disabled"):
-                enabled, stem = False, p.name[:-len(".jar.disabled")]
-            elif lower.endswith(".jar") and p.is_file():
-                stem = p.name[:-4]
-            else:
-                continue
+            legacy = p.name.lower().endswith(".jar.disabled")
+            enabled = key == p.name and not legacy
+            stem = p.name[:-len(".jar.disabled")] if legacy else p.stem
             info = read_mod_jar(p)
-        elif kind == "shaderpacks":
-            if p.is_file() and lower.endswith(".zip"):
-                stem = p.name[:-4]
-            elif p.is_dir():
-                stem = p.name
-            else:
-                continue
-            info = {"name": stem, "version": None, "description": None,
-                    "authors": None, "loader": None, "_icon": None}
         else:
-            if p.is_file() and lower.endswith(".zip"):
-                stem = p.name[:-4]
-            elif p.is_dir():
-                stem = p.name
-            else:
-                continue
-            info = read_resourcepack(p)
+            stem = p.name if p.is_dir() else p.stem
+            info = read_resourcepack(p) if kind == "resourcepacks" else {}
         items.append({
-            "file": p.name,
-            "name": info["name"] or stem,
-            "version": info["version"],
-            "description": info["description"],
-            "authors": info["authors"],
-            "loader": info["loader"],
-            "has_icon": bool(info["_icon"]),
+            "file": key,
+            "name": info.get("name") or stem,
+            "version": info.get("version"),
+            "description": info.get("description"),
+            "authors": info.get("authors"),
+            "loader": info.get("loader"),
+            "has_icon": bool(info.get("_icon")),
             "enabled": enabled,
         })
     items.sort(key=lambda i: i["name"].lower())
@@ -232,9 +276,8 @@ def list_instance_content(instance_name: str, kind: str) -> list:
 def read_content_icon(instance_name: str, kind: str, filename: str):
     if kind == "shaderpacks":
         return None
-    folder = _content_folder(instance_name, kind)
-    path = folder / Path(filename).name
-    if not path.exists() or not is_within(folder, path):
+    path = content_file_path(instance_name, kind, filename)
+    if not path.exists():
         return None
     info = read_mod_jar(path) if kind == "mods" else read_resourcepack(path)
     icon_path = info["_icon"]

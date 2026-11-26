@@ -9,6 +9,7 @@ from ..addons.api_critclient import CritClientApi
 from ..addons.api_modpacks import ModpacksApi
 from ..addons.api_mods import ModManagerApi
 from ..addons.api_shaders import ShadersApi
+from ..bedrock.api import BedrockApi
 from ..discord.api import DiscordPresenceApi
 from ..horizon.api import HorizonApi
 from ..importers.api import ImportApi
@@ -19,6 +20,7 @@ from ..instances.api_screenshots import ScreenshotsApi
 from ..instances.api_shortcuts import ShortcutsApi
 from ..launch.api import LaunchApi
 from ..launch.api_console import ConsoleApi
+from ..launch.api_crash import CrashApi
 from ..launch.api_horizon import HorizonLaunchApi
 from ..minecraft.api import VersionsApi
 from ..news.api import NewsApi
@@ -30,6 +32,7 @@ from ..servers.api_settings import ServerSettingsApi
 from ..skins.api import SkinsApi
 from ..skins.api_catalog import SkinCatalogApi
 from ..skins.api_local import LocalSkinsApi
+from ..tunnel.api import E4mcApi
 from ..ui.api_assets import UiAssetsApi
 from ..ui.api_window import WindowApi
 from ..updates.api import UpdatesApi
@@ -59,13 +62,16 @@ class API(
     ShadersApi,
     LaunchApi,
     ConsoleApi,
+    CrashApi,
     HorizonLaunchApi,
+    BedrockApi,
     HorizonApi,
     ServerLifecycleApi,
     ServerProcessApi,
     ServerPlayersApi,
     ServerSettingsApi,
     ServerContentApi,
+    E4mcApi,
     NewsApi,
     UpdatesApi,
     ChangelogApi,
@@ -77,6 +83,7 @@ class API(
 
     def __init__(self):
         self._window = None
+        self._closing = False
         self._processes: dict = {}
         self._sessions: dict = {}
         self._stopping: set = set()
@@ -89,4 +96,6 @@ class API(
         self._presence = None
         self._presence_starting = False
         self._presence_lock = threading.Lock()
+        self._crash_report = None
         self._srv_init()
+        self._e4mc_init()

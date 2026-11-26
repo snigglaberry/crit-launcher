@@ -36,7 +36,22 @@ def _sk_game_dir(sub: Path):
     for cand in (sub, sub / ".minecraft", sub / "minecraft"):
         if (cand / "logs" / "latest.log").is_file():
             return cand
+    for cand in (sub / ".minecraft", sub / "minecraft"):
+        if _has_game_data(cand):
+            return cand
+    if _has_game_data(sub):
+        return sub
     return None
+
+
+def _has_game_data(path: Path) -> bool:
+    if not path.is_dir():
+        return False
+    if any((path / name).is_file()
+           for name in ("options.txt", "optionsof.txt", "launcher_profiles.json")):
+        return True
+    return any((path / name).is_dir()
+               for name in ("mods", "saves", "config", "versions", "resourcepacks"))
 
 
 def _scan_sklauncher(root: Path) -> list:
@@ -57,7 +72,7 @@ def _scan_sklauncher(root: Path) -> list:
             if not mc_version:
                 mc_version = _sk_vanilla_version_from_log(logs_dir)
         else:
-            loader, loader_version = "vanilla", None
+            loader, loader_version = "unknown", None
             mc_version = _sk_vanilla_version_from_log(logs_dir)
         found.append({
             "source_id": sub.name,

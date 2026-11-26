@@ -12,3 +12,7 @@ def find_account(accounts: list, key):
         return None
     return (next((a for a in accounts if a.get("uuid") == key), None)
             or next((a for a in accounts if a.get("name") == key), None))
+
+
+def selected_account(accounts, key):
+    return find_account(accounts, key) or (accounts[0] if accounts else None)

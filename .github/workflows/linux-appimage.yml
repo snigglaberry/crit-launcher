@@ -1,0 +1,35 @@
+name: Build Linux AppImage
+
+on: workflow_dispatch
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Build the AppImage
+        run: bash packaging/linux/build-appimage.sh
+      - name: Check the packaged launcher and UI
+        run: |
+          image=(dist-linux/*.AppImage)
+          test "${#image[@]}" -eq 1
+          "${image[0]}" --appimage-extract >/dev/null
+          test -x squashfs-root/AppRun
+          test -x squashfs-root/usr/lib/crit/crit
+          cmp index.linux.html squashfs-root/usr/lib/crit/_internal/index.linux.html
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux-appimage
+          path: dist-linux/*.AppImage
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

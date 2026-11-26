@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+import threading
 import time
 
 from ..bootstrap import init as init_environment
@@ -10,6 +11,7 @@ from ..config.paths import IS_LINUX
 from ..config.settings import launcher_window_geometry, settings_store
 from ..core.logs import log_exception
 from ..ui.page import prepare_page, start_asset_download
+from ..ui.webview_lifecycle import cancel_edge_scripts_on_close
 from .facade import API
 
 
@@ -56,16 +58,17 @@ def main():
         background_color="#0b0c0e",
     )
     api.set_window(window)
+    # pywebview runs `closing` on the GUI thread. Don't wait for servers or
+    # evaluate JavaScript from there; let the native window close first.
+    window.events.closing += api._begin_close
+    if sys.platform == "win32":
+        window.events.before_show += cancel_edge_scripts_on_close
+
+    def on_closed():
+        api.cancel_minecraft_web_login()
+
+    window.events.closed += on_closed
     api._presence_sync()
-
-    def on_closing():
-        api._presence_sync_off()
-        try:
-            api.stop_all_servers()
-        except Exception:
-            log_exception("stop servers on close")
-
-    window.events.closing += on_closing
 
     def on_shown():
         api.apply_saved_titlebar_theme()
@@ -75,4 +78,14 @@ def main():
     except Exception:
         log_exception("hook shown event")
 
-    webview.start(gui="qt" if IS_LINUX else None, debug=False)
+    try:
+        webview.start(gui="qt" if IS_LINUX else None, debug=False)
+    finally:
+        api._begin_close()
+        # Discord IPC can be blocked on a read, so don't hold up exit on it.
+        threading.Thread(target=api._presence_sync_off, daemon=True).start()
+        for name, cleanup in (("e4mc", api.stop_e4mc), ("servers", api.stop_all_servers)):
+            try:
+                cleanup()
+            except Exception:
+                log_exception(f"stop {name} on close")

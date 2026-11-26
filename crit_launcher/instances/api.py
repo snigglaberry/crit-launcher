@@ -1,10 +1,12 @@
 """JS-bridge API: instance management."""
 
 import shutil
+import sys
 import threading
 import time
 
-from ..config.paths import INSTANCES_DIR, SERVERS_DIR
+from ..addons.critclient import CRIT_CLIENT_LOADER, latest_client_assets
+from ..config.paths import BEDROCK_INSTANCES_DIR, INSTANCES_DIR, SERVERS_DIR
 from ..config.settings import settings_store
 from ..core.fsutil import _dir_size
 from ..core.logs import log_exception
@@ -13,9 +15,11 @@ from ..horizon.constants import HORIZON_MC_VERSION
 from ..minecraft.constants import INSTALL_SCHEMA
 from ..minecraft.loaders import LOADER_NICE, MOD_LOADERS
 from .store import (
+    bedrock_instance_dir,
     ensure_game_layout,
     instance_dir,
     instance_game_dir,
+    java_instance_dir,
     read_instance_meta,
     sanitize_instance_name,
     update_instance_meta,
@@ -27,7 +31,6 @@ class InstancesApi:
     """Creating, renaming, deleting and opening instances."""
 
     def _make_instance(self, name, version, loader, loader_version):
-        instance_dir(name).mkdir(parents=True, exist_ok=True)
         meta = {
             "name": name,
             "version": version,
@@ -56,6 +59,19 @@ class InstancesApi:
 
         if instance_dir(name).exists():
             return {"success": False, "error": "Instance already exists."}
+        if loader == "bedrock":
+            if critclient:
+                return {"success": False, "error": "Crit Client needs Fabric."}
+            if not sys.platform.startswith("win"):
+                return {"success": False,
+                        "error": "Minecraft Bedrock can only be installed on Windows."}
+            try:
+                self._make_instance(name, "latest", "bedrock", None)
+            except Exception as exc:
+                log_exception("create_instance (bedrock)")
+                return {"success": False, "error": f"Failed to create instance: {exc}"}
+            self._start_bedrock(name)
+            return {"success": True}
         if not version:
             return {"success": False, "error": "Select a Minecraft version."}
         if loader in MOD_LOADERS and not loader_version:
@@ -65,7 +81,7 @@ class InstancesApi:
             
             
             if critclient:
-                return {"success": False, "error": "Crit Client needs Fabric or Forge."}
+                return {"success": False, "error": "Crit Client needs Fabric."}
             if version != HORIZON_MC_VERSION:
                 return {"success": False,
                         "error": f"Horizon only supports Minecraft {HORIZON_MC_VERSION}."}
@@ -80,26 +96,26 @@ class InstancesApi:
             self.push_state()
             return {"success": True}
 
-        jar_name = None
+        asset = None
         if critclient:
-            if loader not in ("fabric", "forge"):
-                return {"success": False, "error": "Crit Client needs Fabric or Forge."}
+            if loader != CRIT_CLIENT_LOADER:
+                return {"success": False, "error": "Crit Client needs Fabric."}
             try:
-                jar_name = (self._critclient_versions().get(loader) or {}).get(version)
+                asset = latest_client_assets().get(version)
             except Exception:
                 log_exception("critclient lookup")
                 return {"success": False, "error": "Couldn't reach the Crit Client server."}
-            if not jar_name:
+            if not asset:
                 return {"success": False,
                         "error": f"Crit Client isn't available for {loader.capitalize()} {version}."}
 
         try:
             self._make_instance(name, version, loader, loader_version)
-            if jar_name:
+            if asset:
                 update_instance_meta(name, lambda m: m.__setitem__("critclient", True))
                 with self._proc_lock:
                     self._installing.add(name)
-                threading.Thread(target=self._critclient_worker, args=(name, version, loader, jar_name),
+                threading.Thread(target=self._critclient_worker, args=(name, version, loader, asset),
                                  daemon=True).start()
             self.push_state()
             return {"success": True}
@@ -152,12 +168,14 @@ class InstancesApi:
                 return {"success": False, "error": str(exc)}
             if new_name == old_name:
                 return {"success": True}
-            if instance_dir(new_name).exists():
+            if java_instance_dir(new_name).exists() or bedrock_instance_dir(new_name).exists():
                 return {"success": False, "error": "An instance with that name already exists."}
             with self._proc_lock:
                 if old_name in self._processes or old_name in self._installing:
                     return {"success": False, "error": "Stop or wait for the instance first."}
-            shutil.move(str(instance_dir(old_name)), str(instance_dir(new_name)))
+            old_dir = instance_dir(old_name)
+            new_dir = old_dir.parent / new_name
+            shutil.move(str(old_dir), str(new_dir))
             old_meta["name"] = new_name
             write_instance_meta(new_name, old_meta)
 
@@ -174,12 +192,15 @@ class InstancesApi:
 
     def get_disk_usage(self, kind):
         try:
-            root = INSTANCES_DIR if kind == "instances" else SERVERS_DIR
+            roots = ([INSTANCES_DIR, BEDROCK_INSTANCES_DIR] if kind == "instances"
+                     else [SERVERS_DIR])
             out = {}
-            if root.is_dir():
+            for root in roots:
+                if not root.is_dir():
+                    continue
                 for d in root.iterdir():
                     if d.is_dir():
-                        out[d.name] = _dir_size(d)
+                        out[d.name] = out.get(d.name, 0) + _dir_size(d)
             return {"success": True, "sizes": out}
         except Exception:
             log_exception("get_disk_usage")
@@ -187,9 +208,13 @@ class InstancesApi:
 
     def open_instance_folder(self, instance_name):
         try:
-            if not read_instance_meta(instance_name):
+            meta = read_instance_meta(instance_name)
+            if not meta:
                 return {"success": False, "error": "Instance not found."}
-            meta = read_instance_meta(instance_name) or {}
+            if meta.get("loader") == "bedrock":
+                ensure_game_layout(instance_name, "bedrock")
+                open_in_file_manager(bedrock_instance_dir(instance_name))
+                return {"success": True}
             ensure_game_layout(instance_name, meta.get("loader", "vanilla"))
             open_in_file_manager(instance_game_dir(instance_name))
             return {"success": True}

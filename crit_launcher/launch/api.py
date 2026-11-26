@@ -28,6 +28,7 @@ from ..minecraft.installer import Installer
 from ..minecraft.java import console_java, java_info_from_meta, resolve_java
 from .command import build_launch_command
 from .crash import _explain_crash, _log_tail
+from .crash_report import analyze_crash, looks_like_crash
 
 
 class LaunchApi:
@@ -56,6 +57,11 @@ class LaunchApi:
                                  daemon=True).start()
                 return {"success": True, "installing": True}
 
+            if meta.get("loader") == "bedrock":
+                if self._start_bedrock(instance_name, launch=True):
+                    return {"success": True, "installing": True}
+                return {"success": False, "error": "Bedrock is already being prepared."}
+
             accounts = accounts_store.read()
             settings = settings_store.read()
             active_account = find_account(accounts, settings.get("active_account"))
@@ -68,6 +74,8 @@ class LaunchApi:
                 java_path = resolve_java(java_info_from_meta(meta), allow_download=False)
                 if java_path:
                     with self._proc_lock:
+                        if instance_name in self._installing or instance_name in self._processes:
+                            return {"success": False, "error": "Instance is already running or installing."}
                         self._installing.add(instance_name)
 
                     def go():
@@ -93,6 +101,8 @@ class LaunchApi:
                     return {"success": True}
 
             with self._proc_lock:
+                if instance_name in self._installing or instance_name in self._processes:
+                    return {"success": False, "error": "Instance is already running or installing."}
                 self._installing.add(instance_name)
             self.push_state()
             threading.Thread(
@@ -147,6 +157,7 @@ class LaunchApi:
             ensure_game_layout(instance_name, meta.get("loader", "vanilla"))
 
             log_path = instance_dir(instance_name) / "launch_output.log"
+            self._crash_report = None
             log_file = open(log_path, "wb")
             shown = ["dontlogtokens!" if i and command[i - 1] == "--accessToken" else c
                      for i, c in enumerate(command)]
@@ -186,6 +197,7 @@ class LaunchApi:
 
     def _watch_process(self, instance_name, proc, log_file, log_path, started):
         code = proc.wait()
+        self._e4mc_stop_target("instance", instance_name)
         try:
             log_file.close()
         except OSError:
@@ -207,13 +219,24 @@ class LaunchApi:
             except Exception:
                 log_exception("playtime update")
 
-        if code != 0 and not user_stopped:
+        if not user_stopped:
             tail = _log_tail(log_path)
-            logging.error("%s exited with code %s\n%s", instance_name, code, tail[-2000:])
-            self.emit("launchError", {
-                "instance": instance_name,
-                "message": f"{instance_name} closed unexpectedly (exit code {code}). {_explain_crash(tail)}",
-            })
+            if code != 0 or looks_like_crash(tail):
+                logging.error("%s exited with code %s\n%s", instance_name, code, tail[-2000:])
+                report = None
+                try:
+                    report = analyze_crash(instance_name, log_path, started, code)
+                except Exception:
+                    log_exception("crash analysis")
+                if report:
+                    self._crash_report = report
+                    self.emit("crashReport", report)
+                else:
+                    self.emit("launchError", {
+                        "instance": instance_name,
+                        "message": (f"{instance_name} closed unexpectedly (exit code {code}). "
+                                    f"{_explain_crash(tail)}"),
+                    })
         self.push_state()
 
     def stop(self, instance_name):

@@ -52,12 +52,20 @@ def fix_maven_url(url: str) -> str:
     return url
 
 
-def collect_library_entries(libraries: list, features=None):
+def collect_library_entries(libraries: list, features=None, dedupe: bool = True):
     classpath_entries = []
     native_entries = []
     features = features or {}
     seen_keys = set()
     seen_native_paths = set()
+
+    def _key(name: str, path: str) -> str:
+        # Launch classpaths only need one jar per group:artifact, but installer
+        # processors can depend on several versions of the same artifact
+        # (e.g. srgutils 0.6.2 and 0.6.6), so keep the full coordinate there.
+        if not dedupe:
+            return name or path
+        return lib_key(name) if name else path
 
     for lib in libraries:
         if lib.get("clientreq") is False:
@@ -70,7 +78,7 @@ def collect_library_entries(libraries: list, features=None):
         artifact = downloads.get("artifact")
 
         if artifact and artifact.get("path"):
-            key = lib_key(name) if name else artifact["path"]
+            key = _key(name, artifact["path"])
             if key not in seen_keys:
                 seen_keys.add(key)
                 classpath_entries.append({
@@ -80,7 +88,7 @@ def collect_library_entries(libraries: list, features=None):
                     "sha1": artifact.get("sha1"),
                 })
         elif name and not downloads.get("classifiers"):
-            key = lib_key(name)
+            key = _key(name, "")
             if key not in seen_keys:
                 seen_keys.add(key)
                 path = maven_to_path(name)
